@@ -78,5 +78,5 @@ serves the site at `/assets` on its own host. Change both if you host it elsewhe
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE). This project began as Palo Alto Networks' Docusaurus OpenAPI template,
-whose copyright notice is retained there as the licence requires.
+MIT — see [LICENSE](LICENSE). This project began as Palo Alto Networks' Docusaurus OpenAPI
+template; [NOTICE](NOTICE) records that and the other upstream work it builds on.

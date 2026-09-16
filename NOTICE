@@ -1,0 +1,18 @@
+Lithos WebDocs
+Copyright (c) 2026 Lithos Protocol
+
+This project began as the Docusaurus OpenAPI docs template by Palo Alto Networks
+and builds on their Docusaurus OpenAPI packages:
+
+  docusaurus-template-openapi-docs
+  docusaurus-plugin-openapi-docs
+  docusaurus-theme-openapi-docs
+  Copyright (c) 2022 Palo Alto Networks
+  MIT licensed - https://github.com/PaloAltoNetworks/docusaurus-openapi-docs
+
+Parts of that work remain here, including the swizzled theme components under
+src/theme/. Their copyright notice is retained in LICENSE as the MIT licence
+requires.
+
+Built with Docusaurus (https://docusaurus.io), Copyright (c) Meta Platforms,
+Inc. and affiliates, MIT licensed.

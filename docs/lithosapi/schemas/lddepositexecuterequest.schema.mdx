@@ -1,0 +1,33 @@
+---
+id: lddepositexecuterequest
+title: "LDDepositExecuteRequest"
+description: "A deposit to sign and submit"
+sidebar_label: "LDDepositExecuteRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"shares":"1176470","maxAmountX":"5000000000","maxAmountY":"151058823","expectedPoolBoxId":"a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDDepositExecuteRequest"}
+>
+</Heading>
+
+
+
+A deposit to sign and submit
+
+<Schema
+  schema={{"description":"A deposit to sign and submit","type":"object","x-tags":"lithosdex","required":["shares"],"properties":{"shares":{"type":"string","description":"LP shares to unlock, as returned by the quote. Decimal string.","example":"1176470"},"maxAmountX":{"type":"string","description":"Most you will pay on the ERG side. Decimal string.","example":"5000000000"},"maxAmountY":{"type":"string","description":"Most you will pay on the token side. Decimal string.","example":"151058823"},"expectedPoolBoxId":{"type":"string","description":"The pool box this was quoted against","example":"a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97"}},"title":"LDDepositExecuteRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

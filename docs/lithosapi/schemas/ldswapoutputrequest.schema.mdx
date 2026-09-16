@@ -1,0 +1,33 @@
+---
+id: ldswapoutputrequest
+title: "LDSwapOutputRequest"
+description: "Desired output and direction, for a reverse quote"
+sidebar_label: "LDSwapOutputRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"amountOut":"30000000","ergIn":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDSwapOutputRequest"}
+>
+</Heading>
+
+
+
+Desired output and direction, for a reverse quote
+
+<Schema
+  schema={{"description":"Desired output and direction, for a reverse quote","type":"object","x-tags":"lithosdex","required":["amountOut","ergIn"],"properties":{"amountOut":{"type":"string","description":"Amount that should come back out. Decimal string.","example":"30000000"},"ergIn":{"type":"boolean","example":true}},"title":"LDSwapOutputRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -1,0 +1,297 @@
+---
+sidebar_position: 7
+tags:
+  - startup
+description: Install, configure and run the Ergo testnet node that Lithos depends on.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Setting up an Ergo testnet node
+
+<span className="badge badge--success">Standard</span>
+
+*For anyone setting up Lithos for the first time. No Ergo experience needed.*
+
+Lithos runs on top of a local Ergo node. This page covers installing the node, writing its
+configuration file, creating and unlocking a wallet, and confirming that the node is ready. Finish it
+before you configure the Lithos client.
+
+It does not cover the Lithos client itself. That is the [startup guide](../startup-intro.mdx).
+
+:::info Testnet only
+Every port, peer and command on this page is for the Ergo **testnet**. Mainnet uses different values,
+including a different API port.
+:::
+
+## What Lithos uses the node for
+
+The Lithos client does not talk to the Ergo network directly. It talks to your node, which does four
+jobs for it:
+
+- Syncs the blockchain and serves the chain state Lithos reads.
+- Signs transactions using the node wallet's keystore.
+- Produces the block candidates you mine, and accepts the solutions you find.
+- Serves the box, token and address lookups Lithos needs to find collateral and rollups.
+
+The node must be running, fully synced, and its wallet unlocked before Lithos can do anything.
+
+## Step 1: Download the node
+
+Download the latest release JAR from the
+[Ergo releases page](https://github.com/ergoplatform/ergo/releases).
+
+:::warning Use version 6.0.4 or later
+Earlier versions do not expose the API call Lithos uses to set a block's coinbase recipient. On an
+older node the client runs, but no Lithos block can ever be produced.
+:::
+
+## Step 2: Create the node directory
+
+Create a folder for the node and put the JAR inside it:
+
+<Tabs groupId="os">
+<TabItem value="windows" label="Windows">
+
+```powershell
+mkdir C:\ergo-testnet
+```
+
+</TabItem>
+<TabItem value="linux" label="Linux and macOS">
+
+```bash
+sudo mkdir -p /opt/ergo-testnet
+```
+
+</TabItem>
+</Tabs>
+
+The node writes its blockchain data into this folder. Plan for tens of gigabytes, and more once
+indexing is on.
+
+## Step 3: Write the node configuration
+
+Create a file named `ergo.conf` in the node directory with the following contents:
+
+```hocon title="ergo.conf"
+ergo {
+  networkType = "testnet"
+  node {
+    useExternalMiner = true
+    offlineGeneration = false
+    mining = true
+    extraIndex = true
+  }
+}
+
+scorex {
+  restApi {
+    # Blake2b256 hash of the API key "hello". Change this. See "Changing the API key" below.
+    apiKeyHash = "324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf"
+  }
+  network {
+    knownPeers = [
+      "128.253.41.110:9020",
+      "213.239.193.208:9023"
+    ]
+    nodeName = "lithos-testnet-node"
+  }
+}
+```
+
+Each setting Lithos depends on:
+
+| Setting | Why Lithos needs it |
+|---|---|
+| `networkType` | Selects testnet. Also sets the REST API port to `9052` |
+| `mining` | Lets the node build block candidates |
+| `useExternalMiner` | Tells the node that something else does the hashing. Lithos and your mining software are that something else |
+| `offlineGeneration` | Must stay `false`. When true, the node mines against itself rather than the network |
+| `extraIndex` | Builds the address, token and script indexes. Lithos finds collateral boxes and rollups through them, and without indexing those lookups return nothing |
+| `apiKeyHash` | The hash of the key that guards the node's REST API. Lithos authenticates with the key behind this hash |
+| `knownPeers` | Testnet peers to connect to on first start |
+
+:::warning Indexing must be on from the first start
+Turning `extraIndex` on later means the node reindexes the chain it already has, which takes time.
+Turn it on now.
+:::
+
+### Changing the API key
+
+The shipped hash is the hash of the string `hello`, which is public. Replace it before you run
+anything you care about.
+
+1. Start the node once with the configuration above.
+2. Open the node's Swagger panel at `http://127.0.0.1:9052/swagger`.
+3. Under `/utils`, call `POST /utils/hash/blake2b` with your chosen key as the request body.
+4. Copy the returned hash into `apiKeyHash` in `ergo.conf`.
+5. Restart the node.
+
+Your API key is the original string, not the hash. Give that string to the Lithos client as
+`node.key`, and update anything else that talks to your node.
+
+## Step 4: Start the node
+
+Confirm you are on Java 11 first. Later versions are not supported.
+
+<Tabs groupId="os">
+<TabItem value="windows" label="Windows">
+
+```powershell
+java -version
+```
+
+If the version is not 11, install a JDK 11 build such as Temurin or Zulu.
+
+```powershell
+cd C:\ergo-testnet
+java -jar ergo-testnet.jar --testnet -c ergo.conf
+```
+
+</TabItem>
+<TabItem value="linux" label="Linux and macOS">
+
+```bash
+sudo apt update
+sudo apt install openjdk-11-jdk -y
+java -version
+```
+
+```bash
+cd /opt/ergo-testnet
+java -jar ergo-testnet.jar --testnet -c ergo.conf
+```
+
+</TabItem>
+</Tabs>
+
+Replace `ergo-testnet.jar` with the filename you downloaded.
+
+The node now exposes two interfaces on port `9052`, both only while it runs:
+
+| Interface | Address | Use it for |
+|---|---|---|
+| Node panel | `http://127.0.0.1:9052/panel` | Sync status, peers, wallet, mining info |
+| Swagger | `http://127.0.0.1:9052/swagger` | Every REST endpoint, with a form to call it |
+
+## Step 5: Create a wallet
+
+Lithos signs with this wallet's keystore, so the node needs one before the client starts.
+
+:::danger Use a fresh testnet key
+Lithos reads your node's secret keys from the keystore file. Generate a key for testnet that is
+unrelated to any mainnet wallet you own.
+:::
+
+<Tabs groupId="wallet">
+<TabItem value="panel" label="Node panel (recommended)">
+
+1. Open `http://127.0.0.1:9052/panel`.
+2. Go to the **Wallet** tab.
+3. Click **Create Wallet**.
+4. Set a wallet password and record it. The Lithos client needs it as `node.pass`.
+5. Save the mnemonic.
+
+</TabItem>
+<TabItem value="swagger" label="Swagger">
+
+1. Open `http://127.0.0.1:9052/swagger`.
+2. Authorize with your API key.
+3. Call `POST /wallet/init` with your chosen wallet password in the request body.
+
+This produces the same keystore file as the panel.
+
+</TabItem>
+</Tabs>
+
+Either method writes the keystore to the node's data directory:
+
+<Tabs groupId="os">
+<TabItem value="windows" label="Windows">
+
+```text
+C:\ergo-testnet\data\wallet\keystore\keyfile.json
+```
+
+</TabItem>
+<TabItem value="linux" label="Linux and macOS">
+
+```text
+/opt/ergo-testnet/data/wallet/keystore/keyfile.json
+```
+
+</TabItem>
+</Tabs>
+
+Give that full path to the Lithos client as `node.storagePath`.
+
+## Step 6: Unlock the wallet
+
+**The node wallet locks every time the node restarts.** Lithos reads addresses from the node wallet and
+derives lender keys through it, and both fail against a locked wallet. Symptoms include errors about
+reading wallet addresses, and emission transactions that never build.
+
+Unlock it from the **Wallet** tab of the node panel, or by calling `POST /wallet/unlock` in Swagger
+with your wallet password. Do this every time you restart the node, before starting Lithos.
+
+## Step 7: Fund the wallet
+
+Lithos pays ordinary transaction fees for the work it does on your behalf, at roughly 0.001 ERG per
+transaction. Send some testnet ERG to the wallet's primary address, which the panel shows on the
+**Wallet** tab.
+
+## Step 8: Confirm the node is ready
+
+Wait for the node to finish syncing. The panel shows the current height against the network height.
+
+Then check the API from a terminal:
+
+<Tabs groupId="os">
+<TabItem value="windows" label="Windows">
+
+```powershell
+curl http://127.0.0.1:9052/info
+```
+
+</TabItem>
+<TabItem value="linux" label="Linux and macOS">
+
+```bash
+curl http://127.0.0.1:9052/info
+```
+
+</TabItem>
+</Tabs>
+
+A working node returns something like this:
+
+```json
+{
+  "fullHeight": 479000,
+  "headersHeight": 479000,
+  "isMining": true
+}
+```
+
+Check three things in the response:
+
+1. `fullHeight` and `headersHeight` match, which means the node is synced.
+2. `isMining` is `true`.
+3. `fullHeight` matches the network height reported by a testnet explorer.
+
+## You are ready for Lithos
+
+Before moving on, collect the four values the Lithos client asks for:
+
+| Value | Where it comes from |
+|---|---|
+| API key | The string you hashed in step 3 |
+| Wallet password | The password you set in step 5 |
+| Keystore path | The full path to `keyfile.json` from step 5 |
+| Node address | `http://127.0.0.1`, with no port. Lithos appends `9052` itself |
+
+## Next steps
+
+- [Startup guide](../startup-intro.mdx): configure and run the Lithos client against this node.

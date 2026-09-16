@@ -1,0 +1,5092 @@
+openapi: 3.0.0
+servers:
+  - url: http://localhost:9000
+    description: Lithos Client API
+info:
+  description: |
+    API Documentation for the Lithos client. Models used
+    here are expected to be consistent across any other implementations of the Lithos client.
+
+  version: 1.0.0
+  title: Lithos Client API
+  contact:
+    url: https://github.com/Lithos-Protocol
+tags:
+  - name: info
+    description: Synchronization status and capability availability for the Lithos client
+    x-displayName: Info
+  - name: blocks
+    description: Usable, canonically committed blocks currently being processed by Lithos contracts
+    x-displayName: Blocks
+  - name: payments
+    description: Confirmed Lithos payouts to this client's primary miner address
+    x-displayName: Payments
+  - name: mining
+    description: Information about the local stratum and mining process
+    x-displayName: Mining
+  - name: collateral-market
+    description: >
+      Stats and participation for the collateral market: the queue, the active set, emission
+      state, and joining the queue.
+
+
+      **All amounts are decimal strings, not JSON numbers.** ERG amounts are nanoERG; LIT amounts
+      are base units (9 decimals).
+    x-displayName: Collateral Market
+  - name: wallet
+    description: >
+      Balances and lending status for the client's own wallet. Requires an `api_key`.
+
+
+      **All amounts are decimal strings, not JSON numbers.** ERG amounts are nanoERG; LIT amounts
+      are base units (9 decimals).
+    x-displayName: Wallet
+  - name: pool_block_model
+    x-displayName: The PoolBlock Model
+    description: |
+      <SchemaDefinition schemaRef="#/components/schemas/PoolBlock" />
+  - name: lithosdex
+    description: >
+      Swap, provide liquidity and collect fees on the LithosDex pool.
+
+
+      Swaps, deposits and redemptions can be placed as **orders** under `/dex/orders`, which any
+      miner fills for the order's executor fee, or sent **directly**, spending the pool at once.
+      Prefer orders: a miner filling orders may replace an unconfirmed direct spend of the pool, which
+      then has to be resent.
+
+
+      **All amounts are decimal strings, not JSON numbers.** A 409 means a box you quoted against
+      has moved: re-read, re-quote and resend.
+    x-displayName: Lithos Dex
+x-tagGroups:
+  - name: Lithos
+    tags:
+      - info
+      - blocks
+      - payments
+      - collateral-market
+      - lithosdex
+      - wallet
+  - name: Stratum
+    tags:
+      - mining
+  - name: Models
+    tags:
+      - pool_block_model
+paths:
+  /blocks:
+    get:
+      summary: List UTXO ids for blocks
+      description: >
+        Get a page of UTXO ids (hex encoded) for usable rollups in the current canonically committed
+        synchronization view. The list is empty while canonical synchronization is unavailable.
+      operationId: getContractIds
+      tags:
+        - blocks
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          description: The number of items in list to return
+          schema:
+            type: integer
+            format: int32
+            minimum: 10
+            maximum: 100
+            default: 50
+        - in: query
+          name: offset
+          required: false
+          description: The offset to start the list from
+          schema:
+            type: integer
+            format: int32
+            default: 0
+      responses:
+        '200':
+          description: Array of UTXO ids
+          content:
+            application/json:
+              schema:
+                type: array
+                description: Array of UTXO ids
+                items:
+                  type: string
+                  example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+                example: ['88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6']
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /blocks/byHeight:
+    get:
+      summary: UTXO ids by block height
+      description: >
+        Get UTXO ids for usable, canonically committed Lithos rollups whose mined-block height is in
+        the requested range. The list is empty while canonical synchronization is unavailable.
+      operationId: getBlocksByHeight
+      tags:
+        - blocks
+      parameters:
+        - in: query
+          name: fromHeight
+          required: false
+          description: Min height (start of the range) to look for Lithos blocks
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - in: query
+          name: toHeight
+          required: false
+          description: Max height of the range (exclusive)
+          schema:
+            type: integer
+            format: int32
+            default: -1
+      responses:
+        '200':
+          description: Array of UTXO ids
+          content:
+            application/json:
+              schema:
+                type: array
+                example: ['88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6']
+                items:
+                  type: string
+                  example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /blocks/{utxoId}:
+    get:
+      summary: Block info by UTXO id
+      description: >
+        Get confirmed metadata for a specific pool block in the current usable synchronization view.
+        Unconfirmed mempool projections are not included.
+      operationId: getBlockById
+      tags:
+        - blocks
+      parameters:
+        - in: path
+          name: utxoId
+          required: true
+          description: Id of the UTXO representing a Lithos block
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pool block object which shows information about the given Lithos block
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolBlock'
+        '404':
+          description: UTXO with this id doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /blocks/utxoIds:
+    post:
+      summary: Block info for multiple UTXO ids
+      description: >
+        Get confirmed pool-block metadata for the requested UTXO ids from the current usable
+        synchronization view. The whole request returns 404 if any id is unavailable.
+      operationId: getPoolBlocksByIds
+      tags:
+        - blocks
+      requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+      responses:
+        '200':
+          description: Pool blocks corresponding to ids provided
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PoolBlock'
+        '404':
+          description: Not all ids correspond to an existing pool block
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /blocks/{utxoId}/miners:
+    get:
+      summary: Get a block's miner set
+      description: >
+        Get the confirmed miner proposition hashes for this pool block. This protected operation may
+        materialize the rollup's authenticated dictionary.
+      security:
+        - ApiKeyAuth: [api_key]
+      operationId: getBlockMinersById
+      tags:
+        - blocks
+      parameters:
+        - in: path
+          name: utxoId
+          required: true
+          description: UTXO id of the pool block whose miners are being queried
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block Miners object
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlockMiners'
+        '404':
+          description: The pool block is not in the current usable view, or its miner set is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Missing or wrong api_key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /blocks/all:
+    get:
+      summary: List all pool blocks
+      description: >
+        List a page of confirmed metadata for usable rollups in the current canonically committed
+        synchronization view. The list is empty while canonical synchronization is unavailable.
+      operationId: getAllPoolBlocks
+      tags:
+        - blocks
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          description: The number of items in list to return
+          schema:
+            type: integer
+            format: int32
+            minimum: 10
+            maximum: 100
+            default: 50
+        - in: query
+          name: offset
+          required: false
+          description: The offset to start the list from
+          schema:
+            type: integer
+            format: int32
+            default: 0
+      responses:
+        '200':
+          description: List of pool block objects describing all tracked LFSM rollups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PoolBlock'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /payments:
+    get:
+      description: >
+        Reconstruct confirmed payouts to this client's primary miner address from the node's address
+        index. Pagination is applied after the indexed transaction history is filtered to exact spends
+        of the Lithos payout contract with an exact output to the primary miner address. This history
+        is independent of the synchronization cache.
+      summary: Get Lithos payouts
+      security:
+        - ApiKeyAuth: [api_key]
+      operationId: getPayments
+      tags:
+        - payments
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          description: The number of items in list to return
+          schema:
+            type: integer
+            format: int32
+            minimum: 10
+            maximum: 100
+            default: 50
+        - in: query
+          name: offset
+          required: false
+          description: The offset to start the list from
+          schema:
+            type: integer
+            format: int32
+            default: 0
+      responses:
+        '200':
+          description: Page of confirmed payout transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentTransaction'
+        '400':
+          description: Malformed pagination value or other invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Missing or wrong api_key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No confirmed Lithos payouts were found for the primary miner address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Unexpected failure while reconstructing payment history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: The indexed node is unavailable, not current, or the bounded history scan cannot fill the page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /info:
+    get:
+      description: >
+        Get the detailed synchronization state, last committed cursor, and independent availability
+        of canonical state, the Miner Dictionary, and mempool processing.
+      summary: Lithos client information
+      operationId: getLithosInfo
+      tags:
+        - info
+      responses:
+        '200':
+          description: Lithos info object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LithosInfo'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /mining:
+    get:
+      description: Information about the Lithos stratum
+      summary: Get Stratum information
+      operationId: getStratumInfo
+      tags:
+        - mining
+      responses:
+        '200':
+          description: Information about the Stratum server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StratumInfo'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /mining/bestNISP:
+    get:
+      description: Returns the best NISP produced for a given height and score, with exactly 10 super-shares
+      summary: Get best NISP at height
+      operationId: getBestNISPAtHeight
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - mining
+      parameters:
+        - in: query
+          name: height
+          required: true
+          description: Height that all super shares in the NISP must be below
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - in: query
+          name: score
+          required: true
+          description: Score that all super shares in this NISP must be above
+          schema:
+            type: integer
+            format: int64
+            default: 5000000
+      responses:
+        '200':
+          description: Best NISP representation with 10 super shares
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NISPRepresentation'
+        '404':
+          description: Could not produce a NISP for the given height
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/pool:
+    get:
+      summary: LithosDex pool state
+      description: >
+        Current state of the LithosDex pool. `reservesX` / `reservesY` are tradable; `pendingX` /
+        `pendingY` are fees awaiting a flush.
+      operationId: getLDPool
+      tags:
+        - lithosdex
+      responses:
+        '200':
+          description: Current pool state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDPoolInfo'
+        '404':
+          description: No pool box found on this network.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/vault:
+    get:
+      summary: LithosDex fee vault state
+      description: >
+        Current state of the fee vault, which holds flushed fees. `payableX` excludes `vaultMin`,
+        which is never paid out.
+      operationId: getLDVault
+      tags:
+        - lithosdex
+      responses:
+        '200':
+          description: Current vault state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDVaultInfo'
+        '404':
+          description: No vault box found on this network.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/orders:
+    get:
+      summary: List your outstanding orders
+      description: >
+        Every order owned by this wallet that has not yet filled or been cancelled, including orders
+        whose placement is unconfirmed. An order leaves the list once the transaction filling or
+        cancelling it confirms. Unconfirmed placements first, then newest first.
+      operationId: listLDOrders
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      responses:
+        '200':
+          description: Outstanding orders owned by this wallet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDOrderList'
+        '403':
+          description: Missing or wrong api_key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or mempool unavailable. Never returns a partial list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/orders/swap/check:
+    post:
+      summary: Quote a swap order
+      description: >
+        Quote a swap order against the current pool without placing it. The executor fee is paid on
+        top of `amountIn` when selling ERG, and out of the ERG received when selling the token.
+      operationId: checkLDSwapOrder
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDSwapOrderRequest'
+      responses:
+        '200':
+          description: Quote for the requested swap order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDSwapOrderQuote'
+        '400':
+          description: Malformed body, a non-positive `amountIn`, or a `maxMinerFee` not below `executorFee`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/orders/swap:
+    post:
+      summary: Place a swap order
+      description: >
+        Lock `amountIn` in an order that any miner can fill for `executorFee`. It fills only if the
+        owner receives at least `minOutput`, measured against the pool when it executes, and waits
+        otherwise. Cancel it with `POST /dex/orders/{boxId}/cancel`.
+      operationId: placeLDSwapOrder
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDSwapOrderExecuteRequest'
+      responses:
+        '200':
+          description: The placement transaction and the order it created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDOrderPlacementResult'
+        '400':
+          description: >
+            Malformed body, a non-positive `amountIn` or `minOutput`, or a `maxMinerFee` not below
+            `executorFee`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: The wallet cannot cover the order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/orders/deposit/check:
+    post:
+      summary: Quote a deposit order
+      description: >
+        Quote a deposit order offering `amountX` and `amountY` against the current pool. Shares are
+        bought with the scarcer side, and the rest of the other side is returned when the order
+        fills. `/dex/deposit/check` finds a balanced pair.
+      operationId: checkLDDepositOrder
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDDepositOrderRequest'
+      responses:
+        '200':
+          description: Quote for the requested deposit order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDDepositOrderQuote'
+        '400':
+          description: Malformed body, a non-positive amount, or a `maxMinerFee` not below `executorFee`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/orders/deposit:
+    post:
+      summary: Place a deposit order
+      description: >
+        Lock a deposit in an order that any miner can fill for `executorFee`. It fills only if the
+        offer buys at least `minShares` against the pool when it executes, and waits otherwise. The
+        fill sends the owner the new provision's `ownerNFT` and whatever the pool did not take.
+      operationId: placeLDDepositOrder
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDDepositOrderExecuteRequest'
+      responses:
+        '200':
+          description: The placement transaction and the order it created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDOrderPlacementResult'
+        '400':
+          description: >
+            Malformed body, a non-positive amount or `minShares`, or a `maxMinerFee` not below
+            `executorFee`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: The pool has no provision tokens left, or the wallet cannot cover the order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/orders/redeem/check:
+    post:
+      summary: Quote a redeem order
+      description: >
+        Quote an order closing a provision. `claimableX` / `claimableY` are claimed by the transaction
+        placing the order. `unflushedX` / `unflushedY`, and any fees earned while the order waits,
+        are lost when it fills.
+      operationId: checkLDRedeemOrder
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDRedeemOrderRequest'
+      responses:
+        '200':
+          description: Quote for the requested redeem order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDRedeemOrderQuote'
+        '400':
+          description: Malformed body, or a `maxMinerFee` not below `executorFee`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No live provision with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The provision moved. Re-read to find its current box id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/orders/redeem:
+    post:
+      summary: Place a redeem order
+      description: >
+        Move a provision's `ownerNFT` into an order that any miner can fill for `executorFee`, closing
+        the provision and paying the owner its share of the reserves. Settled fees are claimed in the
+        same transaction; fees not yet flushed, and any earned while the order waits, are lost when it
+        fills. Until then the provision cannot be claimed, resized or redeemed directly.
+      operationId: placeLDRedeemOrder
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDRedeemOrderRequest'
+      responses:
+        '200':
+          description: The placement transaction and the order it created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDOrderPlacementResult'
+        '400':
+          description: Malformed body, or a `maxMinerFee` not below `executorFee`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No live provision with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The vault or provision moved. Re-read and try again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '422':
+          description: >
+            Closing the provision would take supply under the pool's minimum, the vault cannot pay the
+            fees the placement claims, this wallet does not hold its `ownerNFT`, or the wallet cannot
+            cover the network fee.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/orders/{boxId}/cancel:
+    post:
+      summary: Cancel an order
+      description: >
+        Return an outstanding order's ERG and tokens to this wallet. Accepted while the order is
+        `PENDING` or `OPEN`. A fill sent before the cancel can still confirm first, and the cancel is
+        then dropped. No body.
+      operationId: cancelLDOrder
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      parameters:
+        - in: path
+          name: boxId
+          required: true
+          description: Order box id, as listed by `GET /dex/orders`
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Result of the cancel transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDOrderCancelResult'
+        '404':
+          description: No outstanding order owned by this wallet with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: An unconfirmed transaction is already filling or cancelling the order. Re-read `GET /dex/orders`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Neither the order nor the wallet can cover the network fee.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/swap/check:
+    post:
+      summary: Quote a swap
+      description: >
+        Quote a swap without sending a transaction. `protocolFee` goes to liquidity providers;
+        `ammFee` stays in the pool.
+      operationId: checkLDSwap
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDSwapRequest'
+      responses:
+        '200':
+          description: Quote for the requested swap
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDSwapQuote'
+        '400':
+          description: Malformed body, or a non-positive amount.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/swap/checkOutput:
+    post:
+      summary: Quote a swap by desired output
+      description: >
+        The reverse quote — what must go in for `amountOut` to come out. Returns 422 when the pool
+        cannot produce that much.
+      operationId: checkLDSwapOutput
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDSwapOutputRequest'
+      responses:
+        '200':
+          description: Quote for the requested output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDSwapQuote'
+        '400':
+          description: Malformed body, or a non-positive amount.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Pool cannot produce the requested output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/swap:
+    post:
+      summary: Execute a swap
+      description: >
+        Sign and submit a swap that spends the pool directly. `minOutput` is required and rejects the
+        trade if the pool has moved against you; send `expectedPoolBoxId` from the quote to get a 409
+        instead of a re-quote. `POST /dex/orders/swap` places the same swap as an order.
+      operationId: ldSwap
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDSwapExecuteRequest'
+      responses:
+        '200':
+          description: Result of the swap transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDSwapResult'
+        '400':
+          description: Malformed body, a non-positive `amountIn`, or a negative `minOutput`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The pool moved. Re-read and quote again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '422':
+          description: The pool cannot fill this swap, or the wallet cannot cover it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/deposit/check:
+    post:
+      summary: Quote a liquidity deposit
+      description: >
+        Quote a deposit. Supply `availableX` and `availableY` for the most shares those funds buy, or
+        `shares` for the cheapest deposit that buys exactly that many.
+      operationId: checkLDDeposit
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDDepositRequest'
+      responses:
+        '200':
+          description: Quote for the requested deposit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDDepositQuote'
+        '400':
+          description: Supply either `shares`, or both `availableX` and `availableY`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/deposit:
+    post:
+      summary: Deposit liquidity
+      description: >
+        Deposit a balanced pair directly and mint a provision. Send `maxAmountX` / `maxAmountY` from
+        the quote to cap what it costs if the pool moves. Keep the returned `ownerNFT` — it is what
+        owns the provision. `POST /dex/orders/deposit` places a deposit as an order.
+      operationId: ldDeposit
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDDepositExecuteRequest'
+      responses:
+        '200':
+          description: Result of the deposit transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDDepositResult'
+        '400':
+          description: Malformed body, or a non-positive `shares`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The pool moved. Re-read and quote again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '422':
+          description: Costs more than the given bounds, or the wallet cannot cover it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/redeem/check:
+    post:
+      summary: Quote a liquidity redemption
+      description: >
+        Quote closing a provision. `amountX` / `amountY` are the liquidity only; `unclaimedX` /
+        `unclaimedY` are fees that would be lost if the provision is spent without claiming.
+      operationId: checkLDRedeem
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDRedeemRequest'
+      responses:
+        '200':
+          description: Quote for the requested redemption
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDRedeemQuote'
+        '400':
+          description: Malformed body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No live provision with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The provision moved. Re-read to find its current box id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/redeem:
+    post:
+      summary: Redeem liquidity
+      description: >
+        Close a provision directly and return its share of the reserves. **Unclaimed fees are lost
+        when the provision is spent** — claim them first, or set `acknowledgeUnclaimedFees` to accept
+        that. `POST /dex/orders/redeem` places a redemption as an order.
+      operationId: ldRedeem
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDRedeemRequest'
+      responses:
+        '200':
+          description: Result of the redemption transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDRedeemResult'
+        '400':
+          description: >
+            Malformed body, or the provision has unclaimed fees and `acknowledgeUnclaimedFees`
+            was not set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No live provision with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The pool or provision moved. Re-read and quote again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '422':
+          description: Returns less than the given bounds, or the pool refuses the redemption.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/provisions:
+    get:
+      summary: List liquidity provisions
+      description: >
+        Every provision held by this wallet, including those whose `ownerNFT` sits in one of its
+        redeem orders. `accrued*` is what it has earned, `claimable*` is what can be paid now, and
+        `unflushed*` is the difference a flush would release.
+      operationId: listLDProvisions
+      tags:
+        - lithosdex
+      responses:
+        '200':
+          description: Provisions held by this wallet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDProvisionList'
+        '503':
+          description: Node or wallet unavailable. Never returns a partial list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/provisions/{boxId}/claim:
+    post:
+      summary: Claim settled fees for a provision
+      description: >
+        Pay out a provision's settled fees without changing its size. The provision gets a new box id
+        — use `successorBoxId` from the response next. The body is optional.
+      operationId: claimLDProvision
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      parameters:
+        - in: path
+          name: boxId
+          required: true
+          description: UTXO id of the provision box
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDClaimRequest'
+      responses:
+        '200':
+          description: Result of the claim transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDClaimResult'
+        '400':
+          description: Nothing to settle for this provision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No live provision with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The vault or provision moved. Re-read and try again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '422':
+          description: Settles less than the given bounds, or the vault cannot cover it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/provisions/{boxId}/resize/check:
+    post:
+      summary: Quote a provision resize
+      description: >
+        Quote changing a provision's size without closing it. A resize also flushes pending fees.
+      operationId: checkLDResize
+      tags:
+        - lithosdex
+      parameters:
+        - in: path
+          name: boxId
+          required: true
+          description: UTXO id of the provision box
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDResizeRequest'
+      responses:
+        '200':
+          description: Quote for the requested resize
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDResizeQuote'
+        '400':
+          description: Malformed body, or `newShares` is not a different positive size.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No live provision with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The provision moved. Re-read to find its current box id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/provisions/{boxId}/resize:
+    post:
+      summary: Resize a provision
+      description: >
+        Change a provision's size without closing it. Bound it with `maxAmountX` / `maxAmountY` when
+        increasing or `minAmountX` / `minAmountY` when decreasing. The provision gets a new box id,
+        returned as `boxId`.
+      operationId: ldResize
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      parameters:
+        - in: path
+          name: boxId
+          required: true
+          description: UTXO id of the provision box
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDResizeRequest'
+      responses:
+        '200':
+          description: Result of the resize transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDResizeResult'
+        '400':
+          description: Malformed body, or `newShares` is not a different positive size.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No live provision with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The pool, vault or provision moved. Re-read and quote again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '422':
+          description: Falls outside the given bounds, or the pool refuses the resize.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/flush/check:
+    post:
+      summary: Check a pending fee flush
+      description: >
+        Preview moving the pool's pending fees into the vault. The gap between the pool's and the
+        vault's accumulators is what a flush would release.
+      operationId: checkLDFlush
+      tags:
+        - lithosdex
+      responses:
+        '200':
+          description: State of a prospective flush
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDFlushCheck'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/flush:
+    post:
+      summary: Flush pending fees to the vault
+      description: >
+        Move the pool's pending fees into the vault, making them claimable. Anyone may call it and it
+        pays the caller nothing. Returns 400 when nothing is pending. The body is optional.
+      operationId: ldFlush
+      security:
+        - ApiKeyAuth: [api_key]
+      tags:
+        - lithosdex
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LDFlushRequest'
+      responses:
+        '200':
+          description: Result of the flush transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDFlushResult'
+        '400':
+          description: Nothing pending to flush.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The pool or vault moved. Re-read and try again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '422':
+          description: The wallet cannot cover the network fee.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/fees/history:
+    get:
+      summary: Pool-wide fee history
+      description: >
+        Cumulative fees taken by the pool, bucketed by height. The default bucket of 720 blocks is
+        roughly a day. Check `partial` — the series may not reach back to the pool's start.
+      operationId: getLDFeeHistory
+      tags:
+        - lithosdex
+      parameters:
+        - in: query
+          name: from
+          required: false
+          description: First block height to include
+          schema:
+            type: integer
+            format: int32
+        - in: query
+          name: to
+          required: false
+          description: Last block height to include
+          schema:
+            type: integer
+            format: int32
+        - in: query
+          name: bucket
+          required: false
+          description: Bucket size in blocks
+          schema:
+            type: integer
+            format: int32
+            default: 720
+      responses:
+        '200':
+          description: Bucketed fee history for the pool
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDFeeHistory'
+        '400':
+          description: No pool history indexed, or an invalid range or bucket size.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/price/history:
+    get:
+      summary: Pool price history
+      description: >
+        Spot price over a range, for a chart. The series always ends at the current price, so it
+        agrees with `/dex/pool`. Check `partial` — it may not span the whole range.
+      operationId: getLDPriceHistory
+      tags:
+        - lithosdex
+      parameters:
+        - in: query
+          name: range
+          required: false
+          description: How far back to go
+          schema:
+            type: string
+            enum: ['1H', '24H', '7D', '30D']
+            default: '24H'
+        - in: query
+          name: bucket
+          required: false
+          description: Bucket size in blocks. Defaults to about 60 points across the range.
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Price series for the requested range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDPriceHistory'
+        '400':
+          description: Unknown `range`, or a `bucket` that would return too many points.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No pool box found on this network.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/activity/recent:
+    get:
+      summary: Recent pool activity
+      description: >
+        Transactions that moved the pool, newest first, unconfirmed ones included: swaps, deposits,
+        redemptions, resizes and flushes, each marked as an order fill or a direct spend. A `MEMPOOL`
+        entry can still be dropped or replaced.
+      operationId: getLDRecentActivity
+      tags:
+        - lithosdex
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          description: How many to return, capped at 50
+          schema:
+            type: integer
+            format: int32
+            default: 10
+      responses:
+        '200':
+          description: Transactions that moved the pool, newest first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDRecentActivity'
+        '400':
+          description: A non-positive `limit`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or mempool unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /dex/provisions/{boxId}/fees/history:
+    get:
+      summary: Fee history for one provision
+      description: >
+        Earnings over time for one provision, from its current size and entry. Earnings from before a
+        resize are not reconstructed.
+      operationId: getLDProvisionFeeHistory
+      tags:
+        - lithosdex
+      parameters:
+        - in: path
+          name: boxId
+          required: true
+          description: UTXO id of the provision box
+          schema:
+            type: string
+        - in: query
+          name: from
+          required: false
+          description: First block height to include
+          schema:
+            type: integer
+            format: int32
+        - in: query
+          name: to
+          required: false
+          description: Last block height to include
+          schema:
+            type: integer
+            format: int32
+        - in: query
+          name: bucket
+          required: false
+          description: Bucket size in blocks
+          schema:
+            type: integer
+            format: int32
+            default: 720
+      responses:
+        '200':
+          description: Bucketed fee history for the provision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDProvisionFeeHistory'
+        '400':
+          description: No pool history indexed, or an invalid range or bucket size.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No live provision with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The provision moved. Re-read to find its current box id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LDStateChangedResponse'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /wallet/balances:
+    get:
+      security:
+        - ApiKeyAuth: [api_key]
+      summary: Wallet balances and lending status
+      description: >
+        Spendable ERG, token balances, and — under `collateral` — lender keys, queued and live
+        positions, locked block rewards, and the self-collateralization settings in effect.
+
+
+        `nanoErgs` is the ERG available to spend right now: unreserved wallet boxes plus matured
+        block rewards. Reading balances and lending status in one call means both describe the same
+        instant.
+      operationId: getWalletBalances
+      tags:
+        - wallet
+      responses:
+        '200':
+          description: Current wallet balances and lending status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletBalances'
+        '403':
+          description: Missing or wrong api_key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable — it may be locked. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /collateral/market:
+    get:
+      summary: Collateral market snapshot
+      description: >
+        Current queue and active-set sizes, total ERG and LIT locked, the permit a new join pays,
+        and where the emission schedule currently sits.
+      operationId: getCollateralMarketInfo
+      tags:
+        - collateral-market
+      responses:
+        '200':
+          description: Current market state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralMarketInfo'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /collateral/queue:
+    get:
+      summary: List queue boxes
+      description: >
+        Positions waiting for a slot, head first, oldest entries covered first. Use
+        `/collateral/market` for the current head to work out how many positions are ahead of any
+        one of them.
+      operationId: getCollateralQueue
+      tags:
+        - collateral-market
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          description: The number of items in list to return
+          schema:
+            type: integer
+            format: int32
+            minimum: 10
+            maximum: 100
+            default: 50
+        - in: query
+          name: offset
+          required: false
+          description: The offset to start the list from
+          schema:
+            type: integer
+            format: int32
+            default: 0
+      responses:
+        '200':
+          description: Queue boxes, head first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CollateralQueueEntry'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /collateral/active:
+    get:
+      summary: List the active set
+      description: >
+        Live collateral boxes any miner can spend to make a Lithos block, newest first. At most
+        100 exist at once.
+      operationId: getCollateralActiveSet
+      tags:
+        - collateral-market
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          description: The number of items in list to return
+          schema:
+            type: integer
+            format: int32
+            minimum: 10
+            maximum: 100
+            default: 50
+        - in: query
+          name: offset
+          required: false
+          description: The offset to start the list from
+          schema:
+            type: integer
+            format: int32
+            default: 0
+      responses:
+        '200':
+          description: Live collateral boxes, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CollateralActiveEntry'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /collateral/permits/history:
+    get:
+      summary: Permit price history
+      description: >
+        What each waiting position paid to join, oldest first — the permit curve as actually
+        joined. Covers only positions still waiting; activated ones are not reconstructible. The
+        newest join is always the last point, so the series ends at today's price.
+      operationId: getCollateralPermitHistory
+      tags:
+        - collateral-market
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          description: Roughly how many points to return, capped at 2000
+          schema:
+            type: integer
+            format: int32
+            default: 500
+      responses:
+        '200':
+          description: Sampled permit prices across the waiting queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralPermitHistory'
+        '503':
+          description: Node unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /collateral/rewards:
+    get:
+      summary: Your locked block rewards
+      security:
+        - ApiKeyAuth: [api_key]
+      description: >
+        Coinbase reward boxes held by this wallet — how many are still behind the 720-block
+        timelock, how many are spendable now, and the ERG totals.
+      operationId: getCollateralRewardSummary
+      tags:
+        - collateral-market
+      responses:
+        '200':
+          description: Reward box counts and totals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralRewardSummary'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /collateral/rewards/claim:
+    post:
+      summary: Claim unlocked block rewards
+      security:
+        - ApiKeyAuth: [api_key]
+      description: >
+        Sweep every unlocked reward box to this wallet's primary address (EIP-3 index 0), batching
+        boxes into as few transactions as possible. Dust is consolidated, never dropped.
+
+
+        A sweep that broadcasts nothing returns an error status rather than an empty 200, so a
+        result with no claims is never ambiguous.
+      operationId: claimCollateralRewards
+      tags:
+        - collateral-market
+      responses:
+        '200':
+          description: The sweep transactions that were sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralRewardClaimResult'
+        '400':
+          description: >
+            No unlocked reward boxes to claim, or another claim is already sweeping them.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: >
+            The sweep started and could not finish. `detail` carries the reason it stopped; batches
+            broadcast before that point have still been sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Nothing was decided; retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /collateral/join/check:
+    post:
+      security:
+        - ApiKeyAuth: [api_key]
+      summary: Quote joining the queue
+      description: >
+        What creating `count` positions costs right now: principal per position, network fee per
+        join, and the permit for each. Permits escalate because each join lengthens the queue the
+        next one is priced from.
+
+
+        Also reports whether the join would be accepted: check `manualJoinAllowed` and
+        `blockedReason` before enabling a send control. Requires an `api_key`, since the quote
+        names this wallet's lender addresses and its shortfall.
+      operationId: checkCollateralJoin
+      tags:
+        - collateral-market
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollateralJoinCheckRequest'
+      responses:
+        '200':
+          description: Quote for the requested number of positions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralJoinQuote'
+        '400':
+          description: Malformed body, or a count outside 1..25.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /collateral/join:
+    post:
+      security:
+        - ApiKeyAuth: [api_key]
+      summary: Join the collateral queue
+      description: >
+        Post principal and permit for `count` new positions, each under its own lender key.
+        Positions cannot be withdrawn once queued, so `acknowledgeNoWithdrawal` must be true.
+        Send `expectedEmissionBoxId` from the quote to get a 409 instead of a join priced against
+        stale state.
+
+
+        **Refused with 409 while the client has `autoCollateralize` on.** The automated pass owns
+        lender-key selection, and a manual join can take a key it is already using; only one live
+        position per key is allowed, and the second is forfeited. Check `manualJoinAllowed` on the
+        quote first.
+
+
+        Positions are created one at a time, each chained onto the last. If one fails, the run stops
+        there: the response is 200 with the positions already created and a `stoppedReason`. A run
+        that creates none returns an error status instead.
+      operationId: joinCollateralQueue
+      tags:
+        - collateral-market
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollateralJoinExecuteRequest'
+      responses:
+        '200':
+          description: The join transactions, one per position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralJoinResult'
+        '400':
+          description: >
+            Malformed body, a count outside 1..25, a permit cap below the current requirement, or
+            `acknowledgeNoWithdrawal` not set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: >
+            `autoCollateralize` is on, so manual joins are refused — the client's own pass owns
+            joining. Also returned when the emission box moved between quote and send, in which
+            case re-quote and resend.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: >
+            The wallet cannot cover it, a permit exceeds `maxPermitEachLit`, fewer free lender keys
+            remain than positions requested, or the run created no position at all.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Node or wallet unavailable. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+components:
+  schemas:
+    ApiError:
+      description: Error response from API
+      type: object
+      required:
+        - error
+        - reason
+        - detail
+      properties:
+        error:
+          type: integer
+          description: Error code
+          example: 500
+        reason:
+          type: string
+          description: Error message explaining the reason of the error
+          example: 'Internal server error'
+        detail:
+          type: string
+          nullable: true
+          description: Detailed error description
+    PoolBlock:
+      description: Information about block mined by Lithos pool contracts
+      type: object
+      x-tags: blocks
+      required:
+        - utxoId
+        - blockId
+        - blockHeight
+        - numMiners
+        - phase
+      properties:
+        utxoId:
+          type: string
+          description: UTXO id of Lithos contract currently processing this block
+          example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+        blockId:
+          type: string
+          description: Header id associated with this block
+          example: '2a7de28034ca523685d9a03c30d06c36863a804f69c2e4add4d83c8c2ba26271'
+        blockHeight:
+          type: integer
+          format: int32
+          description: Height of this Lithos-mined block
+          example: 42853
+        numMiners:
+          type: integer
+          format: int32
+          description: Number of miners which are currently being processed by this Lithos pool contract
+          example: 12
+        phase:
+          type: string
+          description: Current LFSM phase of the associated Lithos contract
+          example: 'HOLDING'
+    BlockMiners:
+      description: Miner information associated with a Lithos block
+      type: object
+      x-tags: blocks
+      required:
+        - propBytesHash
+      properties:
+        propBytesHash:
+          type: string
+          description: Hexadecimal representation of hashed proposition bytes of the miner
+          example: '56002fb6194f8a7f147b54c98c98bd72205f46c35fed0f3c4111071ecb0763b7'
+    PaymentTransaction:
+      description: A confirmed payment from the Lithos payout contract to the local miner
+      type: object
+      x-tags: payments
+      required:
+        - transactionId
+        - payoutUTXO
+        - amount
+        - paymentHeight
+      properties:
+        transactionId:
+          type: string
+          description: Payout transaction identifier
+          example: 'c42513da4dc695dbac3fb13482b604b289c9f1d39355e2e839899ed57780d9ab'
+        payoutUTXO:
+          type: string
+          description: Identifier of the spent payout-contract box
+          example: '5035b2e112b4f5b873dd3444c01df1e7e697807fd84fe96790eacb128e46428d'
+        amount:
+          type: integer
+          format: int64
+          description: Amount paid to the miner in nanoERG
+          example: 67500000000
+        score:
+          type: integer
+          format: int64
+          nullable: true
+          description: Score associated with this miner's NISP, when independently available. It cannot be recovered exactly from a rounded payout amount.
+          example: 5000000
+        paymentHeight:
+          type: integer
+          format: int32
+          description: Inclusion height of the payout transaction
+          example: 47832
+        blockId:
+          type: string
+          nullable: true
+          description: Id of the block processed by Lithos and associated with this reward, when known from rollup state. This is not the chain block containing the payout transaction.
+          example: 'd5bb8d6fcb179a427e21b7ad68ec9148916aac7604f75c642acc1c3e28bd4c59'
+        minedBlockHeight:
+          type: integer
+          format: int32
+          nullable: true
+          description: Height of the block processed by Lithos and associated with this reward, when known from rollup state.
+          example: 47112
+    LithosInfo:
+      description: Detailed synchronization and capability status for this Lithos client
+      type: object
+      x-tags: info
+      required:
+        - numPoolBlocks
+        - synced
+        - status
+        - minerDictionaryAvailable
+        - mempoolAvailable
+      properties:
+        numPoolBlocks:
+          type: integer
+          format: int32
+          description: >
+            Number of usable rollups in the current canonical view. This is zero while canonical
+            synchronization is unavailable.
+          example: 64
+        synced:
+          type: boolean
+          description: Whether canonical synchronization is caught up and usable
+          example: true
+        status:
+          type: string
+          description: Detailed synchronization-state name
+          enum:
+            - Starting
+            - CatchingUp
+            - Ready
+            - Stale
+            - Reorganizing
+            - SyncFailed
+          example: Ready
+        height:
+          type: integer
+          format: int32
+          nullable: true
+          description: Height of the last committed block, when one has committed
+          example: 484719
+        blockId:
+          type: string
+          nullable: true
+          description: Id of the last committed block, when one has committed
+          example: '2a7de28034ca523685d9a03c30d06c36863a804f69c2e4add4d83c8c2ba26271'
+        canonicalReason:
+          type: string
+          nullable: true
+          description: Why canonical state is unusable, when it is unavailable
+          example: 'catching up at height 484719 of 484900'
+        minerDictionaryAvailable:
+          type: boolean
+          description: Whether the Miner Dictionary can be read and committed against
+          example: true
+        minerDictionaryReason:
+          type: string
+          nullable: true
+          description: Why the Miner Dictionary is unusable, when it is unavailable
+          example: 'Miner Dictionary reconstruction failed'
+        mempoolAvailable:
+          type: boolean
+          description: Whether mempool processing has no recorded availability failure
+          example: true
+        mempoolReason:
+          type: string
+          nullable: true
+          description: Why mempool processing is unavailable, when it is unavailable
+          example: 'mempool transaction scan exceeded its configured bound'
+    StratumInfo:
+      description: Information about the Stratum server
+      type: object
+      x-tags: mining
+      required:
+        - diff
+        - tau
+        - reducedMessaging
+        - superSharesPerHour
+      properties:
+        diff:
+          type: string
+          description: Difficulty used for Lithos calculations
+          example: '4.0G'
+        tau:
+          type: integer
+          description: Tau representation of the mining diff
+          example: 11579208923731619542357098500868790785326998466564056403945758400791312963993
+        reducedMessaging:
+          type: boolean
+          description: Whether the stratum server has the `reduceShareMessages` setting enabled
+          example: false
+        superSharesPerHour:
+          type: double
+          description: Number of super shares produced by the mining client within the last hour
+          example: 2.5
+    CollateralMarketInfo:
+      description: >
+        One snapshot of the collateral market. ERG amounts are nanoERG decimal strings; permit and
+        emission amounts are LIT base units as decimal strings.
+      type: object
+      x-tags: collateral-market
+      required:
+        - syncHeight
+        - activationCounter
+        - queueHead
+        - queueTail
+        - queueLength
+        - activeSetSize
+        - activeSetMax
+        - bootstrapping
+        - proofsOfSpendAvailable
+        - queuedNanoErgs
+        - activeNanoErgs
+        - permitLitLocked
+        - principalNanoErgs
+        - currentPermitLit
+        - permitFloorLit
+        - permitCeilingLit
+        - permitSlopeLitPerBox
+        - emissionPhase
+        - foundersActive
+        - currentEpoch
+        - emissionRatePublicLit
+        - emissionRatePrivateLit
+        - emissionRateTotalLit
+        - scheduleEndsAtHeight
+      properties:
+        syncHeight:
+          type: integer
+          format: int32
+          description: Chain height this snapshot was taken at
+          example: 484719
+        activationCounter:
+          type: integer
+          format: int32
+          description: Activations paid so far — the emission box's position in the schedule
+          example: 1234
+        queueHead:
+          type: integer
+          format: int64
+          description: Position of the queue box that activates next
+          example: 410
+        queueTail:
+          type: integer
+          format: int64
+          description: Position the next join will take
+          example: 1247
+        queueLength:
+          type: integer
+          format: int64
+          description: Positions waiting — queueTail less queueHead
+          example: 837
+        activeSetSize:
+          type: integer
+          format: int32
+          description: Distinct lender keys currently holding a live collateral box
+          example: 97
+        activeSetMax:
+          type: integer
+          format: int32
+          description: Slots the active set can hold. Fixed by contract.
+          example: 100
+        bootstrapping:
+          type: boolean
+          description: True while the set is still filling and an Activate needs no retirement
+          example: false
+        proofsOfSpendAvailable:
+          type: integer
+          format: int32
+          description: Retirements usable next block — how many queued positions could activate now
+          example: 2
+        queuedNanoErgs:
+          type: string
+          description: Total principal sitting in the queue. Decimal string.
+          example: '2439835500000'
+        activeNanoErgs:
+          type: string
+          description: Total value across the live collateral boxes. Decimal string.
+          example: '282755000000'
+        permitLitLocked:
+          type: string
+          description: LIT locked as permits across the queue and the active set. Decimal string.
+          example: '12840000000'
+        principalNanoErgs:
+          type: string
+          description: What one join posts — block reward less fee cap plus dust. Fixed by contract. Decimal string.
+          example: '2915000000'
+        currentPermitLit:
+          type: string
+          description: The permit the NEXT join pays at this backlog, before any escalation. Decimal string.
+          example: '19370000000'
+        permitFloorLit:
+          type: string
+          description: Permit at an empty queue, from the config box. Decimal string.
+          example: '1000000000000'
+        permitCeilingLit:
+          type: string
+          description: The most a permit can ever be. Decimal string.
+          example: '30000000000000'
+        permitSlopeLitPerBox:
+          type: string
+          description: Permit added per queued box. Decimal string.
+          example: '10000000000'
+        emissionPhase:
+          type: string
+          enum: ['DECAYING', 'STEPPED', 'FLAT_50', 'ENDED']
+          description: >
+            Public emission rate phase. DECAYING drops every two epochs; STEPPED is the two fixed
+            intermediate rates; FLAT_50 is the final constant rate; ENDED means the schedule is
+            complete.
+          example: 'DECAYING'
+        foundersActive:
+          type: boolean
+          description: True while the private founder allocation is still being paid alongside the public rate
+          example: true
+        currentEpoch:
+          type: integer
+          format: int32
+          description: Schedule epoch of the last activation
+          example: 0
+        nextPhaseChangeHeight:
+          type: integer
+          format: int32
+          nullable: true
+          description: Height of the next rate change or epoch boundary. Null once ENDED.
+          example: 250000
+        emissionRatePublicLit:
+          type: string
+          description: Public LIT per activation at this point in the schedule. Decimal string.
+          example: '500000000000'
+        emissionRatePrivateLit:
+          type: string
+          description: Founder-side LIT per activation, zero once that period ends. Decimal string.
+          example: '140000000000'
+        emissionRateTotalLit:
+          type: string
+          description: What one Activate actually emits, capped by what the box still holds. Decimal string.
+          example: '640000000000'
+        scheduleEndsAtHeight:
+          type: integer
+          format: int32
+          description: Activation count the schedule ends at (2,825,000)
+          example: 2825000
+
+    CollateralQueueEntry:
+      description: A position waiting in the collateral queue
+      type: object
+      x-tags: collateral-market
+      required:
+        - boxId
+        - position
+        - lenderAddress
+        - principalNanoErgs
+        - permitLit
+        - creationHeight
+      properties:
+        boxId:
+          type: string
+          description: Id of the queue box
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        position:
+          type: integer
+          format: int64
+          description: Place in the queue. Lower activates sooner; the head is the smallest live position.
+          example: 411
+        lenderAddress:
+          type: string
+          description: Address that receives the block reward when this box funds a block
+          example: '3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y'
+        principalNanoErgs:
+          type: string
+          description: ERG committed to the block that consumes this box. Decimal string.
+          example: '2915000000'
+        permitLit:
+          type: string
+          description: LIT locked alongside it, returned on use. Zero when no permit applies. Decimal string.
+          example: '19380000000'
+        creationHeight:
+          type: integer
+          format: int32
+          description: Height this position joined at
+          example: 484102
+
+    CollateralActiveEntry:
+      description: A live collateral box waiting to be spent by whichever miner finds the next block
+      type: object
+      x-tags: collateral-market
+      required:
+        - boxId
+        - lenderAddress
+        - valueNanoErgs
+        - carriedLit
+        - creationHeight
+      properties:
+        boxId:
+          type: string
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        lenderAddress:
+          type: string
+          description: Address that receives the block reward when this box is spent by a miner
+          example: '3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y'
+        valueNanoErgs:
+          type: string
+          description: ERG that becomes the pool's payout for the block spending it. Decimal string.
+          example: '2915000000'
+        carriedLit:
+          type: string
+          description: >
+            LIT carried on this box — its block's emission plus the lender's permit, held together.
+            Decimal string.
+          example: '19380000000'
+        creationHeight:
+          type: integer
+          format: int32
+          description: Height this box was activated at
+          example: 484650
+
+    CollateralPermitHistoryPoint:
+      description: What one waiting position paid to join
+      type: object
+      x-tags: collateral-market
+      required:
+        - position
+        - height
+        - permitLit
+      properties:
+        position:
+          type: integer
+          format: int64
+          description: Queue position taken at join time; ascending with the series
+          example: 411
+        height:
+          type: integer
+          format: int32
+          description: Height the join confirmed at
+          example: 484102
+        permitLit:
+          type: string
+          description: Permit locked by this position. Decimal string.
+          example: '19370000000'
+
+    CollateralPermitHistory:
+      description: Permit prices across the positions still waiting, oldest first
+      type: object
+      x-tags: collateral-market
+      required:
+        - points
+        - coveredHeadPosition
+        - coveredTailPosition
+        - truncated
+      properties:
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralPermitHistoryPoint'
+        coveredHeadPosition:
+          type: integer
+          format: int64
+          description: Queue head at snapshot time — the series starts no older than this
+          example: 410
+        coveredTailPosition:
+          type: integer
+          format: int64
+          description: Queue tail at snapshot time — where a new join would land
+          example: 1247
+        truncated:
+          type: boolean
+          description: True when the scan cap cut the window short of the whole waiting queue
+          example: false
+
+    CollateralLenderKeyStatus:
+      description: One wallet address that may hold a lending position
+      type: object
+      x-tags: collateral-market
+      required:
+        - address
+        - status
+      properties:
+        address:
+          type: string
+          example: '3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y'
+        status:
+          type: string
+          enum: ['FREE', 'QUEUED', 'ACTIVE', 'RETIRING']
+          description: >
+            FREE has no position and can join. QUEUED is waiting in the queue. ACTIVE holds a live
+            collateral box. RETIRING held one until recently and cannot be reused yet. Only FREE
+            keys are available to a join. One key holds at most one position; a second position
+            under a key already in the active set is forfeited.
+          example: 'ACTIVE'
+        position:
+          type: integer
+          format: int64
+          description: Queue position, when QUEUED
+          example: 411
+
+    CollateralPositionSummary:
+      description: One of this wallet's positions, queued or live
+      type: object
+      x-tags: collateral-market
+      required:
+        - kind
+        - boxId
+        - principalNanoErgs
+        - permitLit
+        - creationHeight
+      properties:
+        kind:
+          type: string
+          enum: ['QUEUED', 'LIVE']
+          example: 'QUEUED'
+        boxId:
+          type: string
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        position:
+          type: integer
+          format: int64
+          description: Queue position, when QUEUED
+          example: 411
+        principalNanoErgs:
+          type: string
+          description: Decimal string.
+          example: '2915000000'
+        permitLit:
+          type: string
+          description: Permit paid at join. Present for QUEUED positions only.
+          example: '19380000000'
+        carriedLit:
+          type: string
+          description: >
+            LIT carried on the box — emission plus permit together. Present for LIVE positions only.
+            Decimal string.
+          example: '19380000000'
+        creationHeight:
+          type: integer
+          format: int32
+          example: 484102
+
+    CollateralRewardSummary:
+      description: This wallet's locked coinbase rewards
+      type: object
+      x-tags: collateral-market
+      required:
+        - boxes
+        - unlockedBoxes
+        - totalNanoErgs
+        - unlockedNanoErgs
+      properties:
+        boxes:
+          type: integer
+          format: int32
+          description: Reward boxes held, including ones still behind the timelock
+          example: 4
+        unlockedBoxes:
+          type: integer
+          format: int32
+          description: How many are spendable now
+          example: 2
+        totalNanoErgs:
+          type: string
+          description: Every reward box together. Decimal string.
+          example: '12000000000'
+        unlockedNanoErgs:
+          type: string
+          description: The part past its timelock. Decimal string.
+          example: '6000000000'
+        blocksUntilFirstUnlock:
+          type: integer
+          format: int32
+          description: Blocks until the earliest still-locked box matures. Absent when none are locked.
+
+    CollateralRewardClaimedChunk:
+      description: One broadcast batch of a reward claim
+      type: object
+      x-tags: collateral-market
+      required:
+        - outcome
+        - txId
+        - boxes
+        - nanoErgs
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome for the known transaction ID.
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+        boxes:
+          type: integer
+          format: int32
+          description: Reward boxes this transaction swept
+          example: 12
+        nanoErgs:
+          type: string
+          description: ERG paid to the primary address by this transaction. Decimal string.
+          example: '36000000000'
+
+    CollateralRewardClaimResult:
+      description: Result of claiming unlocked block rewards to the primary address
+      type: object
+      x-tags: collateral-market
+      required:
+        - claims
+        - claimedNanoErgs
+      properties:
+        claims:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralRewardClaimedChunk'
+        claimedNanoErgs:
+          type: string
+          description: Total ERG across every claim transaction. Decimal string.
+          example: '72000000000'
+
+    WalletCollateralStatus:
+      description: >
+        The collateral-market half of the wallet. Lender keys are the expensive part to compute, so
+        the client serves them from a short-lived cache rather than rescanning per request.
+      type: object
+      x-tags: collateral-market
+      required:
+        - autoCollateralize
+        - maxOwnCollateral
+        - maxJoinsPerRun
+        - maxLenderKeys
+        - maxPermitPerJoinLit
+        - ownPositionsQueued
+        - ownPositionsLive
+        - ownBudgetRemaining
+        - freeLenderKeys
+        - keysDerivable
+        - lenderKeys
+        - positions
+        - rewards
+      properties:
+        autoCollateralize:
+          type: boolean
+          description: >
+            Whether the client joins the queue on its own timer. **While this is true the client
+            refuses manual joins** — the automated pass owns lender-key selection, and a manual join
+            can take a key it is already using. Turn it off in the client config to join by hand.
+          example: false
+        maxOwnCollateral:
+          type: integer
+          format: int32
+          description: Configured ceiling on live positions owned by this wallet
+          example: 10
+        maxJoinsPerRun:
+          type: integer
+          format: int32
+          description: >
+            Most positions one automated pass creates. Does not bound a manual join, which is
+            limited by free lender keys, the exposure budget and the wallet balance.
+          example: 5
+        maxLenderKeys:
+          type: integer
+          format: int32
+          description: Wallet addresses dedicated to lending
+          example: 32
+        maxPermitPerJoinLit:
+          type: string
+          description: The permit price above which automated joins stop. Decimal string.
+          example: '30000000000000'
+        ownPositionsQueued:
+          type: integer
+          format: int32
+          example: 3
+        ownPositionsLive:
+          type: integer
+          format: int32
+          example: 7
+        ownBudgetRemaining:
+          type: integer
+          format: int32
+          description: How many more positions the configured exposure budget allows
+          example: 0
+        freeLenderKeys:
+          type: integer
+          format: int32
+          description: >
+            Keys with status FREE — positions that can be opened without deriving a new key. A join
+            needs one key per position.
+          example: 4
+        keysDerivable:
+          type: integer
+          format: int32
+          description: >
+            Further keys the client may derive before reaching `maxLenderKeys`. A join of N
+            positions is possible when `freeLenderKeys + keysDerivable >= N`.
+          example: 12
+        lenderKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralLenderKeyStatus'
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralPositionSummary'
+        rewards:
+          $ref: '#/components/schemas/CollateralRewardSummary'
+
+    CollateralJoinCheckRequest:
+      description: How many positions to price. Omitted fields default.
+      type: object
+      x-tags: collateral-market
+      properties:
+        count:
+          type: integer
+          format: int32
+          description: Positions to create, each under its own key
+          default: 1
+          minimum: 1
+          maximum: 25
+          example: 3
+
+    CollateralJoinQuote:
+      description: What creating `count` positions costs right now
+      type: object
+      x-tags: collateral-market
+      required:
+        - count
+        - principalEachNanoErgs
+        - txFeeEachNanoErgs
+        - permitsLit
+        - permitTotalLit
+        - totalNanoErgs
+        - firstPosition
+        - emissionTipBoxId
+        - affordNow
+        - shortfallNanoErgs
+        - ownRoomLeft
+        - manualJoinAllowed
+        - lenderAddresses
+        - freeLenderKeys
+        - keysRequired
+      properties:
+        count:
+          type: integer
+          format: int32
+          example: 3
+        principalEachNanoErgs:
+          type: string
+          description: Fixed by contract, identical for every position. Decimal string.
+          example: '2915000000'
+        txFeeEachNanoErgs:
+          type: string
+          description: Network fee per join transaction. Decimal string.
+          example: '1000000'
+        permitsLit:
+          type: array
+          description: >
+            Permit for each position, in join order. Each join lengthens the queue, so these
+            escalate. Decimal strings.
+          items:
+            type: string
+          example: ['19370000000', '19380000000', '19390000000']
+        permitTotalLit:
+          type: string
+          description: Sum of `permitsLit`. Decimal string.
+          example: '58140000000'
+        totalNanoErgs:
+          type: string
+          description: Total ERG leaving the wallet — principals plus fees. Decimal string.
+          example: '8748000000'
+        firstPosition:
+          type: integer
+          format: int64
+          description: Queue position the first join takes; the rest follow consecutively
+          example: 1247
+        emissionTipBoxId:
+          type: string
+          description: Emission box the quote was made against. Send back as `expectedEmissionBoxId`.
+          example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+        affordNow:
+          type: boolean
+          description: Whether the wallet can cover it today
+          example: true
+        shortfallNanoErgs:
+          type: string
+          description: How much short the wallet is when `affordNow` is false. Decimal string.
+          example: '0'
+        ownRoomLeft:
+          type: integer
+          format: int32
+          description: Positions the configured exposure budget would still allow after this
+          example: 4
+        manualJoinAllowed:
+          type: boolean
+          description: >
+            Whether `POST /collateral/join` will accept this join. Disable the send control when
+            false. The join endpoint checks the same conditions itself, so a quote taken before a
+            configuration change does not license the send.
+          example: true
+        blockedReason:
+          type: string
+          enum: ['AUTO_COLLATERALIZE', 'NO_LENDER_KEYS', 'BUDGET_EXHAUSTED', 'INSUFFICIENT_FUNDS']
+          description: >
+            Why `manualJoinAllowed` is false; absent when it is true. Only the first applicable
+            reason is reported, in the order listed above.
+
+
+            `AUTO_COLLATERALIZE` — the client joins on its own timer and refuses manual joins.
+            `BUDGET_EXHAUSTED` — `maxOwnCollateral` leaves room for fewer positions than requested.
+            `NO_LENDER_KEYS` — `freeLenderKeys + keysDerivable` is below `keysRequired`.
+            `INSUFFICIENT_FUNDS` — the wallet cannot cover `totalNanoErgs`.
+          example: 'AUTO_COLLATERALIZE'
+        lenderAddresses:
+          type: array
+          description: >
+            The lender keys this join would use, in join order, matching `permitsLit` index for
+            index. Shorter than `count` when the join would derive new keys to make up the
+            difference; those addresses do not exist yet and cannot be named in advance. Empty when
+            `blockedReason` is `NO_LENDER_KEYS`.
+          items:
+            type: string
+          example: ['3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y']
+        freeLenderKeys:
+          type: integer
+          format: int32
+          description: Keys with status FREE at the moment of quoting
+          example: 4
+        keysRequired:
+          type: integer
+          format: int32
+          description: Keys this join consumes — one per position, so equal to `count`
+          example: 3
+
+    CollateralJoinExecuteRequest:
+      description: Join the queue. Send the quote's ids back so stale state becomes a 409, not a surprise price.
+      type: object
+      x-tags: collateral-market
+      required:
+        - count
+        - acknowledgeNoWithdrawal
+      properties:
+        count:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 25
+          description: Positions to create
+          example: 3
+        acknowledgeNoWithdrawal:
+          type: boolean
+          description: >
+            Must be true, or the request is rejected with 400. A queued position cannot be withdrawn
+            or cancelled; its principal and permit return only when a block spends the box.
+          example: true
+        maxPermitEachLit:
+          type: string
+          description: >
+            Permit cap. If any single permit would exceed this, nothing is sent. Omit for no cap.
+            Decimal string.
+          example: '20000000000'
+        expectedEmissionBoxId:
+          type: string
+          description: Emission box the quote was made against
+          example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+
+    CollateralJoinEntry:
+      description: One join transaction that was sent
+      type: object
+      x-tags: collateral-market
+      required:
+        - outcome
+        - txId
+        - position
+        - lenderAddress
+        - principalNanoErgs
+        - permitLit
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome for the known transaction ID.
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+        position:
+          type: integer
+          format: int64
+          description: Queue position taken
+          example: 1247
+        lenderAddress:
+          type: string
+          description: >
+            The key holding this position. It receives the block reward when the position is mined
+            against, and the permit back when the box is spent.
+          example: '3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y'
+        principalNanoErgs:
+          type: string
+          description: Decimal string.
+          example: '2915000000'
+        permitLit:
+          type: string
+          description: Decimal string.
+          example: '19370000000'
+
+    CollateralJoinResult:
+      description: Result of joining the collateral queue
+      type: object
+      x-tags: collateral-market
+      required:
+        - joins
+        - totalNanoErgs
+      properties:
+        joins:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralJoinEntry'
+        totalNanoErgs:
+          type: string
+          description: Everything sent, principals plus fees. Decimal string.
+          example: '8748000000'
+        stoppedReason:
+          type: string
+          description: >
+            Present when fewer positions were created than requested, giving the error that stopped
+            the run. The entries in `joins` were still created and their principal is committed.
+          example: 'Double spending attempt'
+
+    LDStateChangedResponse:
+      description: >
+        409 body. A box this request was quoted against has moved. Carries the ids as they now
+        stand; only the ones that apply are present.
+      type: object
+      x-tags: lithosdex
+      required:
+        - error
+        - reason
+        - detail
+      properties:
+        error:
+          type: integer
+          example: 409
+        reason:
+          type: string
+          example: 'State changed'
+        detail:
+          type: string
+          description: What moved, and what it moved to
+          example: 'the pool has moved: quoted against de..de, now a1f4..3d97'
+        poolBoxId:
+          type: string
+          description: Current pool box id
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+        vaultBoxId:
+          type: string
+          description: Current vault box id
+          example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+        provisionBoxId:
+          type: string
+          description: Current provision box id
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+
+    LDFeeParams:
+      description: >
+        Fee numerators over `feeDenom`. `dexFeeNum` stays in the pool; `ergFeeNum` / `tokenFeeNum`
+        are set aside for liquidity providers.
+      type: object
+      x-tags: lithosdex
+      required:
+        - dexFeeNum
+        - ergFeeNum
+        - tokenFeeNum
+        - feeDenom
+      properties:
+        dexFeeNum:
+          type: integer
+          format: int64
+          example: 9985
+        ergFeeNum:
+          type: integer
+          format: int64
+          example: 15
+        tokenFeeNum:
+          type: integer
+          format: int64
+          example: 15
+        feeDenom:
+          type: integer
+          format: int64
+          description: Denominator of every numerator above
+          example: 10000
+
+    LDPoolInfo:
+      description: State of the LithosDex liquidity pool box
+      type: object
+      x-tags: lithosdex
+      required:
+        - poolNFT
+        - utxoId
+        - tokenY
+        - reservesX
+        - reservesY
+        - pendingX
+        - pendingY
+        - supply
+        - feeParams
+        - accX
+        - accY
+        - provTokensLeft
+        - canFlush
+        - canDeposit
+        - syncHeight
+      properties:
+        poolNFT:
+          type: string
+          description: Token id of the pool NFT
+          example: '720933ab10ef28eafd96a4e41f783c12b444ed81d6a08879f583266031c04dbd'
+        utxoId:
+          type: string
+          description: Pool box id. Send back as `expectedPoolBoxId` when executing.
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+        tokenY:
+          type: string
+          description: Token id of the pool's token side
+          example: '86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3'
+        tokenName:
+          type: string
+          description: Display name of the pool's token, when known
+          example: 'LIT'
+        tokenDecimals:
+          type: integer
+          format: int32
+          description: Decimal places implied by raw token amounts
+          example: 4
+        reservesX:
+          type: string
+          description: nanoERG the AMM trades with — box value less pendingX. Decimal string.
+          example: '4250000000000'
+        reservesY:
+          type: string
+          description: Raw token units the AMM trades with — token balance less pendingY. Decimal string.
+          example: '128400000000'
+        pendingX:
+          type: string
+          description: nanoERG fees accrued but not yet flushed to the vault. Decimal string.
+          example: '3180000000'
+        pendingY:
+          type: string
+          description: Token-side fees accrued but not yet flushed. Decimal string.
+          example: '96400000'
+        supply:
+          type: string
+          description: LP shares outstanding. Decimal string.
+          example: '1000000000000'
+        feeParams:
+          $ref: '#/components/schemas/LDFeeParams'
+        accX:
+          type: string
+          description: >
+            Cumulative ERG fee per share, scaled by 1e27. Decimal string — this value exceeds the
+            exact range of a double and must not be parsed as a JSON number.
+          example: '41820000000000000000000000'
+        accY:
+          type: string
+          description: Cumulative token fee per share, same 1e27 scale. Decimal string.
+          example: '1264000000000000000000000'
+        provTokensLeft:
+          type: string
+          description: >
+            Provision tokens left in the pool; one is used per deposit. Decimal string.
+          example: '999999999999997'
+        canFlush:
+          type: boolean
+          description: Whether any fees are pending. A flush needs something to move.
+          example: true
+        canDeposit:
+          type: boolean
+          description: Whether a provision token remains to hand out
+          example: true
+        syncHeight:
+          type: integer
+          format: int32
+          description: Block height this snapshot was taken at
+          example: 1312460
+
+    LDVaultInfo:
+      description: State of the LithosDex fee vault
+      type: object
+      x-tags: lithosdex
+      required:
+        - vaultNFT
+        - utxoId
+        - accX
+        - accY
+        - balanceX
+        - balanceY
+        - payableX
+        - payableY
+        - vaultMin
+        - syncHeight
+      properties:
+        vaultNFT:
+          type: string
+          description: Token id of the vault NFT
+          example: '670a188c61b803a5ef12fedb2eb4ed7ab7b1eba1df9787f780a122bf3875781d'
+        utxoId:
+          type: string
+          description: Vault box id. Send back as `expectedVaultBoxId` when executing.
+          example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+        accX:
+          type: string
+          description: The pool's ERG accumulator as of the last flush. Decimal string.
+          example: '38640000000000000000000000'
+        accY:
+          type: string
+          description: Token side of the same. Decimal string.
+          example: '1167600000000000000000000'
+        balanceX:
+          type: string
+          description: Total nanoERG held by the vault box, including the rent reserve. Decimal string.
+          example: '9420000000'
+        balanceY:
+          type: string
+          description: Token-side fees held. Zero until a flush carries any. Decimal string.
+          example: '284300000'
+        payableX:
+          type: string
+          description: nanoERG the vault can actually part with — balanceX less vaultMin. Decimal string.
+          example: '9320000000'
+        payableY:
+          type: string
+          description: Tokens the vault can part with. Nothing is held back on this side. Decimal string.
+          example: '284300000'
+        tokenY:
+          type: string
+          description: The pool's token, absent while the vault holds no token entry
+          example: '86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3'
+        vaultMin:
+          type: string
+          description: Held back from every payout so the vault survives storage rent. Decimal string.
+          example: '100000000'
+        lastFlushHeight:
+          type: integer
+          format: int32
+          description: Height of the most recent flush observed. Absent until one is seen.
+          example: 1298100
+        syncHeight:
+          type: integer
+          format: int32
+          example: 1312460
+
+    LDSwapRequest:
+      description: Amount and direction of a swap to quote
+      type: object
+      x-tags: lithosdex
+      required:
+        - amountIn
+        - ergIn
+      properties:
+        amountIn:
+          type: string
+          description: >
+            Total handed to the pool, fees included — this is what leaves the wallet. Decimal string.
+          example: '1000000000'
+        ergIn:
+          type: boolean
+          description: True to sell ERG for the token, false to sell the token for ERG
+          example: true
+
+    LDSwapExecuteRequest:
+      description: A swap to sign and submit
+      type: object
+      x-tags: lithosdex
+      required:
+        - amountIn
+        - ergIn
+        - minOutput
+      properties:
+        amountIn:
+          type: string
+          description: Total handed to the pool, fees included. Decimal string.
+          example: '1000000000'
+        ergIn:
+          type: boolean
+          example: true
+        minOutput:
+          type: string
+          description: >
+            Floor below which the swap must be rejected. Required, and must not be negative — a
+            negative floor is no floor. Decimal string.
+          example: '29974258'
+        expectedPoolBoxId:
+          type: string
+          description: >
+            Pool box the quote was made against. Returns 409 instead of re-quoting if it moved.
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+
+    LDSwapOutputRequest:
+      description: Desired output and direction, for a reverse quote
+      type: object
+      x-tags: lithosdex
+      required:
+        - amountOut
+        - ergIn
+      properties:
+        amountOut:
+          type: string
+          description: Amount that should come back out. Decimal string.
+          example: '30000000'
+        ergIn:
+          type: boolean
+          example: true
+
+    LDSwapQuote:
+      description: Quote for a LithosDex swap
+      type: object
+      x-tags: lithosdex
+      required:
+        - ergIn
+        - amountIn
+        - protocolFee
+        - ammFee
+        - tradedIn
+        - amountOut
+        - totalFee
+        - spotBefore
+        - spotAfter
+        - executionPrice
+        - priceImpact
+        - isExecutable
+      properties:
+        ergIn:
+          type: boolean
+          example: true
+        amountIn:
+          type: string
+          description: Total handed to the pool, fees included. Decimal string.
+          example: '1000000000'
+        protocolFee:
+          type: string
+          description: Taken out of the input and set aside for liquidity providers. Decimal string.
+          example: '1500000'
+        ammFee:
+          type: string
+          description: The curve's own fee on the remainder; stays in the pool. Decimal string.
+          example: '1497750'
+        tradedIn:
+          type: string
+          description: What actually reaches the curve — amountIn less protocolFee. Decimal string.
+          example: '998500000'
+        amountOut:
+          type: string
+          description: What comes back. Decimal string.
+          example: '30124883'
+        totalFee:
+          type: string
+          description: Every fee the swap pays, on the input side. Decimal string.
+          example: '2997750'
+        spotBefore:
+          type: number
+          format: double
+          description: Pre-trade price, ignoring fees and depth
+          example: 0.0302
+        spotAfter:
+          type: number
+          format: double
+          description: Price once the swap lands, ignoring fees
+          example: 0.0301
+        executionPrice:
+          type: number
+          format: double
+          description: Output per unit of input, fees and depth included
+          example: 0.0301
+        priceImpact:
+          type: number
+          format: double
+          description: How far execution fell short of the pre-trade price, as a fraction
+          example: 0.0031
+        isExecutable:
+          type: boolean
+          description: >
+            False when the pool would reject the swap — nothing reaches the curve, or the output
+            would meet or exceed the reserve it is drawn from.
+          example: true
+
+    LDSwapResult:
+      description: Result of a LithosDex swap transaction
+      type: object
+      x-tags: lithosdex
+      required:
+        - outcome
+        - amountOut
+        - txId
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome; uncertain retains the known transaction ID and input ownership.
+        amountOut:
+          type: string
+          description: Amount received. Decimal string.
+          example: '30124883'
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+
+    LDDepositRequest:
+      description: >
+        A deposit to quote. Supply `availableX` and `availableY` for the most shares those funds
+        can buy, or `shares` for the cheapest deposit that buys exactly that many.
+      type: object
+      x-tags: lithosdex
+      properties:
+        availableX:
+          type: string
+          description: nanoERG available to deposit. Decimal string.
+          example: '5000000000'
+        availableY:
+          type: string
+          description: Raw token units available to deposit. Decimal string.
+          example: '151000000'
+        shares:
+          type: string
+          description: Exact number of LP shares to buy. Decimal string.
+          example: '1176470'
+
+    LDDepositExecuteRequest:
+      description: A deposit to sign and submit
+      type: object
+      x-tags: lithosdex
+      required:
+        - shares
+      properties:
+        shares:
+          type: string
+          description: LP shares to unlock, as returned by the quote. Decimal string.
+          example: '1176470'
+        maxAmountX:
+          type: string
+          description: Most you will pay on the ERG side. Decimal string.
+          example: '5000000000'
+        maxAmountY:
+          type: string
+          description: Most you will pay on the token side. Decimal string.
+          example: '151058823'
+        expectedPoolBoxId:
+          type: string
+          description: The pool box this was quoted against
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+
+    LDDepositQuote:
+      description: Quote for a LithosDex liquidity deposit
+      type: object
+      x-tags: lithosdex
+      required:
+        - shares
+        - amountX
+        - amountY
+        - shareOfSupply
+        - provisionBoxValue
+        - totalErgRequired
+        - entryX
+        - entryY
+      properties:
+        shares:
+          type: string
+          description: LP shares the deposit unlocks; becomes the provision's size. Decimal string.
+          example: '1176470'
+        amountX:
+          type: string
+          description: nanoERG the pool takes. Decimal string.
+          example: '5000000000'
+        amountY:
+          type: string
+          description: Raw token units the pool takes. Decimal string.
+          example: '151058823'
+        shareOfSupply:
+          type: number
+          format: double
+          description: Fraction of the pool the provision will represent once it lands
+          example: 0.00117
+        provisionBoxValue:
+          type: string
+          description: nanoERG that must also fund the new provision box, on top of amountX. Decimal string.
+          example: '600000000'
+        totalErgRequired:
+          type: string
+          description: Total nanoERG leaving the wallet, network fee aside. Decimal string.
+          example: '5600000000'
+        entryX:
+          type: string
+          description: >
+            Accumulator the provision enters at. It is owed nothing accrued before this. Decimal string.
+          example: '41820000000000000000000000'
+        entryY:
+          type: string
+          description: Token side of the same. Decimal string.
+          example: '1264000000000000000000000'
+
+    LDDepositResult:
+      description: Result of a LithosDex liquidity deposit transaction
+      type: object
+      x-tags: lithosdex
+      required:
+        - outcome
+        - provisionBoxId
+        - ownerNFT
+        - shares
+        - amountX
+        - amountY
+        - txId
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome; uncertain retains the known transaction ID and input ownership.
+        provisionBoxId:
+          type: string
+          description: UTXO id of the newly minted provision box
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        ownerNFT:
+          type: string
+          description: >
+            Token that owns the provision. Whoever holds it controls the provision, and it does
+            not change when the box id does.
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+        shares:
+          type: string
+          example: '1176470'
+        amountX:
+          type: string
+          example: '5000000000'
+        amountY:
+          type: string
+          example: '151058823'
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+
+    LDRedeemRequest:
+      description: The provision to close, and the bounds it must respect
+      type: object
+      x-tags: lithosdex
+      required:
+        - provisionBoxId
+      properties:
+        provisionBoxId:
+          type: string
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        minAmountX:
+          type: string
+          description: Least you will accept back on the ERG side. Decimal string.
+          example: '53125000000'
+        minAmountY:
+          type: string
+          description: The same on the token side. Decimal string.
+          example: '1605000000'
+        expectedPoolBoxId:
+          type: string
+          description: The pool box this was quoted against
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+        acknowledgeUnclaimedFees:
+          type: boolean
+          description: >
+            Must be true to redeem a provision that still has unclaimed fees, which are lost when
+            it is spent. Ignored when there are none.
+          example: false
+
+    LDRedeemQuote:
+      description: Quote for closing a LithosDex provision
+      type: object
+      x-tags: lithosdex
+      required:
+        - shares
+        - amountX
+        - amountY
+        - withinMinSupply
+        - unclaimedX
+        - unclaimedY
+      properties:
+        shares:
+          type: string
+          description: LP shares that would be closed. Decimal string.
+          example: '12500000000'
+        amountX:
+          type: string
+          description: nanoERG returned. Liquidity only — fees settle separately. Decimal string.
+          example: '53125000000'
+        amountY:
+          type: string
+          description: Raw token units returned. Decimal string.
+          example: '1605000000'
+        withinMinSupply:
+          type: boolean
+          description: >
+            False when closing this provision would take supply under the contract's minimum,
+            which the pool refuses.
+          example: true
+        unclaimedX:
+          type: string
+          description: >
+            Unclaimed ERG fees. **Lost** if the provision is redeemed without claiming them first.
+            Decimal string.
+          example: '402000000'
+        unclaimedY:
+          type: string
+          description: Token side of the same. Decimal string.
+          example: '12100000'
+
+    LDRedeemResult:
+      description: Result of a LithosDex redemption transaction
+      type: object
+      x-tags: lithosdex
+      required:
+        - outcome
+        - shares
+        - amountX
+        - amountY
+        - txId
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome; uncertain retains the known transaction ID and input ownership.
+        shares:
+          type: string
+          example: '12500000000'
+        amountX:
+          type: string
+          example: '53125000000'
+        amountY:
+          type: string
+          example: '1605000000'
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+
+    LDProvision:
+      description: >
+        A liquidity provision box, with both what it has earned and what it can currently be paid.
+      type: object
+      x-tags: lithosdex
+      required:
+        - boxId
+        - ownerNFT
+        - shares
+        - entryX
+        - entryY
+        - value
+        - createdHeight
+        - shareOfSupply
+        - accruedX
+        - accruedY
+        - claimableX
+        - claimableY
+        - unflushedX
+        - unflushedY
+        - canClaim
+        - awaitingFlush
+      properties:
+        boxId:
+          type: string
+          description: Provision box id. Changes on every claim and resize.
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        ownerNFT:
+          type: string
+          description: Token that owns this provision. Unchanged by claims and resizes.
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+        shares:
+          type: string
+          description: LP shares this provision represents. Decimal string.
+          example: '12500000000'
+        entryX:
+          type: string
+          description: Accumulator this provision last settled at. Decimal string.
+          example: '18400000000000000000000000'
+        entryY:
+          type: string
+          description: Token side of the same. Decimal string.
+          example: '552000000000000000000000'
+        value:
+          type: string
+          description: nanoERG held by the provision box. Decimal string.
+          example: '600000000'
+        createdHeight:
+          type: integer
+          format: int32
+          example: 1284400
+        shareOfSupply:
+          type: number
+          format: double
+          example: 0.0125
+        accruedX:
+          type: string
+          description: >
+            ERG earned according to the pool, including fees not yet flushed. This is the figure to
+            show a provider as "earned". Decimal string.
+          example: '292750000'
+        accruedY:
+          type: string
+          description: Token side of the same. Decimal string.
+          example: '8900000'
+        claimableX:
+          type: string
+          description: ERG that can be paid out now. Never negative. Decimal string.
+          example: '253000000'
+        claimableY:
+          type: string
+          description: Token side of the same. Decimal string.
+          example: '7690000'
+        unflushedX:
+          type: string
+          description: accruedX less claimableX — what a flush would release. Decimal string.
+          example: '39750000'
+        unflushedY:
+          type: string
+          description: Token side of the same. Decimal string.
+          example: '1210000'
+        canClaim:
+          type: boolean
+          description: Whether a claim would be accepted right now.
+          example: true
+        awaitingFlush:
+          type: boolean
+          description: >
+            True when nothing can be claimed until the next flush. Normal after a deposit or
+            resize; not an error.
+          example: false
+        redeemOrderBoxId:
+          type: string
+          description: >
+            Present when an outstanding redeem order holds this provision's `ownerNFT`. The provision
+            cannot be claimed, resized or redeemed directly until that order fills or is cancelled.
+          example: '9b41d2f07ce83a5164e2d09fb7a3c1586e04d9b2f71ac8356e0b4d1c7f29a3e5'
+
+    LDProvisionList:
+      description: Liquidity provisions held by this wallet
+      type: object
+      x-tags: lithosdex
+      required:
+        - provisions
+      properties:
+        provisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/LDProvision'
+
+    LDClaimRequest:
+      description: >
+        Optional bounds for a claim. Every field, and the body itself, may be omitted.
+      type: object
+      x-tags: lithosdex
+      properties:
+        expectedVaultBoxId:
+          type: string
+          description: The vault box this was quoted against
+          example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+        expectedProvisionBoxId:
+          type: string
+          description: The provision box this was quoted against
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        minAmountX:
+          type: string
+          description: Least you will accept on the ERG side. Decimal string.
+          example: '253000000'
+        minAmountY:
+          type: string
+          description: The same on the token side. Decimal string.
+          example: '7690000'
+
+    LDClaimResult:
+      description: Result of a LithosDex fee claim transaction
+      type: object
+      x-tags: lithosdex
+      required:
+        - outcome
+        - claimedX
+        - claimedY
+        - successorBoxId
+        - txId
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome; uncertain retains the known transaction ID and input ownership.
+        claimedX:
+          type: string
+          description: nanoERG paid out of the vault. Decimal string.
+          example: '253000000'
+        claimedY:
+          type: string
+          description: Raw token units paid out of the vault. Decimal string.
+          example: '7690000'
+        successorBoxId:
+          type: string
+          description: New provision box id. Use it for the next request.
+          example: '5035b2e112b4f5b873dd3444c01df1e7e697807fd84fe96790eacb128e46428d'
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+
+    LDResizeRequest:
+      description: New size for a provision, and the bounds it must respect
+      type: object
+      x-tags: lithosdex
+      required:
+        - newShares
+      properties:
+        newShares:
+          type: string
+          description: >
+            Size the provision should become. Must be positive — a resize to zero is a redemption.
+            Decimal string.
+          example: '20000000000'
+        maxAmountX:
+          type: string
+          description: Most you will contribute on the ERG side, when increasing. Decimal string.
+          example: '31875000000'
+        maxAmountY:
+          type: string
+          description: Most you will contribute on the token side, when increasing. Decimal string.
+          example: '963000000'
+        minAmountX:
+          type: string
+          description: Least you will take back on the ERG side, when decreasing. Decimal string.
+          example: '21250000000'
+        minAmountY:
+          type: string
+          description: Least you will take back on the token side, when decreasing. Decimal string.
+          example: '642000000'
+        expectedPoolBoxId:
+          type: string
+          description: The pool box this was quoted against
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+        expectedVaultBoxId:
+          type: string
+          description: Vault box the quote was made against. A resize also flushes.
+          example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+        expectedProvisionBoxId:
+          type: string
+          description: The provision box this was quoted against
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+
+    LDResizeQuote:
+      description: Quote for resizing a LithosDex provision
+      type: object
+      x-tags: lithosdex
+      required:
+        - oldShares
+        - newShares
+        - delta
+        - increasing
+        - amountX
+        - amountY
+        - nextEntryX
+        - nextEntryY
+        - withinMinSupply
+      properties:
+        oldShares:
+          type: string
+          example: '12500000000'
+        newShares:
+          type: string
+          example: '20000000000'
+        delta:
+          type: string
+          description: Change in shares; positive adds liquidity, negative removes it. Decimal string.
+          example: '7500000000'
+        increasing:
+          type: boolean
+          description: True when adding liquidity. Decides which bounds apply on execute.
+          example: true
+        amountX:
+          type: string
+          description: nanoERG the pool takes when increasing, or returns when decreasing. Decimal string.
+          example: '31875000000'
+        amountY:
+          type: string
+          description: Token side of the same. Decimal string.
+          example: '963000000'
+        nextEntryX:
+          type: string
+          description: >
+            Entry the resized provision must carry, chosen so nothing already earned is lost. Decimal string.
+          example: '29632000000000000000000000'
+        nextEntryY:
+          type: string
+          example: '892400000000000000000000'
+        withinMinSupply:
+          type: boolean
+          example: true
+
+    LDResizeResult:
+      description: Result of a LithosDex provision resize transaction
+      type: object
+      x-tags: lithosdex
+      required:
+        - outcome
+        - boxId
+        - newShares
+        - amountX
+        - amountY
+        - txId
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome; uncertain retains the known transaction ID and input ownership.
+        boxId:
+          type: string
+          description: New provision box id. Use it for the next request.
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        newShares:
+          type: string
+          example: '20000000000'
+        amountX:
+          type: string
+          example: '31875000000'
+        amountY:
+          type: string
+          example: '963000000'
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+
+    LDFlushCheck:
+      description: State of a prospective flush from the pool into the vault
+      type: object
+      x-tags: lithosdex
+      required:
+        - pendingX
+        - pendingY
+        - canFlush
+        - poolAccX
+        - poolAccY
+        - vaultAccX
+        - vaultAccY
+        - vaultBalanceAfterX
+        - vaultBalanceAfterY
+        - currentHeight
+      properties:
+        pendingX:
+          type: string
+          description: nanoERG fees the pool is holding for the vault. Decimal string.
+          example: '3180000000'
+        pendingY:
+          type: string
+          description: Token side of the same. Decimal string.
+          example: '96400000'
+        canFlush:
+          type: boolean
+          description: A flush needs something to move, or the pool rejects it
+          example: true
+        poolAccX:
+          type: string
+          description: The pool's current ERG accumulator. Decimal string.
+          example: '41820000000000000000000000'
+        poolAccY:
+          type: string
+          example: '1264000000000000000000000'
+        vaultAccX:
+          type: string
+          description: >
+            The vault's ERG accumulator. Trails the pool's; the gap is exactly the money the vault
+            does not yet have. Decimal string.
+          example: '38640000000000000000000000'
+        vaultAccY:
+          type: string
+          example: '1167600000000000000000000'
+        vaultBalanceAfterX:
+          type: string
+          description: What the vault would hold once the flush lands. Decimal string.
+          example: '12600000000'
+        vaultBalanceAfterY:
+          type: string
+          example: '380700000'
+        lastFlushHeight:
+          type: integer
+          format: int32
+          example: 1298100
+        currentHeight:
+          type: integer
+          format: int32
+          example: 1312460
+
+    LDFlushRequest:
+      description: >
+        Optional bounds for a flush. Both fields, and the body itself, may be omitted.
+      type: object
+      x-tags: lithosdex
+      properties:
+        expectedPoolBoxId:
+          type: string
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+        expectedVaultBoxId:
+          type: string
+          example: '88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6'
+
+    LDFlushResult:
+      description: Result of a LithosDex flush transaction
+      type: object
+      x-tags: lithosdex
+      required:
+        - outcome
+        - flushedX
+        - flushedY
+        - txId
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome; uncertain retains the known transaction ID and input ownership.
+        flushedX:
+          type: string
+          description: nanoERG moved into the vault. Decimal string.
+          example: '3180000000'
+        flushedY:
+          type: string
+          description: Raw token units moved into the vault. Decimal string.
+          example: '96400000'
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+
+    LDSwapOrderRequest:
+      description: A swap order to quote
+      type: object
+      x-tags: lithosdex
+      required:
+        - amountIn
+        - ergIn
+      properties:
+        amountIn:
+          type: string
+          description: >
+            Total handed to the pool, pool fees included. The executor fee is separate. Decimal string.
+          example: '1000000000'
+        ergIn:
+          type: boolean
+          description: True to sell ERG for the token, false to sell the token for ERG
+          example: true
+        executorFee:
+          type: string
+          description: >
+            nanoERG paid to whoever fills the order. A fill broadcast to the mempool pays its miner
+            fee out of this. Miners skip orders paying less than they accept. Omit for the client's
+            default. Decimal string.
+          example: '3000000'
+        maxMinerFee:
+          type: string
+          description: >
+            Most nanoERG a fill may pay as a miner fee, out of `executorFee`. Must be below
+            `executorFee`. Omit for the client's default. Decimal string.
+          example: '1000000'
+
+    LDSwapOrderExecuteRequest:
+      description: A swap order to sign and place
+      type: object
+      x-tags: lithosdex
+      required:
+        - amountIn
+        - ergIn
+        - minOutput
+      properties:
+        amountIn:
+          type: string
+          description: >
+            Total handed to the pool, pool fees included. The executor fee is separate. Decimal string.
+          example: '1000000000'
+        ergIn:
+          type: boolean
+          example: true
+        minOutput:
+          type: string
+          description: >
+            Least the owner receives: tokens when selling ERG, or nanoERG after `executorFee` when
+            selling the token. Checked against the pool when the order fills. Required and must be
+            positive. Decimal string.
+          example: '29974258'
+        executorFee:
+          type: string
+          description: nanoERG paid to whoever fills the order. Omit for the client's default. Decimal string.
+          example: '3000000'
+        maxMinerFee:
+          type: string
+          description: >
+            Most nanoERG a fill may pay as a miner fee, out of `executorFee`. Must be below
+            `executorFee`. Omit for the client's default. Decimal string.
+          example: '1000000'
+
+    LDSwapOrderQuote:
+      description: Quote for a LithosDex swap order against the current pool
+      type: object
+      x-tags: lithosdex
+      required:
+        - swap
+        - executorFee
+        - maxMinerFee
+        - netOutput
+        - totalErgRequired
+        - ergReturned
+        - networkFee
+      properties:
+        swap:
+          $ref: '#/components/schemas/LDSwapQuote'
+        executorFee:
+          type: string
+          description: The executor fee applied, the request's or the client's default. Decimal string.
+          example: '3000000'
+        maxMinerFee:
+          type: string
+          description: The miner fee cap applied. Decimal string.
+          example: '1000000'
+        netOutput:
+          type: string
+          description: >
+            What the owner receives if the order fills against the current pool: `swap.amountOut`, less
+            `executorFee` when selling the token. Negative when the fee exceeds the output, and such an
+            order cannot fill. Decimal string.
+          example: '30124883'
+        totalErgRequired:
+          type: string
+          description: >
+            nanoERG locked in the order box: `ergReturned`, plus `amountIn` and `executorFee` when
+            selling ERG. Decimal string.
+          example: '1004000000'
+        ergReturned:
+          type: string
+          description: nanoERG of `totalErgRequired` returned to the owner with the fill. Decimal string.
+          example: '1000000'
+        networkFee:
+          type: string
+          description: nanoERG paid to place the order. Decimal string.
+          example: '2000000'
+
+    LDDepositOrderRequest:
+      description: A deposit order to quote
+      type: object
+      x-tags: lithosdex
+      required:
+        - amountX
+        - amountY
+      properties:
+        amountX:
+          type: string
+          description: >
+            Most nanoERG the order offers to the reserves, not counting the provision box. Decimal
+            string.
+          example: '5000000000'
+        amountY:
+          type: string
+          description: Raw token units the order offers. Decimal string.
+          example: '152000000'
+        executorFee:
+          type: string
+          description: >
+            nanoERG paid to whoever fills the order. A fill broadcast to the mempool pays its miner
+            fee out of this. Miners skip orders paying less than they accept. Omit for the client's
+            default. Decimal string.
+          example: '3000000'
+        maxMinerFee:
+          type: string
+          description: >
+            Most nanoERG a fill may pay as a miner fee, out of `executorFee`. Must be below
+            `executorFee`. Omit for the client's default. Decimal string.
+          example: '1000000'
+
+    LDDepositOrderExecuteRequest:
+      description: A deposit order to sign and place
+      type: object
+      x-tags: lithosdex
+      required:
+        - amountX
+        - amountY
+        - minShares
+      properties:
+        amountX:
+          type: string
+          description: >
+            Most nanoERG the order offers to the reserves, not counting the provision box. Decimal
+            string.
+          example: '5000000000'
+        amountY:
+          type: string
+          description: Raw token units the order offers. Decimal string.
+          example: '152000000'
+        minShares:
+          type: string
+          description: >
+            Fewest shares the order accepts, checked against the pool when it fills. Required and must
+            be positive. A floor far under the quote's `shares` lets a pool moved earlier in the same
+            block take the difference. Decimal string.
+          example: '1170587'
+        executorFee:
+          type: string
+          description: nanoERG paid to whoever fills the order. Omit for the client's default. Decimal string.
+          example: '3000000'
+        maxMinerFee:
+          type: string
+          description: >
+            Most nanoERG a fill may pay as a miner fee, out of `executorFee`. Must be below
+            `executorFee`. Omit for the client's default. Decimal string.
+          example: '1000000'
+
+    LDDepositOrderQuote:
+      description: Quote for a LithosDex deposit order against the current pool
+      type: object
+      x-tags: lithosdex
+      required:
+        - shares
+        - amountX
+        - amountY
+        - excessX
+        - excessY
+        - shareOfSupply
+        - provisionBoxValue
+        - executorFee
+        - maxMinerFee
+        - totalErgRequired
+        - ergReturned
+        - networkFee
+      properties:
+        shares:
+          type: string
+          description: Shares the offer buys against the current pool. Decimal string.
+          example: '1176470'
+        amountX:
+          type: string
+          description: nanoERG the pool would take. Decimal string.
+          example: '5000000000'
+        amountY:
+          type: string
+          description: Raw token units the pool would take. Decimal string.
+          example: '151058823'
+        excessX:
+          type: string
+          description: nanoERG offered beyond what the pool would take, returned with the fill. Decimal string.
+          example: '0'
+        excessY:
+          type: string
+          description: Token side of `excessX`. Decimal string.
+          example: '941177'
+        shareOfSupply:
+          type: number
+          format: double
+          description: Fraction of the pool the provision would represent once it lands
+          example: 0.00117
+        provisionBoxValue:
+          type: string
+          description: nanoERG that funds the new provision box, on top of `amountX`. Decimal string.
+          example: '600000000'
+        executorFee:
+          type: string
+          description: The executor fee applied, the request's or the client's default. Decimal string.
+          example: '3000000'
+        maxMinerFee:
+          type: string
+          description: The miner fee cap applied. Decimal string.
+          example: '1000000'
+        totalErgRequired:
+          type: string
+          description: >
+            nanoERG locked in the order box: `amountX`, `excessX`, `provisionBoxValue`, `executorFee`
+            and `ergReturned`. Decimal string.
+          example: '5604000000'
+        ergReturned:
+          type: string
+          description: >
+            nanoERG returned to the owner with the fill, beside the `ownerNFT`, not counting `excessX`.
+            Decimal string.
+          example: '1000000'
+        networkFee:
+          type: string
+          description: nanoERG paid to place the order. Decimal string.
+          example: '2000000'
+
+    LDRedeemOrderRequest:
+      description: The provision a redeem order closes, and its fees
+      type: object
+      x-tags: lithosdex
+      required:
+        - provisionBoxId
+      properties:
+        provisionBoxId:
+          type: string
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        executorFee:
+          type: string
+          description: >
+            nanoERG paid to whoever fills the order, out of the ERG it releases. A fill broadcast to the
+            mempool pays its miner fee out of this. Miners skip orders paying less than they accept.
+            Omit for the client's default. Decimal string.
+          example: '3000000'
+        maxMinerFee:
+          type: string
+          description: >
+            Most nanoERG a fill may pay as a miner fee, out of `executorFee`. Must be below
+            `executorFee`. Omit for the client's default. Decimal string.
+          example: '1000000'
+
+    LDRedeemOrderQuote:
+      description: Quote for a LithosDex redeem order against the current pool
+      type: object
+      x-tags: lithosdex
+      required:
+        - shares
+        - amountX
+        - amountY
+        - provisionValue
+        - receivedX
+        - claimableX
+        - claimableY
+        - unflushedX
+        - unflushedY
+        - withinMinSupply
+        - executorFee
+        - maxMinerFee
+        - totalErgRequired
+        - networkFee
+      properties:
+        shares:
+          type: string
+          description: LP shares the order would close. Decimal string.
+          example: '12500000000'
+        amountX:
+          type: string
+          description: nanoERG share of the reserves at the current pool. Decimal string.
+          example: '53125000000'
+        amountY:
+          type: string
+          description: Raw token units share of the reserves at the current pool. Decimal string.
+          example: '1605000000'
+        provisionValue:
+          type: string
+          description: nanoERG held by the provision box, returned with the fill. Decimal string.
+          example: '600000000'
+        receivedX:
+          type: string
+          description: >
+            nanoERG paid to the owner if the order fills against the current pool: `amountX`,
+            `provisionValue` and `totalErgRequired`, less `executorFee`. Decimal string.
+          example: '53723000000'
+        claimableX:
+          type: string
+          description: Settled ERG fees claimed by the transaction placing the order. Decimal string.
+          example: '253000000'
+        claimableY:
+          type: string
+          description: Token side of `claimableX`. Decimal string.
+          example: '7690000'
+        unflushedX:
+          type: string
+          description: >
+            ERG fees earned but not yet flushed. They cannot be claimed at placement and are **lost**
+            when the order fills. Decimal string.
+          example: '39750000'
+        unflushedY:
+          type: string
+          description: Token side of `unflushedX`. Decimal string.
+          example: '1210000'
+        withinMinSupply:
+          type: boolean
+          description: >
+            False when closing this provision would take supply under the contract's minimum. Such an
+            order is refused.
+          example: true
+        executorFee:
+          type: string
+          description: The executor fee applied, the request's or the client's default. Decimal string.
+          example: '3000000'
+        maxMinerFee:
+          type: string
+          description: The miner fee cap applied. Decimal string.
+          example: '1000000'
+        totalErgRequired:
+          type: string
+          description: nanoERG locked in the order box beside the `ownerNFT`, returned with the fill. Decimal string.
+          example: '1000000'
+        networkFee:
+          type: string
+          description: nanoERG paid to place the order. Decimal string.
+          example: '2000000'
+
+    LDOrder:
+      description: >
+        An outstanding LithosDex order owned by this wallet. Which term fields are present depends on
+        `type`.
+      type: object
+      x-tags: lithosdex
+      required:
+        - boxId
+        - type
+        - status
+        - placementTxId
+        - owner
+        - value
+        - executorFee
+        - maxMinerFee
+        - fillableNow
+      properties:
+        boxId:
+          type: string
+          description: Order box id. Pass it to `POST /dex/orders/{boxId}/cancel`.
+          example: '5035b2e112b4f5b873dd3444c01df1e7e697807fd84fe96790eacb128e46428d'
+        type:
+          type: string
+          enum: ['SWAP', 'DEPOSIT', 'REDEEM']
+          example: 'SWAP'
+        status:
+          type: string
+          enum: ['PENDING', 'OPEN', 'FILLING', 'CANCELLING']
+          description: >
+            PENDING: the placement is unconfirmed. OPEN: placed and waiting for a fill. FILLING: an
+            unconfirmed transaction fills it. CANCELLING: an unconfirmed transaction cancels it. Only
+            PENDING and OPEN orders can be cancelled.
+          example: 'OPEN'
+        placementTxId:
+          type: string
+          description: Transaction that created the order box
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+        placedHeight:
+          type: integer
+          format: int32
+          description: Height the placement confirmed at. Absent while it is unconfirmed.
+          example: 484719
+        spendingTxId:
+          type: string
+          description: The unconfirmed transaction filling or cancelling the order. Present when FILLING or CANCELLING.
+          example: '9f3c1ab7d2e45806c91f7b3ad4e2091856cbf740e3a92d5178cc0b46e21f5d38'
+        owner:
+          type: string
+          description: Address that receives the fill, and the only key that can cancel
+          example: '3WwbzR34YmLRy3Z6WLON5hBBkX8Zm1gUHmC7tEXDNRJfHBqhsZr'
+        value:
+          type: string
+          description: nanoERG held by the order box. Decimal string.
+          example: '1004000000'
+        executorFee:
+          type: string
+          description: nanoERG the order pays whoever fills it. Decimal string.
+          example: '3000000'
+        maxMinerFee:
+          type: string
+          description: Most nanoERG a fill may pay as a miner fee, out of `executorFee`. Decimal string.
+          example: '1000000'
+        ergIn:
+          type: boolean
+          description: SWAP only. True when selling ERG for the token.
+          example: true
+        amountIn:
+          type: string
+          description: SWAP only. nanoERG or raw token units sold into the pool. Decimal string.
+          example: '1000000000'
+        minOutput:
+          type: string
+          description: >
+            SWAP only. Least the owner receives: tokens when selling ERG, or nanoERG after
+            `executorFee` when selling the token. Decimal string.
+          example: '29974258'
+        amountX:
+          type: string
+          description: DEPOSIT only. Most nanoERG offered to the reserves. Decimal string.
+          example: '5000000000'
+        amountY:
+          type: string
+          description: DEPOSIT only. Raw token units offered. Decimal string.
+          example: '152000000'
+        minShares:
+          type: string
+          description: DEPOSIT only. Fewest shares the order accepts. Decimal string.
+          example: '1170587'
+        ownerNFT:
+          type: string
+          description: REDEEM only. Ownership NFT of the provision the order closes.
+          example: 'a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97'
+        provisionBoxId:
+          type: string
+          description: REDEEM only. Current box of that provision. Absent when it cannot be found.
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        fillableNow:
+          type: boolean
+          description: >
+            Whether the order would fill against the current pool. False when the pool cannot meet the
+            order's minimum or refuses it; the order waits until that changes or it is cancelled.
+          example: true
+
+    LDOrderList:
+      description: Outstanding orders owned by this wallet
+      type: object
+      x-tags: lithosdex
+      required:
+        - orders
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/LDOrder'
+
+    LDOrderPlacementResult:
+      description: Result of placing a LithosDex order
+      type: object
+      x-tags: lithosdex
+      required:
+        - outcome
+        - txId
+        - order
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome; uncertain retains the known transaction ID and input ownership.
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+        order:
+          $ref: '#/components/schemas/LDOrder'
+        claimedX:
+          type: string
+          description: REDEEM only. Settled ERG fees the placement claimed. Decimal string.
+          example: '253000000'
+        claimedY:
+          type: string
+          description: REDEEM only. Token side of `claimedX`. Decimal string.
+          example: '7690000'
+
+    LDTokenAmount:
+      description: An amount of one token
+      type: object
+      x-tags: lithosdex
+      required:
+        - tokenId
+        - amount
+      properties:
+        tokenId:
+          type: string
+          example: '86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3'
+        amount:
+          type: string
+          description: Raw token units. Decimal string.
+          example: '152000000'
+
+    LDOrderCancelResult:
+      description: Result of cancelling a LithosDex order
+      type: object
+      x-tags: lithosdex
+      required:
+        - outcome
+        - txId
+        - returnedNanoErgs
+        - returnedTokens
+        - networkFee
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, rejected, uncertain]
+          description: Node submission outcome; uncertain retains the known transaction ID and input ownership.
+        txId:
+          type: string
+          example: '40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7'
+        returnedNanoErgs:
+          type: string
+          description: nanoERG the order box held, returned to this wallet. Decimal string.
+          example: '5604000000'
+        returnedTokens:
+          type: array
+          description: Tokens the order box held, returned to this wallet
+          items:
+            $ref: '#/components/schemas/LDTokenAmount'
+        networkFee:
+          type: string
+          description: >
+            nanoERG paid for the cancel, taken from the order box when it holds enough and from the
+            wallet otherwise. Decimal string.
+          example: '2000000'
+
+    LDFeeHistoryPoint:
+      description: One bucket of fee history
+      type: object
+      x-tags: lithosdex
+      required:
+        - height
+        - periodX
+        - periodY
+        - cumulativeX
+        - cumulativeY
+      properties:
+        height:
+          type: integer
+          format: int32
+          description: Block height at the end of this bucket
+          example: 1312460
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix milliseconds at the end of this bucket. Absent if unresolved.
+          example: 1765432100000
+        periodX:
+          type: string
+          description: nanoERG fees taken during this bucket. Decimal string.
+          example: '210000000'
+        periodY:
+          type: string
+          example: '6350000'
+        cumulativeX:
+          type: string
+          description: nanoERG fees taken from the start of the range to here. Decimal string.
+          example: '8420000000'
+        cumulativeY:
+          type: string
+          example: '254300000'
+
+    LDFeeHistory:
+      description: Bucketed fee history for the pool
+      type: object
+      x-tags: lithosdex
+      required:
+        - history
+        - partial
+      properties:
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/LDFeeHistoryPoint'
+        partial:
+          type: boolean
+          description: >
+            True when the series does not reach back to the pool's start. The points returned are
+            still exact.
+          example: false
+
+    LDProvisionFeeHistory:
+      description: Bucketed fee history for a single provision
+      type: object
+      x-tags: lithosdex
+      required:
+        - boxId
+        - history
+        - partial
+      properties:
+        boxId:
+          type: string
+          example: 'ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/LDFeeHistoryPoint'
+        partial:
+          type: boolean
+          description: True when the series does not reach back to the pool's start.
+          example: false
+
+    LDPricePoint:
+      description: One point on the price series
+      type: object
+      x-tags: lithosdex
+      required:
+        - height
+        - price
+        - reservesX
+        - reservesY
+      properties:
+        height:
+          type: integer
+          format: int32
+          example: 484719
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix milliseconds. Absent if unresolved.
+          example: 1765432100000
+        price:
+          type: number
+          format: double
+          description: >
+            Token per ERG with the token's decimals applied. A display value — recompute from the
+            reserves if you need it exact.
+          example: 35.6285
+        reservesX:
+          type: string
+          description: nanoERG the AMM traded with at this point. Decimal string.
+          example: '1133460000000'
+        reservesY:
+          type: string
+          description: Raw token units the AMM traded with at this point. Decimal string.
+          example: '403834600000'
+
+    LDPriceHistory:
+      description: Price series for a requested range
+      type: object
+      x-tags: lithosdex
+      required:
+        - range
+        - changePct
+        - partial
+        - history
+      properties:
+        range:
+          type: string
+          description: The range served, echoed back
+          example: '24H'
+        changePct:
+          type: number
+          format: double
+          description: Signed fraction across the range; 0.018 is +1.8%
+          example: 0.018
+        partial:
+          type: boolean
+          description: True when the series does not span the whole range.
+          example: false
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/LDPricePoint'
+
+    LDActivityEntry:
+      description: >
+        One transaction that moved the pool. Which amount fields are present depends on `type`.
+      type: object
+      x-tags: lithosdex
+      required:
+        - txId
+        - type
+        - via
+        - status
+      properties:
+        txId:
+          type: string
+          example: '9f3c1ab7d2e45806c91f7b3ad4e2091856cbf740e3a92d5178cc0b46e21f5d38'
+        type:
+          type: string
+          enum: ['SWAP', 'DEPOSIT', 'REDEEM', 'RESIZE', 'FLUSH']
+          description: >
+            SWAP trades against the reserves. DEPOSIT opens a provision and REDEEM closes one. RESIZE
+            changes a provision's size and flushes. FLUSH moves pending fees to the vault.
+          example: 'SWAP'
+        via:
+          type: string
+          enum: ['ORDER', 'DIRECT']
+          description: >
+            ORDER when the transaction fills a LithosDex order, DIRECT otherwise. RESIZE and FLUSH are
+            always DIRECT.
+          example: 'ORDER'
+        orderBoxId:
+          type: string
+          description: The order this transaction filled. Present when `via` is ORDER.
+          example: '5035b2e112b4f5b873dd3444c01df1e7e697807fd84fe96790eacb128e46428d'
+        status:
+          type: string
+          enum: ['MEMPOOL', 'CONFIRMED']
+          description: >
+            MEMPOOL entries are unconfirmed and can still be dropped or replaced. They are listed ahead
+            of every confirmed entry.
+          example: 'CONFIRMED'
+        height:
+          type: integer
+          format: int32
+          description: Block height. Present when CONFIRMED.
+          example: 484719
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix milliseconds. Present when CONFIRMED and resolved.
+          example: 1765432100000
+        ergIn:
+          type: boolean
+          description: SWAP only. True when ERG was sold for the token.
+          example: true
+        amountIn:
+          type: string
+          description: SWAP only. Raw units handed to the pool, pool fees included. Decimal string.
+          example: '12400000000'
+        amountOut:
+          type: string
+          description: SWAP only. Raw units received. Decimal string.
+          example: '441820000'
+        amountX:
+          type: string
+          description: >
+            Not present for SWAP. nanoERG added to the reserves by a DEPOSIT or a growing RESIZE,
+            returned from them by a REDEEM or a shrinking RESIZE, or moved to the vault by a FLUSH.
+            Decimal string.
+          example: '5000000000'
+        amountY:
+          type: string
+          description: Not present for SWAP. Token side of `amountX`. Decimal string.
+          example: '151058823'
+        shares:
+          type: string
+          description: >
+            DEPOSIT, REDEEM and RESIZE only. Shares issued or closed; for RESIZE, the signed change.
+            Decimal string.
+          example: '1176470'
+
+    LDRecentActivity:
+      description: Transactions that moved the pool, newest first
+      type: object
+      x-tags: lithosdex
+      required:
+        - activity
+      properties:
+        activity:
+          type: array
+          items:
+            $ref: '#/components/schemas/LDActivityEntry'
+
+    WalletToken:
+      description: A token balance held by the wallet
+      type: object
+      x-tags: lithosdex
+      required:
+        - tokenId
+        - amount
+      properties:
+        tokenId:
+          type: string
+          example: '86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3'
+        name:
+          type: string
+          example: 'LIT'
+        decimals:
+          type: integer
+          format: int32
+          example: 4
+        amount:
+          type: string
+          description: Raw token units held. Decimal string.
+          example: '5420000000'
+
+    WalletBalances:
+      description: >
+        This client's wallet, for both LithosDex and the collateral market. One call so a page does
+        not have to stitch two together, and so both halves describe the same instant.
+      type: object
+      x-tags: wallet
+      required:
+        - primaryAddress
+        - nanoErgs
+        - tokens
+        - collateral
+      properties:
+        primaryAddress:
+          type: string
+          description: The wallet's main P2PK address, where change and swept rewards land
+          example: '3WwbzR34YmLRy3Z6WLON5hBBkX8Zm1gUHmC7tEXDNRJfHBqhsZr'
+        nanoErgs:
+          type: string
+          description: >
+            Unreserved ERG available to spend right now, matured coinbases included — the figure a
+            join quote's `affordNow` is decided against. Decimal string.
+          example: '182400000000'
+        tokens:
+          type: array
+          description: Every token the wallet holds, including LIT.
+          items:
+            $ref: '#/components/schemas/WalletToken'
+        collateral:
+          $ref: '#/components/schemas/WalletCollateralStatus'
+
+    NISPRepresentation:
+      description: Representation of a 10 super share NISP
+      x-tags: mining
+      type: object
+      required:
+        - score
+        - height
+        - headers
+        - bytes
+      properties:
+        score:
+          type: integer
+          format: int64
+          description: Score associated with this NISP, to be used in payout calculations
+          example: 5000000
+        height:
+          type: integer
+          format: int32
+          description: Height all super-shares in this NISP must be under
+          example: 45096
+        headers:
+          type: array
+          maxItems: 10
+          minItems: 10
+          description: Header bytes associated with each super-share in this NISP
+          items:
+            type: string
+            example: '04ecc45f0b20659f0a8a791872cf625d24b45832cfd3ac910da7cc9f560d42332b6ce08f276d1f3e8b45e637fa4918b3ea3c9d8c6d57ed8ee9fb1379d1b3d7756819a95ffafa172cb015ebf8e16c4ab4d3afcd34297e16206c4c8811a25bae6be43cd9c5e521b40ed281ddb1a1ebc52dfc1aa2835e20b20e795d979c8c025d23ae10edacdfe5ac330b65ac4eb10bdc52a7ab78abdfba7ef606a82c95168840839f1ca4da46c597630502383dc9be010000000002856c5e4eb4b915005dccb8e0f42bed1777cae48565be13a77cbf31e3c93f45150000000000000000'
+          example: ['04ecc45f0b20659f0a8a791872cf625d24b45832cfd3ac910da7cc9f560d42332b6ce08f276d1f3e8b45e637fa4918b3ea3c9d8c6d57ed8ee9fb1379d1b3d7756819a95ffafa172cb015ebf8e16c4ab4d3afcd34297e16206c4c8811a25bae6be43cd9c5e521b40ed281ddb1a1ebc52dfc1aa2835e20b20e795d979c8c025d23ae10edacdfe5ac330b65ac4eb10bdc52a7ab78abdfba7ef606a82c95168840839f1ca4da46c597630502383dc9be010000000002856c5e4eb4b915005dccb8e0f42bed1777cae48565be13a77cbf31e3c93f45150000000000000000']
+        bytes:
+          type: string
+          description: Serialized (hex-encoded) bytes of this NISP
+          example: '00f6318aa84791d0...a0bdc8045a70f931'
+  securitySchemes:
+    ApiKeyAuth:
+      description: >
+        Api key authorization used by Lithos. The hash of this key must be placed in your config, under `lithos.apiKeyHash`.
+        The default value is `hello`.
+      type: apiKey
+      name: api_key
+      in: header

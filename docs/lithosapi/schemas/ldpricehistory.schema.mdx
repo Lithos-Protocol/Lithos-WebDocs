@@ -1,0 +1,33 @@
+---
+id: ldpricehistory
+title: "LDPriceHistory"
+description: "Price series for a requested range"
+sidebar_label: "LDPriceHistory"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"range":"24H","changePct":0.018,"partial":false,"history":[{"height":484719,"timestamp":1765432100000,"price":35.6285,"reservesX":"1133460000000","reservesY":"403834600000"}]}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPriceHistory"}
+>
+</Heading>
+
+
+
+Price series for a requested range
+
+<Schema
+  schema={{"description":"Price series for a requested range","type":"object","x-tags":"lithosdex","required":["range","changePct","partial","history"],"properties":{"range":{"type":"string","description":"The range served, echoed back","example":"24H"},"changePct":{"type":"number","format":"double","description":"Signed fraction across the range; 0.018 is +1.8%","example":0.018},"partial":{"type":"boolean","description":"True when the series does not span the whole range.","example":false},"history":{"type":"array","items":{"description":"One point on the price series","type":"object","x-tags":"lithosdex","required":["height","price","reservesX","reservesY"],"properties":{"height":{"type":"integer","format":"int32","example":484719},"timestamp":{"type":"integer","format":"int64","description":"Unix milliseconds. Absent if unresolved.","example":1765432100000},"price":{"type":"number","format":"double","description":"Token per ERG with the token's decimals applied. A display value — recompute from the reserves if you need it exact.\n","example":35.6285},"reservesX":{"type":"string","description":"nanoERG the AMM traded with at this point. Decimal string.","example":"1133460000000"},"reservesY":{"type":"string","description":"Raw token units the AMM traded with at this point. Decimal string.","example":"403834600000"}},"title":"LDPricePoint"}}},"title":"LDPriceHistory"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

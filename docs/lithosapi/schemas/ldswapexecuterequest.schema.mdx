@@ -1,0 +1,33 @@
+---
+id: ldswapexecuterequest
+title: "LDSwapExecuteRequest"
+description: "A swap to sign and submit"
+sidebar_label: "LDSwapExecuteRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"amountIn":"1000000000","ergIn":true,"minOutput":"29974258","expectedPoolBoxId":"a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDSwapExecuteRequest"}
+>
+</Heading>
+
+
+
+A swap to sign and submit
+
+<Schema
+  schema={{"description":"A swap to sign and submit","type":"object","x-tags":"lithosdex","required":["amountIn","ergIn","minOutput"],"properties":{"amountIn":{"type":"string","description":"Total handed to the pool, fees included. Decimal string.","example":"1000000000"},"ergIn":{"type":"boolean","example":true},"minOutput":{"type":"string","description":"Floor below which the swap must be rejected. Required, and must not be negative — a negative floor is no floor. Decimal string.\n","example":"29974258"},"expectedPoolBoxId":{"type":"string","description":"Pool box the quote was made against. Returns 409 instead of re-quoting if it moved.\n","example":"a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97"}},"title":"LDSwapExecuteRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

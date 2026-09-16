@@ -1,0 +1,33 @@
+---
+id: stratuminfo
+title: "StratumInfo"
+description: "Information about the Stratum server"
+sidebar_label: "StratumInfo"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"diff":"4.0G","tau":1.157920892373162e+76,"reducedMessaging":false,"superSharesPerHour":2.5}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"StratumInfo"}
+>
+</Heading>
+
+
+
+Information about the Stratum server
+
+<Schema
+  schema={{"description":"Information about the Stratum server","type":"object","x-tags":"mining","required":["diff","tau","reducedMessaging","superSharesPerHour"],"properties":{"diff":{"type":"string","description":"Difficulty used for Lithos calculations","example":"4.0G"},"tau":{"type":"integer","description":"Tau representation of the mining diff","example":1.157920892373162e+76},"reducedMessaging":{"type":"boolean","description":"Whether the stratum server has the `reduceShareMessages` setting enabled","example":false},"superSharesPerHour":{"type":"double","description":"Number of super shares produced by the mining client within the last hour","example":2.5}},"title":"StratumInfo"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

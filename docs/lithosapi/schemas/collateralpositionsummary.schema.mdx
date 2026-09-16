@@ -1,0 +1,33 @@
+---
+id: collateralpositionsummary
+title: "CollateralPositionSummary"
+description: "One of this wallet's positions, queued or live"
+sidebar_label: "CollateralPositionSummary"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"kind":"QUEUED","boxId":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65","position":411,"principalNanoErgs":"2915000000","permitLit":"19380000000","carriedLit":"19380000000","creationHeight":484102}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CollateralPositionSummary"}
+>
+</Heading>
+
+
+
+One of this wallet's positions, queued or live
+
+<Schema
+  schema={{"description":"One of this wallet's positions, queued or live","type":"object","x-tags":"collateral-market","required":["kind","boxId","principalNanoErgs","permitLit","creationHeight"],"properties":{"kind":{"type":"string","enum":["QUEUED","LIVE"],"example":"QUEUED"},"boxId":{"type":"string","example":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65"},"position":{"type":"integer","format":"int64","description":"Queue position, when QUEUED","example":411},"principalNanoErgs":{"type":"string","description":"Decimal string.","example":"2915000000"},"permitLit":{"type":"string","description":"Permit paid at join. Present for QUEUED positions only.","example":"19380000000"},"carriedLit":{"type":"string","description":"LIT carried on the box — emission plus permit together. Present for LIVE positions only. Decimal string.\n","example":"19380000000"},"creationHeight":{"type":"integer","format":"int32","example":484102}},"title":"CollateralPositionSummary"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

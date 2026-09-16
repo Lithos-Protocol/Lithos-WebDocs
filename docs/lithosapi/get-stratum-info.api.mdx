@@ -1,0 +1,63 @@
+---
+id: get-stratum-info
+title: "Get Stratum information"
+description: "Information about the Lithos stratum"
+sidebar_label: "Get Stratum information"
+hide_title: true
+hide_table_of_contents: true
+api: eJylVl1v2zYU/SsEX6fajrs0i96MtUiNrUOAZNhDGtQUdWWypUiVvMyiGvrvwyVlW4kDtOieDIu8H+eec6604zUE6XWH2lle8rVtnG8F/WOichEZKmB/alQusIBeYGx5wV0HPl1a17zkW8CbfEThvOAotoGXd7zVVtstvy+4h9A5GyDwcseXiwX9/EjlMS8L4B/A84JLZxEsUrzoOqNliph/DpRkx4NU0Iqfzo59B7zkrvoMEnnBH19lKHskBORr1B5qglfrpkloYzqoo4T6A4QgtvluiB34GyU8hGvw7130NIrO0/RQ51mkHOVuXzmgz7FP23+rm0bLaLBnMUDNGuf3pEhhZDQJWeAFh0fRdoZS/TpbXPEht3csoC3CNmF9WuFWROah8xDAYp6Ta9KQMnQ2gj3kP5udnV9cLhe/XS5fX7w+e7OEXy7eDC/M4Vi7cs6AsCe1/1GACnyqFp5QwpQI6fEmp03DzKkhbFgAROoNrKgM1NP2GmECDC9ycGyodrEycNLPX7GtwBP+FM1CCmeddwkaq/rpYKTRYJH9q1Fpmw6MCMgUlZo0tJydD8SGxsTO1DDDQCc1NCIaPNXuO+/d/5B+Cmd7A7LGu5atrtcvqH2qbRiLehCUn9pDoc2pgPPF7wsstyFdDdOpnC8Ww6HId22Qc7SZfwaPnRGZA5p6TrJX7b7/ox/WFsFbYfbSyjeGA7IXqttoDCmLl+gjnJgyxUGdM7Hp4ZTpVaczg0PmuQVUblybvOCdQMVLPj9smNwe7c8dj97wkivErpzPjZPCKBewvFwsFifDGffB71mOxPBwT9lk9Br7G1JHZmzV6T+gX0Wq+1wsq06zL9AzEVE5r7/lTZB2TtWPK2fGbhWQM1Uetg4ppI0BWQWsM4JMoi3rXSTGbaO3BYu2Bs82JqcQqYf3IqhNTjeqnz0IE4HpwDYKjHGb2Ud7VGqOImJEO/7/9CU90NS8AlGDT8PX5KtTdNdr9tbJ2B52HC3SyRsue3nGPrgaTEi4P1oFHpjwSXAgEWqGjoBKZ4MOZEkmpHchMGF75tIq0yS6Q5mwV+XTMgkacZ27O5stZkTrXjinhOYdIGTaAUdthHI+32pUsZpJ185z3Ktr79BJZ9I8OhewFcli4+yuAA/vP318Oz6X1e64dn7042AkC+ER58mhZLLU7W5U+/TLgARNT3a7SgT425thoMdfI/iel3f3BX8QXmcX3t0PxZ5lsgdxX/KVlNCRlZJ2kiyebUcywsF2V+9u+TD8BwtXI5g=
+sidebar_class_name: "get api-method"
+info_path: docs/lithosapi/lithos-client-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Get Stratum information"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/mining"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Information about the Lithos stratum
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Information about the Stratum server","content":{"application/json":{"schema":{"description":"Information about the Stratum server","type":"object","x-tags":"mining","required":["diff","tau","reducedMessaging","superSharesPerHour"],"properties":{"diff":{"type":"string","description":"Difficulty used for Lithos calculations","example":"4.0G"},"tau":{"type":"integer","description":"Tau representation of the mining diff","example":1.157920892373162e+76},"reducedMessaging":{"type":"boolean","description":"Whether the stratum server has the `reduceShareMessages` setting enabled","example":false},"superSharesPerHour":{"type":"double","description":"Number of super shares produced by the mining client within the last hour","example":2.5}},"title":"StratumInfo"}}}},"default":{"description":"Error","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

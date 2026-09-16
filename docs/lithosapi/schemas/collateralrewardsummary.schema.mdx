@@ -1,0 +1,33 @@
+---
+id: collateralrewardsummary
+title: "CollateralRewardSummary"
+description: "This wallet's locked coinbase rewards"
+sidebar_label: "CollateralRewardSummary"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxes":4,"unlockedBoxes":2,"totalNanoErgs":"12000000000","unlockedNanoErgs":"6000000000","blocksUntilFirstUnlock":0}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CollateralRewardSummary"}
+>
+</Heading>
+
+
+
+This wallet's locked coinbase rewards
+
+<Schema
+  schema={{"description":"This wallet's locked coinbase rewards","type":"object","x-tags":"collateral-market","required":["boxes","unlockedBoxes","totalNanoErgs","unlockedNanoErgs"],"properties":{"boxes":{"type":"integer","format":"int32","description":"Reward boxes held, including ones still behind the timelock","example":4},"unlockedBoxes":{"type":"integer","format":"int32","description":"How many are spendable now","example":2},"totalNanoErgs":{"type":"string","description":"Every reward box together. Decimal string.","example":"12000000000"},"unlockedNanoErgs":{"type":"string","description":"The part past its timelock. Decimal string.","example":"6000000000"},"blocksUntilFirstUnlock":{"type":"integer","format":"int32","description":"Blocks until the earliest still-locked box matures. Absent when none are locked."}},"title":"CollateralRewardSummary"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

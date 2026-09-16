@@ -1,0 +1,33 @@
+---
+id: collateralpermithistorypoint
+title: "CollateralPermitHistoryPoint"
+description: "What one waiting position paid to join"
+sidebar_label: "CollateralPermitHistoryPoint"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"position":411,"height":484102,"permitLit":"19370000000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CollateralPermitHistoryPoint"}
+>
+</Heading>
+
+
+
+What one waiting position paid to join
+
+<Schema
+  schema={{"description":"What one waiting position paid to join","type":"object","x-tags":"collateral-market","required":["position","height","permitLit"],"properties":{"position":{"type":"integer","format":"int64","description":"Queue position taken at join time; ascending with the series","example":411},"height":{"type":"integer","format":"int32","description":"Height the join confirmed at","example":484102},"permitLit":{"type":"string","description":"Permit locked by this position. Decimal string.","example":"19370000000"}},"title":"CollateralPermitHistoryPoint"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

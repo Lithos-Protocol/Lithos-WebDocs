@@ -1,0 +1,110 @@
+/* Right-rail client status card — purple identity per screen 02. */
+
+.card {
+  background: rgba(15, 22, 41, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(168, 85, 247, 0.22);
+  border-radius: 18px;
+  padding: 15px 17px;
+  margin-top: 20px;
+}
+
+.label {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 10px;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotOk {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+  animation: modDotPulse 2.4s ease-in-out infinite;
+}
+
+.dotWarn {
+  background: var(--cur-amber);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+  animation: modDotPulse 2.4s ease-in-out infinite;
+}
+
+/* Needs attention rather than patience — a stale or failed sync will not
+   resolve by waiting, so it must not share the amber "in progress" dot. */
+.dotBad {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+}
+
+.dotOff {
+  background: var(--cur-faint);
+}
+
+.dotIdle {
+  background: var(--cur-fainter);
+}
+
+.statusText {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cur-text);
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(168, 85, 247, 0.14);
+  font-size: 12.5px;
+  color: var(--cur-dim);
+}
+
+.metaValue {
+  font-family: var(--cur-font-mono);
+  color: var(--cur-purple-light);
+}
+
+.hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--cur-faint);
+}
+
+/* A subsystem that is down, with the client's own reason. Wraps rather than
+   truncates: the reason is the whole point of showing it. */
+.problem {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--cur-amber-light);
+}
+
+.problem strong {
+  color: var(--cur-amber);
+  font-weight: 600;
+}
+
+/* Declared locally: css-loader scopes animation names per module, so a
+   global keyframe name would hash to something that matches nothing. */
+@keyframes modDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

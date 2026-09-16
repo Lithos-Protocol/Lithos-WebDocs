@@ -1,0 +1,322 @@
+---
+sidebar_position: 1
+tags:
+  - startup
+description: Install, configure and run the Lithos client, from nothing to mining.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Startup guide
+
+<span className="badge badge--success">Standard</span>
+
+*For anyone setting up Lithos for the first time. No Ergo or smart contract experience needed.*
+
+This guide takes you from nothing to a Lithos client mining on the Ergo testnet. It covers the
+requirements, the configuration file, starting the client, connecting your mining software, and making
+your first difficulty commitment.
+
+It does not cover lending collateral or using the LithosDex, which both live in the client's web
+interface, and it does not explain how the protocol works internally. For that, read
+[Lithos Protocol](./intro.mdx).
+
+:::info Testnet only
+The current release runs on the Ergo **testnet**. Contract addresses and token IDs are not final. Use a
+testnet key that is unrelated to any mainnet wallet you own.
+:::
+
+## Before you begin
+
+You need the following:
+
+| Requirement | Detail |
+|---|---|
+| Java 11 | Required by both the Ergo node and the Lithos client. Later Java versions are not supported |
+| An Ergo node | Version 6.0.4 or later, on testnet, with indexing and mining enabled, fully synced |
+| Mining software | Any miner supporting Ergo's Autolykos 2 algorithm |
+| Testnet ERG | A small balance in the node wallet. Lithos pays transaction fees of about 0.001 ERG per submission |
+| GPU memory | See the warning below |
+
+**The node must be version 6.0.4 or later.** Lithos sets a specific coinbase recipient on every block
+it builds, and only these node versions expose the API call that allows it. On an older node, no Lithos
+block can be produced.
+
+:::warning Check your GPU memory before you start
+Autolykos 2 builds a lookup table in VRAM that grows with the chain height. It reaches about 1.94 GiB
+on testnet at height 479,000, and about 6.56 GiB on mainnet. When the height changes, the table is
+rebuilt while the old copy is still held, so the peak is roughly double.
+
+Current NVIDIA drivers do not fail when a card runs out of VRAM. They spill the overflow to system
+memory over PCIe, and your rig keeps running at a fraction of its hashrate with nothing in the log to
+say why. If your hashrate is far below what the card should do, this is the first thing to check.
+:::
+
+## Step 1: Set up an Ergo testnet node
+
+Lithos talks to a local Ergo node to read the chain, sign transactions with the node's wallet keystore,
+and receive block candidates. Follow [Setting up an Ergo testnet node](./startup/testnet-node.mdx),
+which covers installation, the `ergo.conf` file, creating a wallet, and verifying the node's API.
+
+Before continuing, confirm three things:
+
+1. The node is **fully synced**. Check the height on the node panel at `http://127.0.0.1:9052/panel`.
+2. The node was started with `extraIndex = true`. Lithos reads boxes by address, token and script, and
+   only an indexed node serves those queries.
+3. You have the node's **API key** and **wallet password**, and know the path to the wallet keystore
+   file.
+
+## Step 2: Download and unpack the Lithos client
+
+Download the latest release `.zip` from the
+[Lithos Protocol releases](https://github.com/Lithos-Protocol), then unzip it. The archive expands into
+a `lithos-client` folder containing:
+
+| Folder | Contents |
+|---|---|
+| `bin/` | The start scripts, and where your configuration file goes |
+| `conf/` | `application.conf`, the shipped defaults for every setting |
+| `lib/` | The client's JAR files |
+
+Do not edit `conf/application.conf`. You override the settings you care about in your own file, which
+keeps your configuration intact when you upgrade.
+
+## Step 3: Create your configuration file
+
+Create a file named `lithos.conf` inside `lithos-client/bin`. The client reads this file at startup and
+pulls in the shipped defaults through the `include` on the first line.
+
+```hocon title="lithos-client/bin/lithos.conf"
+{
+  include file("../conf/application.conf")
+
+  node {
+    url         = "http://127.0.0.1"
+    key         = "NODE_API_KEY_HERE"
+    storagePath = "path/to/nodefolder/.ergo/wallet/keystore/keyfile.json"
+    pass        = "NODE_WALLET_PASS_HERE"
+    networkType = "TESTNET"
+    explorerURL = "https://api-testnet.ergoplatform.com"
+    numAddresses = 32
+  }
+
+  # Change this to any long random string of your own
+  play.http.secret.key = "changethissecret"
+
+  # Blake2b256 hash of the API key that guards the client's authenticated endpoints.
+  # This value is the hash of "hello". Change it. See "Security" below.
+  lithos.apiKeyHash = "324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf"
+
+  stratum {
+    diff = "140M"              # Format: (value)(powerOfTen), e.g. "4.0G", "1.52M", "300.1K"
+    stratumPort = 4444
+    reduceShareMessages = true # Cuts share traffic between your mining software and Lithos
+    forceConfigDiff = false    # Leave false unless you are experimenting
+  }
+
+  state.autoCommit = true
+}
+```
+
+Every setting in that file:
+
+| Setting | What it does |
+|---|---|
+| `node.url` | Your node's address, **including the scheme and no port**. Lithos appends the port itself: `9052` on testnet, `9053` on mainnet |
+| `node.key` | The node's REST API key, matching the `apiKeyHash` in your `ergo.conf` |
+| `node.storagePath` | Full path to the node wallet's `keyfile.json`. Lithos signs transactions with it |
+| `node.pass` | The node wallet password, used to unlock that keystore |
+| `node.networkType` | `TESTNET` or `MAINNET`. Decides the node port, address prefixes and contract set |
+| `node.explorerURL` | The explorer the client falls back to. `default` picks the right one for the network |
+| `node.numAddresses` | How many wallet addresses Lithos derives keys for. Leave it at 32. Raising it later is safe; lowering it strands any ERG already paid to the addresses above the new limit |
+| `play.http.secret.key` | Signs the client's own web session cookies. Set it to any long random string |
+| `lithos.apiKeyHash` | Blake2b256 hash of the key required by the client's authenticated endpoints |
+| `stratum.diff` | Your difficulty commitment. This is the number that decides your payout. See [Choosing a difficulty](#choosing-a-difficulty) |
+| `stratum.stratumPort` | The port your mining software connects to |
+| `stratum.reduceShareMessages` | Raises the difficulty your mining software reports at, without changing the difficulty Lithos pays you at |
+| `stratum.forceConfigDiff` | Forces Lithos to mine at `diff` instead of your on-chain commitment. For testing only |
+| `state.autoCommit` | Commits `diff` to the blockchain automatically whenever it differs from your current on-chain commitment |
+
+### Keeping secrets out of the file
+
+`lithos.conf` holds your node API key and wallet password in plain text. To read them from environment
+variables instead, add these lines at the end of the file:
+
+```hocon title="lithos-client/bin/lithos.conf"
+  node.key = ${?NODE_KEY_ENV}
+  node.pass = ${?NODE_PASS_ENV}
+  play.http.secret.key = ${?PLAY_ENV}
+```
+
+Each line overrides the value above it when the named variable is set, and is ignored when it is not.
+
+## Step 4: Start the client
+
+Start your Ergo node first and wait for it to sync. Then run the start script from the `bin` folder:
+
+<Tabs groupId="os">
+<TabItem value="windows" label="Windows">
+
+```powershell
+cd lithos-client\bin
+.\lithos-client.bat
+```
+
+</TabItem>
+<TabItem value="linux" label="Linux and macOS">
+
+```bash
+cd lithos-client/bin
+./lithos-client
+```
+
+</TabItem>
+</Tabs>
+
+The client starts a stratum server on port `4444` and a web interface on port `9000`. Open
+`http://localhost:9000` in a browser to see sync status, your mined blocks, payments and collateral
+positions.
+
+:::danger Keep the client's API off the open internet
+The Lithos client holds your node API key and wallet password and can sign transactions with your
+keys. Do not forward port `9000`, and do not expose it beyond your local network.
+:::
+
+## Step 5: Connect your mining software
+
+Lithos works with any Autolykos 2 miner. The wallet address and worker name you pass have no effect on
+Lithos, so any valid string works. Payouts are decided by your difficulty commitment, not by what your
+mining software reports.
+
+<Tabs groupId="miner">
+<TabItem value="soat" label="SOAT Miner (recommended)">
+
+[SOAT Miner](https://github.com/blindrun/soat-miner) is open source, charges no dev fee, and supports
+Lithos directly. Use the `--lithos` option, or run the included `mine_ergo_lithos` script, which sets
+everything up for you.
+
+</TabItem>
+<TabItem value="rigel" label="Rigel">
+
+Rigel is closed source and charges a dev fee, but it is tested and known to work:
+
+```bash
+rigel.exe -a autolykos2 -o stratum+tcp://127.0.0.1:4444 -u YOUR_ERG_WALLET -w my_rig --log-file logs/miner.log
+```
+
+</TabItem>
+</Tabs>
+
+## Step 6: Wait for your difficulty commitment
+
+You cannot be paid until your difficulty is committed on the blockchain. A commitment is a promise to
+mine at a given hashrate, made in advance, and it is what makes your payouts reflect your hashrate
+rather than your luck.
+
+Two waits stand between starting the client and earning:
+
+1. **Synchronizing.** The client syncs from `sync.startHeight` in `application.conf`, which you can
+   override in your own file with `sync.startHeight = NEW_HEIGHT`. Syncing the miner registry takes
+   about 30 minutes on the current testnet.
+2. **The commitment taking effect.** With `state.autoCommit = true`, the client submits your commitment
+   as soon as the registry is synced. A new commitment only becomes active 160 blocks later, which is
+   about 2 hours on testnet. Work you do before then is not payable.
+
+The same 2-hour wait applies every time you change `diff`. Plan difficulty changes ahead rather than
+during a run.
+
+## Choosing a difficulty
+
+Your `diff` value is the most consequential setting in the file. It decides both what you are paid and
+whether you get paid at all.
+
+### Super shares
+
+While mining, you will see log messages about **super shares**. A super share is a share that clears
+one ten-thousandth of your difficulty target. That makes it rare enough to be evidence of sustained
+work, and common enough to accumulate.
+
+To be paid for a block, you must have produced **10 super shares within the 2-hour window before that
+block was found**. Those 10 super shares plus your score become one Non-Interactive Share Proof (NISP),
+which the client submits for you.
+
+How many super shares you produce depends on your hashrate and your `diff`:
+
+- **Raising `diff`** increases your payout per block, and produces fewer super shares.
+- **Lowering `diff`** produces more super shares, and pays less per block.
+
+:::warning More super shares does not mean a bigger payout
+Your payout is set entirely by your committed difficulty. Super shares only determine whether you
+qualify. Ten is enough; a thousand pays exactly the same as ten.
+
+Your job is to pick the highest `diff` that still reliably produces 10 super shares in a 2-hour window
+on your hardware. Set it too high and you produce fewer than 10, and earn nothing for that block.
+:::
+
+On testnet, try several values and watch how many super shares your hardware produces.
+
+### Testing values without committing
+
+To experiment without writing anything to the blockchain, set both of these:
+
+```hocon
+stratum.forceConfigDiff = true
+state.autoCommit = false
+```
+
+The client then always mines at the `diff` in your config and never commits it. Your experimental
+values stay off-chain.
+
+:::warning Return both settings to their defaults before mining for real
+With `forceConfigDiff = true`, mining at a difficulty below your on-chain commitment produces NISPs
+that will not be accepted.
+:::
+
+### Reducing share traffic
+
+At low difficulties your mining software may send enough shares to trigger errors about duplicate or
+old shares. Set `reduceShareMessages = true`, the default in the shipped config, to raise the stratum
+difficulty by a factor of 1,000. Your mining software then sends only super shares, and the difficulty
+Lithos evaluates and pays you at is unchanged.
+
+## Where Lithos stores its data
+
+The client creates a `.lithos` folder next to the start script the first time it mines a super share.
+It holds your super shares and rollup state. Do not delete it while the client is running.
+
+## Common problems
+
+The following table lists the failures reported most often, and what to do about them:
+
+| What you see | Cause | Fix |
+|---|---|---|
+| The client will not start | The node is not running, or `node.storagePath` or `node.pass` is wrong | Start the node first. Check the keystore path and password |
+| No blocks are ever marked as Lithos blocks | The node is older than 6.0.4 | Upgrade the node |
+| Box lookups fail, or the collateral list is empty | The node was started without `extraIndex = true` | Add it to `ergo.conf` and restart the node |
+| Your hashrate is far below normal | The Autolykos 2 table does not fit in VRAM | See the memory warning above |
+| Duplicate or old share errors | `diff` is low enough to flood the stratum | Set `reduceShareMessages = true` |
+| Mining works, but you are never paid | Your commitment has not taken effect, or you are producing fewer than 10 super shares per 2-hour window | Wait 160 blocks after committing. Then lower `diff` |
+| Transactions fail to broadcast | The node wallet has no ERG for fees | Fund the node wallet with testnet ERG |
+
+## Security
+
+Lithos uses your node's wallet and API key to build and sign transactions on your behalf. Two things
+follow from that:
+
+- **Use a fresh testnet key.** The client reads your node's secret keys from its keystore. Generate a
+  key for testnet that is unrelated to any mainnet wallet you own.
+- **Change both default secrets.** The shipped `lithos.apiKeyHash` is the hash of the string `hello`,
+  and the shipped `play.http.secret.key` is a placeholder. Anyone who reaches your client with the
+  default API key can move funds. Replace both before running.
+
+To generate a new API key hash, use your node's `POST /utils/hash/blake2b` endpoint at
+`http://127.0.0.1:9052/swagger`, then put the resulting hash in `lithos.apiKeyHash` and keep the
+original string as your key.
+
+## Next steps
+
+- [Setting up an Ergo testnet node](./startup/testnet-node.mdx): the full node walkthrough.
+- [Lithos Protocol](./intro.mdx): how payouts and collateral work.
+- [Mining on Lithos](./tutorial-basics/mining-on-lithos.md): scores, super shares and NISPs in detail.
+- [Lithos API](category/lithos-api): the client's REST endpoints, callable from these docs.

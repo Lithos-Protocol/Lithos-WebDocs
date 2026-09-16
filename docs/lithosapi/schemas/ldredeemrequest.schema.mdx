@@ -1,0 +1,33 @@
+---
+id: ldredeemrequest
+title: "LDRedeemRequest"
+description: "The provision to close, and the bounds it must respect"
+sidebar_label: "LDRedeemRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"provisionBoxId":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65","minAmountX":"53125000000","minAmountY":"1605000000","expectedPoolBoxId":"a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97","acknowledgeUnclaimedFees":false}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDRedeemRequest"}
+>
+</Heading>
+
+
+
+The provision to close, and the bounds it must respect
+
+<Schema
+  schema={{"description":"The provision to close, and the bounds it must respect","type":"object","x-tags":"lithosdex","required":["provisionBoxId"],"properties":{"provisionBoxId":{"type":"string","example":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65"},"minAmountX":{"type":"string","description":"Least you will accept back on the ERG side. Decimal string.","example":"53125000000"},"minAmountY":{"type":"string","description":"The same on the token side. Decimal string.","example":"1605000000"},"expectedPoolBoxId":{"type":"string","description":"The pool box this was quoted against","example":"a1f4c2e8b7d93052416fbc8e07d21935a8c4f60b2e91d7385c06a4b1f2e83d97"},"acknowledgeUnclaimedFees":{"type":"boolean","description":"Must be true to redeem a provision that still has unclaimed fees, which are lost when it is spent. Ignored when there are none.\n","example":false}},"title":"LDRedeemRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

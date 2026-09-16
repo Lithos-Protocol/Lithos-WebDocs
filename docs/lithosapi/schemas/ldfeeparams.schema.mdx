@@ -1,0 +1,34 @@
+---
+id: ldfeeparams
+title: "LDFeeParams"
+description: "Fee numerators over `feeDenom`. `dexFeeNum` stays in the pool; `ergFeeNum` / `tokenFeeNum` are set aside for liquidity providers."
+sidebar_label: "LDFeeParams"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"dexFeeNum":9985,"ergFeeNum":15,"tokenFeeNum":15,"feeDenom":10000}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDFeeParams"}
+>
+</Heading>
+
+
+
+Fee numerators over `feeDenom`. `dexFeeNum` stays in the pool; `ergFeeNum` / `tokenFeeNum` are set aside for liquidity providers.
+
+
+<Schema
+  schema={{"description":"Fee numerators over `feeDenom`. `dexFeeNum` stays in the pool; `ergFeeNum` / `tokenFeeNum` are set aside for liquidity providers.\n","type":"object","x-tags":"lithosdex","required":["dexFeeNum","ergFeeNum","tokenFeeNum","feeDenom"],"properties":{"dexFeeNum":{"type":"integer","format":"int64","example":9985},"ergFeeNum":{"type":"integer","format":"int64","example":15},"tokenFeeNum":{"type":"integer","format":"int64","example":15},"feeDenom":{"type":"integer","format":"int64","description":"Denominator of every numerator above","example":10000}},"title":"LDFeeParams"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

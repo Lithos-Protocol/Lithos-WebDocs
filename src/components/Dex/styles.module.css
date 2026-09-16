@@ -1,0 +1,2088 @@
+/* ==========================================================
+   LithosDex — "Currents" design
+   Near-black field, glass cards, cyan→indigo→purple.
+   Class names are kept stable from the previous implementation so
+   every panel inherits the new look without structural churn.
+   ========================================================== */
+
+.page {
+  position: relative;
+  min-height: 100vh;
+  background: var(--cur-bg-base);
+  font-family: var(--cur-font-body);
+  overflow: hidden;
+  /* Sub-pages carry a deep top pad so the decorative band under the nav stays
+     open — the handoff's placement rule: nothing opaque over a cube. */
+  padding: 88px 44px 56px;
+}
+
+/* The old radial glows are superseded by the flow field, but keep two soft
+   ambient blobs low in the page so long pages do not go flat. */
+.pageGlow1,
+.pageGlow2 {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pageGlow1 {
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.16), transparent 65%);
+  top: 380px;
+  left: -80px;
+}
+
+.pageGlow2 {
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.13), transparent 65%);
+  bottom: 120px;
+  right: -90px;
+}
+
+/* Retired: the 48px grid belonged to the previous design. */
+.grid {
+  display: none;
+}
+
+.shell {
+  position: relative;
+  z-index: 4;
+  max-width: 1192px;
+  margin: 0 auto;
+}
+
+/* ===== HEADER ===== */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--cur-font-display);
+  font-weight: 800;
+  font-size: 46px;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--cur-text);
+}
+
+.subtitle {
+  margin: 10px 0 0;
+  font-size: 14.5px;
+  color: var(--cur-muted);
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* ===== STATUS PILL ===== */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-family: var(--cur-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--cur-border-cool);
+  color: var(--cur-muted);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotOk {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+  animation: modDotPulse 2.4s ease-in-out infinite;
+}
+
+.dotWarn {
+  background: var(--cur-amber);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+  animation: modDotPulse 2.4s ease-in-out infinite;
+}
+
+.dotBad {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+}
+
+/* ===== STAT STRIP — six glass cells ===== */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.stat {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 18px;
+  padding: 15px 17px;
+  min-width: 0;
+}
+
+/* Awaiting-flush cell is the LithosDex-purple one. */
+.statPurple {
+  border-color: var(--cur-border-purple);
+}
+
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  margin-top: 6px;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statValueCyan {
+  color: var(--cur-cyan);
+}
+
+.statValuePurple {
+  color: var(--cur-purple-light);
+}
+
+.statValueSoft {
+  color: #e2e8f0;
+}
+
+.statSub {
+  font-size: 11px;
+  color: var(--cur-faint);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== TABS — pill rail ===== */
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--cur-bg-card-solid);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 999px;
+  padding: 5px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 9px 22px;
+  border-radius: 999px;
+  color: var(--cur-muted);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--cur-purple-light);
+  text-decoration: none;
+}
+
+.tabActive,
+.tabActive:hover {
+  background: var(--cur-grad-btn);
+  color: #060913;
+  font-weight: 600;
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 22px;
+  padding: 20px 22px;
+  min-width: 0;
+}
+
+.cardWide {
+  max-width: 100%;
+}
+
+.cardNarrow {
+  max-width: 520px;
+}
+
+.cardTitle {
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.025em;
+  color: var(--cur-text);
+  margin: 0 0 0.4rem;
+}
+
+.cardDesc {
+  font-size: 13.5px;
+  color: var(--cur-muted);
+  margin: 0 0 1.15rem;
+  line-height: 1.7;
+}
+
+/* Small uppercase mono section label, used across the right column. */
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+/* ===== SWAP CARD — 1px gradient border around an opaque body ===== */
+.swapCardWrap {
+  border-radius: 27px;
+  padding: 1px;
+  background: var(--cur-grad-card-border);
+}
+
+.swapCard {
+  position: relative;
+  background: var(--cur-bg-swap);
+  border-radius: 26px;
+  padding: 24px;
+  overflow: hidden;
+}
+
+.swapGlow {
+  position: absolute;
+  top: -70px;
+  left: -50px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.16), transparent 65%);
+  pointer-events: none;
+}
+
+.swapHead {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  gap: 1rem;
+}
+
+.swapTitle {
+  margin: 0;
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+  color: var(--cur-text);
+}
+
+.swapHint {
+  font-size: 11.5px;
+  color: var(--cur-faint);
+  white-space: nowrap;
+}
+
+/* ===== AMOUNT WELLS ===== */
+.field {
+  position: relative;
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 20px;
+  padding: 16px 18px;
+  transition: border-color 0.15s;
+}
+
+.fieldPurple {
+  border-color: rgba(168, 85, 247, 0.14);
+}
+
+.field:focus-within {
+  border-color: var(--cur-border-cyan);
+}
+
+.fieldHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 10px;
+}
+
+.fieldLabel {
+  font-size: 12.5px;
+  color: var(--cur-dim);
+}
+
+.fieldBalance {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  color: var(--cur-faint);
+  white-space: nowrap;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 36px;
+  letter-spacing: -0.03em;
+  color: var(--cur-text);
+  padding: 0;
+}
+
+.input::placeholder {
+  color: var(--cur-fainter);
+}
+
+.input:disabled {
+  color: var(--cur-cyan-light);
+  opacity: 1;
+  -webkit-text-fill-color: var(--cur-cyan-light);
+}
+
+.inputText {
+  font-family: var(--cur-font-body);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+/* Asset chip with a mini isometric-cube glyph. */
+.asset {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.assetErg {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid var(--cur-border-cyan);
+  color: var(--cur-cyan-light);
+}
+
+.assetTok {
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: var(--cur-purple-light);
+}
+
+/* ===== DIRECTION CONNECTOR ===== */
+.flipWrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: -12px 0;
+  z-index: 2;
+}
+
+.flip {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 50%;
+}
+
+.flip svg {
+  overflow: visible;
+  display: block;
+}
+
+.flip:hover .flipDisc {
+  stroke: rgba(56, 189, 248, 0.6);
+}
+
+.flip:hover .flipArrow {
+  stroke: var(--cur-cyan-light);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ===== SUMMARY ROWS ===== */
+.summary {
+  position: relative;
+  background: rgba(6, 9, 19, 0.5);
+  border: 1px solid rgba(125, 211, 252, 0.08);
+  border-radius: 18px;
+  margin-top: 18px;
+  padding: 4px 16px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.06);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowLabel {
+  font-size: 13px;
+  color: var(--cur-dim);
+}
+
+.rowValue {
+  font-family: var(--cur-font-mono);
+  font-size: 12.5px;
+  color: #e2e8f0;
+  text-align: right;
+  word-break: break-all;
+}
+
+.rowValueAccent {
+  color: var(--cur-cyan-light);
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  appearance: none;
+  position: relative;
+  width: 100%;
+  margin-top: 18px;
+  padding: 15px;
+  border: none;
+  border-radius: 999px;
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  color: #060913;
+  background: var(--cur-grad-btn);
+  box-shadow: 0 8px 26px rgba(56, 189, 248, 0.26);
+  transition: filter 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  filter: brightness(1.07);
+  box-shadow: 0 10px 32px rgba(56, 189, 248, 0.34);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btnPurple {
+  background: linear-gradient(115deg, #7c3aed, #a855f7);
+  color: #fff;
+  box-shadow: 0 8px 26px rgba(168, 85, 247, 0.26);
+}
+
+.btnPurple:hover:not(:disabled) {
+  box-shadow: 0 10px 32px rgba(168, 85, 247, 0.34);
+}
+
+.btnGhost {
+  background: transparent;
+  border: 1px solid var(--cur-border-cool-strong);
+  color: var(--cur-muted);
+  box-shadow: none;
+  font-family: var(--cur-font-body);
+  font-weight: 500;
+}
+
+.btnGhost:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--cur-cyan-light);
+  box-shadow: none;
+  filter: none;
+}
+
+.btnDanger {
+  background: linear-gradient(115deg, #b45309, #f59e0b);
+  color: #060913;
+  box-shadow: 0 8px 26px rgba(245, 158, 11, 0.22);
+}
+
+.btnDanger:hover:not(:disabled) {
+  box-shadow: 0 10px 32px rgba(245, 158, 11, 0.3);
+}
+
+.btnSm {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-family: var(--cur-font-body);
+  font-weight: 500;
+}
+
+.btnRow {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.btnRow .btn {
+  margin-top: 0;
+  flex: 1;
+  min-width: 150px;
+}
+
+/* ===== CHIPS ===== */
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 999px;
+  color: var(--cur-muted);
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  color: var(--cur-cyan-light);
+  border-color: var(--cur-border-cyan);
+}
+
+.chipActive,
+.chipActive:hover {
+  background: var(--cur-cyan);
+  border-color: var(--cur-cyan);
+  color: #060913;
+  font-weight: 600;
+  padding: 5px 12px;
+}
+
+/* ===== ALERTS ===== */
+.alert {
+  margin-top: 16px;
+  padding: 12px 15px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.65;
+  border: 1px solid;
+  word-break: break-word;
+}
+
+.alertError {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.alertOk {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--cur-green);
+}
+
+.alertInfo {
+  background: rgba(56, 189, 248, 0.07);
+  border-color: rgba(56, 189, 248, 0.22);
+  color: var(--cur-cyan-light);
+}
+
+.alertWarn {
+  background: rgba(245, 158, 11, 0.09);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--cur-amber-light);
+}
+
+.alertTitle {
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+/* Explicit opt-in before an irreversible loss (redeeming unclaimed fees). */
+.ackRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ackRow input {
+  accent-color: var(--cur-amber);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.txId {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  word-break: break-all;
+  opacity: 0.85;
+}
+
+/* Marks a chart whose series does not span its whole range. */
+.partialTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--cur-amber-light);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ===== LISTS ===== */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item {
+  background: rgba(6, 9, 19, 0.55);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 18px;
+  padding: 15px 17px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.item:hover {
+  border-color: var(--cur-border-cyan);
+}
+
+.itemActive {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.itemStatic {
+  cursor: default;
+}
+
+.itemStatic:hover {
+  border-color: rgba(125, 211, 252, 0.1);
+}
+
+.itemFlagged {
+  border-left: 3px solid rgba(245, 158, 11, 0.75);
+}
+
+.itemHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.itemHeadLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.itemId {
+  font-family: var(--cur-font-mono);
+  font-size: 12px;
+  color: var(--cur-cyan-light);
+}
+
+.itemShare {
+  font-family: var(--cur-font-mono);
+  font-size: 12px;
+  color: var(--cur-purple-light);
+  font-weight: 600;
+}
+
+.itemGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.itemCell {
+  min-width: 0;
+}
+
+.itemCellLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 0.25rem;
+}
+
+.itemCellValue {
+  font-family: var(--cur-font-mono);
+  font-size: 12.5px;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.feeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--cur-amber-light);
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.feeBadgeDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cur-amber);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.8);
+  flex-shrink: 0;
+}
+
+/* ===== EMPTY / LOADING ===== */
+.empty {
+  text-align: center;
+  padding: 2.2rem 1rem;
+  color: var(--cur-dim);
+  font-size: 13.5px;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(56, 189, 248, 0.2);
+  border-top-color: var(--cur-cyan);
+  border-radius: 50%;
+  animation: curSpin 0.7s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes curSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== LAYOUT ===== */
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* Swap page: fixed card + fluid right column. */
+.swapLayout {
+  display: grid;
+  grid-template-columns: 500px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.swapCol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.rightColHead {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ===== SETTINGS ===== */
+.settingsPanel {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--cur-border-cool-strong);
+  border-radius: 22px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.settingsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settingsClose {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--cur-dim);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.3rem 0.45rem;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.settingsClose:hover {
+  color: var(--cur-text);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.settings {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.settingRow {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.settingLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+/* ===== AUTO-REFRESH CONTROL ===== */
+.settingCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 0.5rem;
+}
+
+.settingCheck input {
+  accent-color: var(--cur-cyan);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Reads as unavailable rather than merely empty until the box is ticked. */
+.settingInput:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.settingUnit {
+  font-family: var(--cur-font-mono);
+  font-size: 11px;
+  color: var(--cur-dim);
+  white-space: nowrap;
+}
+
+.settingInputRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settingInputRow .settingInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.settingInput {
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 14px;
+  padding: 10px 14px;
+  color: #e2e8f0;
+  font-family: var(--cur-font-mono);
+  font-size: 12.5px;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.settingInput:focus {
+  border-color: var(--cur-border-cyan);
+}
+
+.settingHint {
+  font-size: 11.5px;
+  color: var(--cur-dim);
+  line-height: 1.6;
+}
+
+.linkBtn {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--cur-cyan);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.linkBtn:hover {
+  color: var(--cur-cyan-light);
+}
+
+/* ===== BIG STAT (flush page) ===== */
+.bigStat {
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 18px;
+  padding: 15px 17px;
+  margin-bottom: 10px;
+}
+
+.bigStatValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  line-height: 1.15;
+  word-break: break-all;
+}
+
+.bigStatLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-top: 0.35rem;
+}
+
+/* ===== ACCUMULATOR GRID ===== */
+.accGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 0.5rem;
+}
+
+.accCol {
+  background: rgba(6, 9, 19, 0.6);
+  border: 1px solid rgba(125, 211, 252, 0.08);
+  border-radius: 14px;
+  padding: 11px 13px;
+  min-width: 0;
+}
+
+.accLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 0.3rem;
+}
+
+.accValue {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  color: var(--cur-cyan-light);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.accGap {
+  color: var(--cur-amber-light);
+}
+
+/* ===== TOTALS (fees page) ===== */
+.totalsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.totalCard {
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 18px;
+  padding: 16px 18px;
+}
+
+.totalCardOk {
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+.totalCardWarn {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.totalLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 0.6rem;
+}
+
+.totalValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  line-height: 1.15;
+  word-break: break-all;
+}
+
+.totalValueAlt {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  color: var(--cur-body);
+  line-height: 1.15;
+  margin-top: 0.5rem;
+  word-break: break-all;
+}
+
+.totalSub {
+  font-size: 11px;
+  color: var(--cur-faint);
+  margin-top: 0.15rem;
+}
+
+.valueOk {
+  color: var(--cur-green);
+}
+
+.valueWarn {
+  color: var(--cur-amber-light);
+}
+
+/* ===== PRICE CHART CARD ===== */
+.priceCard {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 22px;
+  padding: 18px 20px 10px;
+}
+
+.priceHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.priceValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  margin-top: 4px;
+}
+
+.priceDelta {
+  font-family: var(--cur-font-body);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.priceDeltaUp {
+  color: var(--cur-green);
+}
+
+.priceDeltaDown {
+  color: #fca5a5;
+}
+
+.rangePills {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.rangePill {
+  appearance: none;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--cur-dim);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.rangePill:hover {
+  color: var(--cur-cyan-light);
+}
+
+.rangePillActive,
+.rangePillActive:hover {
+  background: rgba(56, 189, 248, 0.14);
+  color: var(--cur-cyan-light);
+}
+
+/* ===== CHART ===== */
+.chartWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chartTall {
+  min-width: 420px;
+}
+
+.axisText {
+  fill: var(--cur-dim);
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+}
+
+/* ===== CHART HOVER READOUT =====
+   Same treatment as the collateral permit curve, so a reader who has used one
+   chart on the site already knows how the others behave. */
+.chartBox {
+  position: relative;
+}
+
+.cursorLine {
+  stroke: rgba(125, 211, 252, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.hoverTip {
+  position: absolute;
+  top: 10px;
+  pointer-events: none;
+  background: rgba(6, 9, 19, 0.94);
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-family: var(--cur-font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: nowrap;
+  z-index: 5;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.hoverTipLabel {
+  color: var(--cur-dim);
+}
+
+.hoverTipCyan {
+  color: var(--cur-cyan-light);
+  font-weight: 600;
+}
+
+.hoverTipPurple {
+  color: var(--cur-purple-light);
+  font-weight: 600;
+}
+
+.endDot {
+  animation: modRippleOut 2.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .endDot {
+    animation: none;
+  }
+}
+
+/* ===== POOL COMPOSITION ===== */
+.compRow {
+  margin-bottom: 14px;
+}
+
+.compHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--cur-muted);
+  margin-bottom: 6px;
+  gap: 0.75rem;
+}
+
+.compAmount {
+  font-family: var(--cur-font-mono);
+  color: #e2e8f0;
+}
+
+.compTrack {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(6, 9, 19, 0.7);
+  overflow: hidden;
+}
+
+.compFill {
+  height: 100%;
+  border-radius: 99px;
+}
+
+.compFillErg {
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+}
+
+.compFillTok {
+  background: linear-gradient(90deg, #7c3aed, #c084fc);
+}
+
+.compFoot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--cur-dim);
+  padding-top: 8px;
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+  gap: 0.75rem;
+}
+
+.compFootValue {
+  font-family: var(--cur-font-mono);
+  color: var(--cur-cyan-light);
+}
+
+/* ===== RECENT SWAPS ===== */
+.swapRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 9px 0;
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+}
+
+.swapDirErg {
+  font-size: 13px;
+  color: var(--cur-cyan-light);
+  white-space: nowrap;
+}
+
+.swapDirTok {
+  font-size: 13px;
+  color: var(--cur-purple-light);
+  white-space: nowrap;
+}
+
+.swapAmount {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12.5px;
+  color: var(--cur-muted);
+  text-align: right;
+}
+
+.swapAge {
+  font-size: 12px;
+  color: var(--cur-faint);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ===== RESPONSIVE ===== */
+@media screen and (max-width: 1100px) {
+  .swapLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media screen and (max-width: 900px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .accGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .page {
+    padding: 56px 16px 40px;
+  }
+
+  .title {
+    font-size: 34px;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .swapCard {
+    padding: 18px;
+  }
+
+  .input {
+    font-size: 28px;
+  }
+
+  .tab {
+    padding: 8px 15px;
+    font-size: 12.5px;
+  }
+}
+
+/* Declared locally: css-loader scopes animation names per module, so a
+   global keyframe name would hash to something that matches nothing. */
+@keyframes modDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes modRippleOut {
+  0% { transform: scale(0.6); opacity: 0.55; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Denomination beside a stat value — same line, quieter so the number leads. */
+.statUnit {
+  font-size: 0.62em;
+  font-weight: 600;
+  color: var(--cur-dim);
+  letter-spacing: 0.02em;
+  margin-left: 1px;
+}
+
+/* ===== RECENT SWAPS — tx · direction · amount · height · age =====
+   The list scrolls rather than growing the card: the API caps at ~50 rows and
+   an unbounded list would stretch the column far past the swap card beside it. */
+.swapList {
+  max-height: 268px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  margin-right: -4px;
+  padding-right: 4px;
+}
+
+.swapList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.swapList::-webkit-scrollbar-thumb {
+  background: rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+}
+
+.swapList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.swapRow {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1.2fr) minmax(0, 1fr) 92px 46px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+}
+
+.swapTx {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  color: var(--cur-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.swapHeight {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12px;
+  color: var(--cur-dim);
+  text-align: center;
+  justify-self: center;
+  white-space: nowrap;
+}
+
+/* Unconfirmed entries can still be dropped or replaced — mark them rather than leaving a blank. */
+.swapPending {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cur-amber-light);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 5px;
+  padding: 2px 8px;
+  text-align: center;
+  justify-self: center;
+  white-space: nowrap;
+}
+
+/* ===== TX RECEIPT NOTES =====
+   Extra lines inside a result banner: "fills when a miner executes it", the
+   uncertain-outcome warning, "waiting for price". They sit in the banner's own
+   colour, so only the warn variant needs a tint of its own. */
+.txNote {
+  margin: 0.15rem 0 0.45rem;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.txNote a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.txNoteWarn {
+  margin: 0.35rem 0 0.45rem;
+  padding: 8px 11px;
+  border-radius: 11px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: var(--cur-amber-light);
+}
+
+/* ===== USE ORDERS SWITCH ===== */
+.modeToggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 13px 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  background: rgba(6, 9, 19, 0.45);
+  color: var(--cur-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.modeToggle:hover {
+  border-color: var(--cur-border-cyan);
+  color: var(--cur-cyan-light);
+}
+
+.modeToggleOn {
+  border-color: rgba(56, 189, 248, 0.38);
+  background: rgba(56, 189, 248, 0.09);
+  color: var(--cur-cyan-light);
+}
+
+.modeToggle input {
+  accent-color: var(--cur-cyan);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.modeToggleCompact {
+  padding: 4px 10px 4px 8px;
+  font-size: 11.5px;
+}
+
+/* Liquidity page: the switch plus a line saying what it does, above both cards. */
+.modeBar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 10px 16px 10px 12px;
+  border-radius: 18px;
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+}
+
+.modeBarText {
+  flex: 1;
+  min-width: 240px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--cur-dim);
+}
+
+/* ===== YOUR ORDERS ===== */
+.ordersCard {
+  margin-top: 16px;
+  /* Clears the fixed navbar when reached by its #your-orders link. */
+  scroll-margin-top: 96px;
+}
+
+.ordersHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 14px;
+}
+
+.ordersCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 9px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  color: var(--cur-cyan-light);
+  font-family: var(--cur-font-num);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  vertical-align: 3px;
+}
+
+/* Scrolls sideways rather than squeezing terms onto three lines on a phone. */
+.orderTableWrap {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.orderTable {
+  min-width: 760px;
+}
+
+.orderRow {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 2.6fr) 108px minmax(150px, 1fr) 92px 92px;
+  align-items: center;
+  column-gap: 14px;
+  padding: 11px 4px;
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+}
+
+.orderHeadRow {
+  padding-top: 0;
+  padding-bottom: 8px;
+  border-top: none;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+.orderAgeHead {
+  text-align: right;
+}
+
+.orderType {
+  justify-self: start;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--cur-cyan-light);
+}
+
+.orderTypeDEPOSIT {
+  border-color: rgba(16, 185, 129, 0.32);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--cur-green);
+}
+
+.orderTypeREDEEM {
+  border-color: rgba(168, 85, 247, 0.34);
+  background: rgba(168, 85, 247, 0.1);
+  color: var(--cur-purple-light);
+}
+
+.orderTerms {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 13px;
+  color: var(--cur-text);
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.orderFee {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12.5px;
+  color: var(--cur-muted);
+  white-space: nowrap;
+}
+
+.orderStatusCell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 7px;
+  min-width: 0;
+}
+
+.orderStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid;
+}
+
+.orderStatusOpen {
+  border-color: rgba(56, 189, 248, 0.34);
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--cur-cyan-light);
+}
+
+.orderStatusWait {
+  border-color: rgba(245, 158, 11, 0.34);
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--cur-amber-light);
+}
+
+.orderStatusFill {
+  border-color: rgba(16, 185, 129, 0.34);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--cur-green);
+}
+
+.orderStatusCancel {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--cur-muted);
+}
+
+/* Something unconfirmed is spending or creating the order: pulse, like the
+   client-status dot, so it reads as in motion rather than settled. */
+.orderStatusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  animation: modDotPulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.orderSub {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cur-faint);
+  white-space: nowrap;
+}
+
+.orderWaiting {
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--cur-amber-light);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  cursor: help;
+}
+
+.orderAge {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12.5px;
+  color: var(--cur-dim);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.orderAction {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.orderAction .btn {
+  min-width: 84px;
+}
+
+/* Inline confirmation under the row it cancels. */
+.orderConfirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 11px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.26);
+}
+
+.orderConfirmTitle {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--cur-amber-light);
+  margin-bottom: 2px;
+}
+
+.orderConfirmBody {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--cur-muted);
+  max-width: 640px;
+}
+
+.orderConfirmBtns {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.orderResult > .alert {
+  margin-top: 0;
+  margin-bottom: 11px;
+}
+
+/* ===== PROVISION LOCKED IN A REDEEM ORDER ===== */
+.orderBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.36);
+  color: var(--cur-purple-light);
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.orderBadgeDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cur-purple);
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.8);
+  flex-shrink: 0;
+}
+
+.itemLocked,
+.itemLocked:hover {
+  cursor: default;
+  border-color: rgba(168, 85, 247, 0.2);
+  background: rgba(6, 9, 19, 0.4);
+}
+
+.itemLocked .itemGrid {
+  opacity: 0.6;
+}
+
+.itemNote {
+  margin-top: 0.7rem;
+  font-size: 12.5px;
+  color: var(--cur-dim);
+}
+
+.itemNote a {
+  color: var(--cur-purple-light);
+  font-weight: 600;
+}
+
+/* ===== RECENT ACTIVITY — tx · kind · amounts · height · age ===== */
+.activityHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 26px;
+  margin-bottom: 6px;
+}
+
+/* Declared after .swapRow so the kind column gets room for its via badge. */
+.activityRow {
+  grid-template-columns: 70px minmax(0, 1fr) minmax(0, 1.35fr) 96px 40px;
+  gap: 10px;
+}
+
+.activityRowOwn {
+  margin-left: -8px;
+  padding-left: 8px;
+  box-shadow: inset 2px 0 0 var(--cur-cyan);
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.09), transparent 70%);
+}
+
+.activityKind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.activityType {
+  font-size: 13px;
+  color: var(--cur-text);
+  white-space: nowrap;
+}
+
+.activityTypeSWAP {
+  color: var(--cur-cyan-light);
+}
+
+.activityTypeDEPOSIT {
+  color: var(--cur-green);
+}
+
+.activityTypeREDEEM {
+  color: var(--cur-purple-light);
+}
+
+.activityTypeRESIZE {
+  color: var(--cur-indigo);
+}
+
+.activityTypeFLUSH {
+  color: var(--cur-amber-light);
+}
+
+.viaBadge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--cur-font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid;
+}
+
+.viaOrder {
+  color: var(--cur-cyan-light);
+  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.viaDirect {
+  color: var(--cur-faint);
+  border-color: rgba(148, 163, 184, 0.22);
+  background: transparent;
+}
+
+/* ===== ORDER FEE SETTINGS ===== */
+.settingFeeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settingFeeField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.settingFeeLabel {
+  font-size: 12px;
+  color: var(--cur-dim);
+}
+
+@media screen and (max-width: 640px) {
+  .settingFeeGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .modeBarText {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
+  /* A balance with an "in orders" figure outgrows a phone row; let it drop
+     under the label rather than crushing "You pay" onto two lines. */
+  .fieldHead {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .fieldLabel {
+    white-space: nowrap;
+  }
+
+  /* Five columns with ~250px of fixed width leave the amounts about 40px on a
+     phone, so they broke digit by digit. Two lines instead:
+       tx · kind · height
+       amounts   · age      */
+  .activityRow {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'tx kind height'
+      'amt amt age';
+    row-gap: 5px;
+  }
+
+  .activityRow > .swapTx {
+    grid-area: tx;
+  }
+
+  .activityRow > .activityKind {
+    grid-area: kind;
+  }
+
+  .activityRow > .swapAmount {
+    grid-area: amt;
+    text-align: left;
+  }
+
+  .activityRow > .swapHeight,
+  .activityRow > .swapPending {
+    grid-area: height;
+    justify-self: end;
+  }
+
+  .activityRow > .swapAge {
+    grid-area: age;
+  }
+}

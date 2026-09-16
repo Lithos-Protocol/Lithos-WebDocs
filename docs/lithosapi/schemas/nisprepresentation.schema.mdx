@@ -1,0 +1,33 @@
+---
+id: nisprepresentation
+title: "NISPRepresentation"
+description: "Representation of a 10 super share NISP"
+sidebar_label: "NISPRepresentation"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"score":5000000,"height":45096,"headers":["04ecc45f0b20659f0a8a791872cf625d24b45832cfd3ac910da7cc9f560d42332b6ce08f276d1f3e8b45e637fa4918b3ea3c9d8c6d57ed8ee9fb1379d1b3d7756819a95ffafa172cb015ebf8e16c4ab4d3afcd34297e16206c4c8811a25bae6be43cd9c5e521b40ed281ddb1a1ebc52dfc1aa2835e20b20e795d979c8c025d23ae10edacdfe5ac330b65ac4eb10bdc52a7ab78abdfba7ef606a82c95168840839f1ca4da46c597630502383dc9be010000000002856c5e4eb4b915005dccb8e0f42bed1777cae48565be13a77cbf31e3c93f45150000000000000000"],"bytes":"00f6318aa84791d0...a0bdc8045a70f931"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"NISPRepresentation"}
+>
+</Heading>
+
+
+
+Representation of a 10 super share NISP
+
+<Schema
+  schema={{"description":"Representation of a 10 super share NISP","x-tags":"mining","type":"object","required":["score","height","headers","bytes"],"properties":{"score":{"type":"integer","format":"int64","description":"Score associated with this NISP, to be used in payout calculations","example":5000000},"height":{"type":"integer","format":"int32","description":"Height all super-shares in this NISP must be under","example":45096},"headers":{"type":"array","maxItems":10,"minItems":10,"description":"Header bytes associated with each super-share in this NISP","items":{"type":"string","example":"04ecc45f0b20659f0a8a791872cf625d24b45832cfd3ac910da7cc9f560d42332b6ce08f276d1f3e8b45e637fa4918b3ea3c9d8c6d57ed8ee9fb1379d1b3d7756819a95ffafa172cb015ebf8e16c4ab4d3afcd34297e16206c4c8811a25bae6be43cd9c5e521b40ed281ddb1a1ebc52dfc1aa2835e20b20e795d979c8c025d23ae10edacdfe5ac330b65ac4eb10bdc52a7ab78abdfba7ef606a82c95168840839f1ca4da46c597630502383dc9be010000000002856c5e4eb4b915005dccb8e0f42bed1777cae48565be13a77cbf31e3c93f45150000000000000000"},"example":["04ecc45f0b20659f0a8a791872cf625d24b45832cfd3ac910da7cc9f560d42332b6ce08f276d1f3e8b45e637fa4918b3ea3c9d8c6d57ed8ee9fb1379d1b3d7756819a95ffafa172cb015ebf8e16c4ab4d3afcd34297e16206c4c8811a25bae6be43cd9c5e521b40ed281ddb1a1ebc52dfc1aa2835e20b20e795d979c8c025d23ae10edacdfe5ac330b65ac4eb10bdc52a7ab78abdfba7ef606a82c95168840839f1ca4da46c597630502383dc9be010000000002856c5e4eb4b915005dccb8e0f42bed1777cae48565be13a77cbf31e3c93f45150000000000000000"]},"bytes":{"type":"string","description":"Serialized (hex-encoded) bytes of this NISP","example":"00f6318aa84791d0...a0bdc8045a70f931"}},"title":"NISPRepresentation"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

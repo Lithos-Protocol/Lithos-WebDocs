@@ -1,0 +1,33 @@
+---
+id: ldtokenamount
+title: "LDTokenAmount"
+description: "An amount of one token"
+sidebar_label: "LDTokenAmount"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"tokenId":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3","amount":"152000000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDTokenAmount"}
+>
+</Heading>
+
+
+
+An amount of one token
+
+<Schema
+  schema={{"description":"An amount of one token","type":"object","x-tags":"lithosdex","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string","example":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3"},"amount":{"type":"string","description":"Raw token units. Decimal string.","example":"152000000"}},"title":"LDTokenAmount"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

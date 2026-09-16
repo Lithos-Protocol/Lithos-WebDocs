@@ -1,0 +1,33 @@
+---
+id: collateralactiveentry
+title: "CollateralActiveEntry"
+description: "A live collateral box waiting to be spent by whichever miner finds the next block"
+sidebar_label: "CollateralActiveEntry"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65","lenderAddress":"3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y","valueNanoErgs":"2915000000","carriedLit":"19380000000","creationHeight":484650}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CollateralActiveEntry"}
+>
+</Heading>
+
+
+
+A live collateral box waiting to be spent by whichever miner finds the next block
+
+<Schema
+  schema={{"description":"A live collateral box waiting to be spent by whichever miner finds the next block","type":"object","x-tags":"collateral-market","required":["boxId","lenderAddress","valueNanoErgs","carriedLit","creationHeight"],"properties":{"boxId":{"type":"string","example":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65"},"lenderAddress":{"type":"string","description":"Address that receives the block reward when this box is spent by a miner","example":"3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y"},"valueNanoErgs":{"type":"string","description":"ERG that becomes the pool's payout for the block spending it. Decimal string.","example":"2915000000"},"carriedLit":{"type":"string","description":"LIT carried on this box — its block's emission plus the lender's permit, held together. Decimal string.\n","example":"19380000000"},"creationHeight":{"type":"integer","format":"int32","description":"Height this box was activated at","example":484650}},"title":"CollateralActiveEntry"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

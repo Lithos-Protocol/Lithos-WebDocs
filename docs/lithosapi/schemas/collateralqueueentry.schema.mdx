@@ -1,0 +1,33 @@
+---
+id: collateralqueueentry
+title: "CollateralQueueEntry"
+description: "A position waiting in the collateral queue"
+sidebar_label: "CollateralQueueEntry"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65","position":411,"lenderAddress":"3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y","principalNanoErgs":"2915000000","permitLit":"19380000000","creationHeight":484102}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CollateralQueueEntry"}
+>
+</Heading>
+
+
+
+A position waiting in the collateral queue
+
+<Schema
+  schema={{"description":"A position waiting in the collateral queue","type":"object","x-tags":"collateral-market","required":["boxId","position","lenderAddress","principalNanoErgs","permitLit","creationHeight"],"properties":{"boxId":{"type":"string","description":"Id of the queue box","example":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65"},"position":{"type":"integer","format":"int64","description":"Place in the queue. Lower activates sooner; the head is the smallest live position.","example":411},"lenderAddress":{"type":"string","description":"Address that receives the block reward when this box funds a block","example":"3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y"},"principalNanoErgs":{"type":"string","description":"ERG committed to the block that consumes this box. Decimal string.","example":"2915000000"},"permitLit":{"type":"string","description":"LIT locked alongside it, returned on use. Zero when no permit applies. Decimal string.","example":"19380000000"},"creationHeight":{"type":"integer","format":"int32","description":"Height this position joined at","example":484102}},"title":"CollateralQueueEntry"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

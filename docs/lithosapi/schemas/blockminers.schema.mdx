@@ -1,0 +1,33 @@
+---
+id: blockminers
+title: "BlockMiners"
+description: "Miner information associated with a Lithos block"
+sidebar_label: "BlockMiners"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"propBytesHash":"56002fb6194f8a7f147b54c98c98bd72205f46c35fed0f3c4111071ecb0763b7"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"BlockMiners"}
+>
+</Heading>
+
+
+
+Miner information associated with a Lithos block
+
+<Schema
+  schema={{"description":"Miner information associated with a Lithos block","type":"object","x-tags":"blocks","required":["propBytesHash"],"properties":{"propBytesHash":{"type":"string","description":"Hexadecimal representation of hashed proposition bytes of the miner","example":"56002fb6194f8a7f147b54c98c98bd72205f46c35fed0f3c4111071ecb0763b7"}},"title":"BlockMiners"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

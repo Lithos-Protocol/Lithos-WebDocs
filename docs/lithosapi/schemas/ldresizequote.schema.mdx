@@ -1,0 +1,33 @@
+---
+id: ldresizequote
+title: "LDResizeQuote"
+description: "Quote for resizing a LithosDex provision"
+sidebar_label: "LDResizeQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"oldShares":"12500000000","newShares":"20000000000","delta":"7500000000","increasing":true,"amountX":"31875000000","amountY":"963000000","nextEntryX":"29632000000000000000000000","nextEntryY":"892400000000000000000000","withinMinSupply":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDResizeQuote"}
+>
+</Heading>
+
+
+
+Quote for resizing a LithosDex provision
+
+<Schema
+  schema={{"description":"Quote for resizing a LithosDex provision","type":"object","x-tags":"lithosdex","required":["oldShares","newShares","delta","increasing","amountX","amountY","nextEntryX","nextEntryY","withinMinSupply"],"properties":{"oldShares":{"type":"string","example":"12500000000"},"newShares":{"type":"string","example":"20000000000"},"delta":{"type":"string","description":"Change in shares; positive adds liquidity, negative removes it. Decimal string.","example":"7500000000"},"increasing":{"type":"boolean","description":"True when adding liquidity. Decides which bounds apply on execute.","example":true},"amountX":{"type":"string","description":"nanoERG the pool takes when increasing, or returns when decreasing. Decimal string.","example":"31875000000"},"amountY":{"type":"string","description":"Token side of the same. Decimal string.","example":"963000000"},"nextEntryX":{"type":"string","description":"Entry the resized provision must carry, chosen so nothing already earned is lost. Decimal string.\n","example":"29632000000000000000000000"},"nextEntryY":{"type":"string","example":"892400000000000000000000"},"withinMinSupply":{"type":"boolean","example":true}},"title":"LDResizeQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

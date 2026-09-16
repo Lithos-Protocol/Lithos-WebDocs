@@ -1,0 +1,33 @@
+---
+id: lddepositorderquote
+title: "LDDepositOrderQuote"
+description: "Quote for a LithosDex deposit order against the current pool"
+sidebar_label: "LDDepositOrderQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"shares":"1176470","amountX":"5000000000","amountY":"151058823","excessX":"0","excessY":"941177","shareOfSupply":0.00117,"provisionBoxValue":"600000000","executorFee":"3000000","maxMinerFee":"1000000","totalErgRequired":"5604000000","ergReturned":"1000000","networkFee":"2000000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDDepositOrderQuote"}
+>
+</Heading>
+
+
+
+Quote for a LithosDex deposit order against the current pool
+
+<Schema
+  schema={{"description":"Quote for a LithosDex deposit order against the current pool","type":"object","x-tags":"lithosdex","required":["shares","amountX","amountY","excessX","excessY","shareOfSupply","provisionBoxValue","executorFee","maxMinerFee","totalErgRequired","ergReturned","networkFee"],"properties":{"shares":{"type":"string","description":"Shares the offer buys against the current pool. Decimal string.","example":"1176470"},"amountX":{"type":"string","description":"nanoERG the pool would take. Decimal string.","example":"5000000000"},"amountY":{"type":"string","description":"Raw token units the pool would take. Decimal string.","example":"151058823"},"excessX":{"type":"string","description":"nanoERG offered beyond what the pool would take, returned with the fill. Decimal string.","example":"0"},"excessY":{"type":"string","description":"Token side of `excessX`. Decimal string.","example":"941177"},"shareOfSupply":{"type":"number","format":"double","description":"Fraction of the pool the provision would represent once it lands","example":0.00117},"provisionBoxValue":{"type":"string","description":"nanoERG that funds the new provision box, on top of `amountX`. Decimal string.","example":"600000000"},"executorFee":{"type":"string","description":"The executor fee applied, the request's or the client's default. Decimal string.","example":"3000000"},"maxMinerFee":{"type":"string","description":"The miner fee cap applied. Decimal string.","example":"1000000"},"totalErgRequired":{"type":"string","description":"nanoERG locked in the order box: `amountX`, `excessX`, `provisionBoxValue`, `executorFee` and `ergReturned`. Decimal string.\n","example":"5604000000"},"ergReturned":{"type":"string","description":"nanoERG returned to the owner with the fill, beside the `ownerNFT`, not counting `excessX`. Decimal string.\n","example":"1000000"},"networkFee":{"type":"string","description":"nanoERG paid to place the order. Decimal string.","example":"2000000"}},"title":"LDDepositOrderQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

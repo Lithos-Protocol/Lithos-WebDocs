@@ -1,0 +1,33 @@
+---
+id: ldvaultinfo
+title: "LDVaultInfo"
+description: "State of the LithosDex fee vault"
+sidebar_label: "LDVaultInfo"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"vaultNFT":"670a188c61b803a5ef12fedb2eb4ed7ab7b1eba1df9787f780a122bf3875781d","utxoId":"88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6","accX":"38640000000000000000000000","accY":"1167600000000000000000000","balanceX":"9420000000","balanceY":"284300000","payableX":"9320000000","payableY":"284300000","tokenY":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3","vaultMin":"100000000","lastFlushHeight":1298100,"syncHeight":1312460}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDVaultInfo"}
+>
+</Heading>
+
+
+
+State of the LithosDex fee vault
+
+<Schema
+  schema={{"description":"State of the LithosDex fee vault","type":"object","x-tags":"lithosdex","required":["vaultNFT","utxoId","accX","accY","balanceX","balanceY","payableX","payableY","vaultMin","syncHeight"],"properties":{"vaultNFT":{"type":"string","description":"Token id of the vault NFT","example":"670a188c61b803a5ef12fedb2eb4ed7ab7b1eba1df9787f780a122bf3875781d"},"utxoId":{"type":"string","description":"Vault box id. Send back as `expectedVaultBoxId` when executing.","example":"88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6"},"accX":{"type":"string","description":"The pool's ERG accumulator as of the last flush. Decimal string.","example":"38640000000000000000000000"},"accY":{"type":"string","description":"Token side of the same. Decimal string.","example":"1167600000000000000000000"},"balanceX":{"type":"string","description":"Total nanoERG held by the vault box, including the rent reserve. Decimal string.","example":"9420000000"},"balanceY":{"type":"string","description":"Token-side fees held. Zero until a flush carries any. Decimal string.","example":"284300000"},"payableX":{"type":"string","description":"nanoERG the vault can actually part with — balanceX less vaultMin. Decimal string.","example":"9320000000"},"payableY":{"type":"string","description":"Tokens the vault can part with. Nothing is held back on this side. Decimal string.","example":"284300000"},"tokenY":{"type":"string","description":"The pool's token, absent while the vault holds no token entry","example":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3"},"vaultMin":{"type":"string","description":"Held back from every payout so the vault survives storage rent. Decimal string.","example":"100000000"},"lastFlushHeight":{"type":"integer","format":"int32","description":"Height of the most recent flush observed. Absent until one is seen.","example":1298100},"syncHeight":{"type":"integer","format":"int32","example":1312460}},"title":"LDVaultInfo"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

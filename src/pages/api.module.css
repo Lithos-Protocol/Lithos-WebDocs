@@ -1,0 +1,351 @@
+/* ==========================================================
+   Endpoint atlas page — screen 04
+   ========================================================== */
+
+.page {
+  position: relative;
+  min-height: 100vh;
+  background: var(--cur-bg-base);
+  font-family: var(--cur-font-body);
+  overflow: hidden;
+  padding: 86px 48px 60px;
+}
+
+.shell {
+  position: relative;
+  z-index: 4;
+  max-width: 1184px;
+  margin: 0 auto;
+}
+
+/* ===== HEADER ===== */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+}
+
+.breadcrumb {
+  font-size: 12.5px;
+  color: var(--cur-dim);
+  margin-bottom: 12px;
+}
+
+.breadcrumb a {
+  color: var(--cur-dim);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  color: var(--cur-cyan-light);
+}
+
+.breadcrumb span {
+  margin: 0 6px;
+  color: var(--cur-fainter);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--cur-font-display);
+  font-weight: 800;
+  font-size: 54px;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--cur-text);
+}
+
+.lead {
+  margin: 14px 0 0;
+  max-width: 560px;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--cur-muted);
+}
+
+.statRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statCard {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 18px;
+  padding: 14px 20px;
+  min-width: 112px;
+}
+
+.statLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+.statValue {
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  margin-top: 4px;
+  line-height: 1.1;
+}
+
+.toneCyan .statValue {
+  color: var(--cur-cyan);
+}
+
+.tonePurple {
+  border-color: var(--cur-border-purple);
+}
+
+.tonePurple .statValue {
+  color: var(--cur-purple-light);
+}
+
+/* ===== TAG FILTER PILLS ===== */
+.filters {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+}
+
+.pill {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 999px;
+  color: var(--cur-muted);
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pill:hover {
+  color: var(--cur-cyan-light);
+  border-color: var(--cur-border-cyan);
+}
+
+.pillActive,
+.pillActive:hover {
+  background: var(--cur-cyan);
+  border-color: var(--cur-cyan);
+  color: #060913;
+  font-weight: 600;
+}
+
+/* ===== TAG GROUPS ===== */
+.group {
+  margin-bottom: 38px;
+}
+
+.groupHead {
+  margin-bottom: 12px;
+}
+
+.groupTitle {
+  margin: 0;
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+  color: var(--cur-text);
+}
+
+.groupTitle a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.groupTitle a:hover {
+  color: var(--cur-cyan-light);
+}
+
+.groupDesc {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  color: var(--cur-muted);
+  max-width: 720px;
+}
+
+/* ===== ENDPOINT TABLE ===== */
+.table {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 70px 1fr 40px;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 13px 20px;
+  text-decoration: none !important;
+  transition: background 0.15s;
+}
+
+.row:nth-child(even) {
+  background: rgba(6, 9, 19, 0.3);
+}
+
+.row:hover {
+  background: rgba(56, 189, 248, 0.07);
+}
+
+.rowBadge {
+  display: flex;
+}
+
+.rowLabel {
+  font-size: 14.5px;
+  color: var(--cur-body);
+  min-width: 0;
+}
+
+.row:hover .rowLabel {
+  color: var(--cur-cyan-light);
+}
+
+.rowArrow {
+  text-align: right;
+  color: var(--cur-fainter);
+  font-size: 14px;
+}
+
+.row:hover .rowArrow {
+  color: var(--cur-cyan);
+}
+
+/* ===== BADGES ===== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.badgeGet {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: var(--cur-cyan-light);
+}
+
+.badgePost {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: var(--cur-green);
+}
+
+.badgePut {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: var(--cur-purple-light);
+}
+
+.badgeDel {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.badgePatch {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--cur-amber-light);
+}
+
+/* ===== MODEL GRID ===== */
+.modelGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.modelChip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: rgba(15, 22, 41, 0.55);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  text-decoration: none !important;
+  transition: border-color 0.15s, background 0.15s;
+  min-width: 0;
+}
+
+.modelChip:hover {
+  border-color: rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.modelName {
+  font-family: var(--cur-font-mono);
+  font-size: 12px;
+  color: var(--cur-purple-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelArrow {
+  color: var(--cur-fainter);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* ===== RESPONSIVE ===== */
+@media screen and (max-width: 996px) {
+  .page {
+    padding: 64px 24px 48px;
+  }
+
+  .title {
+    font-size: 40px;
+  }
+
+  .modelGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .page {
+    padding: 48px 16px 40px;
+  }
+
+  .title {
+    font-size: 32px;
+  }
+
+  .modelGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .row {
+    grid-template-columns: 62px 1fr 24px;
+    padding: 12px 14px;
+  }
+}

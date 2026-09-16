@@ -1,0 +1,389 @@
+/* ==========================================================
+   Homepage — "Currents"
+   Authored at 1280px; tokens carry down to narrower widths.
+   ========================================================== */
+
+.page {
+  background: var(--cur-bg-base);
+  font-family: var(--cur-font-body);
+  overflow-x: hidden;
+}
+
+/* ===== HERO =====
+   The hero box carries the SAME aspect ratio as the flow field's viewBox
+   (1280×640). That makes the field fit exactly at every width: nothing is
+   cropped off the top, the lower cube can never slide under the section below,
+   and every cube keeps its exact position relative to the streamlines when the
+   page is zoomed. min-height keeps short viewports usable. */
+.hero {
+  position: relative;
+  aspect-ratio: 1280 / 640;
+  min-height: 640px;
+  overflow: hidden;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 600px 1fr;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 150px 60px 0;
+}
+
+.heroCopy {
+  position: relative;
+}
+
+.heroTitle {
+  margin: 0;
+  max-width: 560px;
+  font-family: var(--cur-font-display);
+  font-weight: 800;
+  font-size: 72px;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  color: var(--cur-text);
+  /* Keeps the type legible where it crosses a bright streamline. */
+  text-shadow: 0 6px 40px rgba(6, 9, 19, 0.9);
+}
+
+/* Horizontal shear only — no vertical bob.
+   The keyframes are declared HERE rather than reused from custom.css: css-loader
+   scopes animation names inside a module, so a global name would be rewritten to
+   a hash that matches nothing and the animation would silently never run. */
+.flowWord {
+  animation: heroWordFlow 7s linear infinite, heroFlowSway 6s linear infinite;
+}
+
+@keyframes heroWordFlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes heroFlowSway {
+  0% { transform: skewX(-0.000deg) scaleY(1.0000); }
+  6.25% { transform: skewX(-0.995deg) scaleY(1.0057); }
+  12.5% { transform: skewX(-1.838deg) scaleY(1.0106); }
+  18.75% { transform: skewX(-2.402deg) scaleY(1.0139); }
+  25% { transform: skewX(-2.600deg) scaleY(1.0150); }
+  31.25% { transform: skewX(-2.402deg) scaleY(1.0139); }
+  37.5% { transform: skewX(-1.838deg) scaleY(1.0106); }
+  43.75% { transform: skewX(-0.995deg) scaleY(1.0057); }
+  50% { transform: skewX(-0.000deg) scaleY(1.0000); }
+  56.25% { transform: skewX(0.995deg) scaleY(0.9943); }
+  62.5% { transform: skewX(1.838deg) scaleY(0.9894); }
+  68.75% { transform: skewX(2.402deg) scaleY(0.9861); }
+  75% { transform: skewX(2.600deg) scaleY(0.9850); }
+  81.25% { transform: skewX(2.402deg) scaleY(0.9861); }
+  87.5% { transform: skewX(1.838deg) scaleY(0.9894); }
+  93.75% { transform: skewX(0.995deg) scaleY(0.9943); }
+  100% { transform: skewX(0.000deg) scaleY(1.0000); }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .flowWord {
+    animation: none;
+    background-position: 0% 50%;
+  }
+}
+
+.heroLead {
+  margin: 26px 0 0;
+  max-width: 470px;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--cur-muted);
+  text-shadow: 0 2px 20px rgba(6, 9, 19, 0.95);
+}
+
+.heroCtas {
+  display: flex;
+  gap: 12px;
+  margin-top: 34px;
+  position: relative;
+  flex-wrap: wrap;
+}
+
+.ctaPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--cur-grad-btn);
+  color: #060913 !important;
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-size: 14.5px;
+  font-weight: 700;
+  text-decoration: none !important;
+  box-shadow: 0 8px 34px rgba(56, 189, 248, 0.34);
+  transition: filter 0.15s, box-shadow 0.15s;
+}
+
+.ctaPrimary:hover {
+  filter: brightness(1.07);
+  box-shadow: 0 10px 40px rgba(56, 189, 248, 0.42);
+}
+
+.ctaGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(10, 15, 30, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: var(--cur-purple-light) !important;
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none !important;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ctaGhost:hover {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.6);
+}
+
+/* ===== FEATURES ===== */
+/* Fades from transparent into the page's own base colour, so there is no seam
+   where the section starts. The previous #080c15 was a different shade from
+   --cur-bg-base and read as a visible band once the hero grew on wide screens. */
+.features {
+  position: relative;
+  z-index: 4;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 150px 60px 76px;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 9, 19, 0) 0%,
+    rgba(6, 9, 19, 0.72) 12%,
+    var(--cur-bg-base) 26%
+  );
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 38px;
+  letter-spacing: -0.03em;
+  color: var(--cur-text);
+  text-align: center;
+}
+
+.sectionSub {
+  margin: 0 0 42px;
+  text-align: center;
+  font-size: 15.5px;
+  color: var(--cur-muted);
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.featureCard {
+  position: relative;
+  background: rgba(15, 22, 41, 0.6);
+  backdrop-filter: blur(16px);
+  border-radius: 22px;
+  padding: 28px;
+  overflow: hidden;
+  border: 1px solid;
+}
+
+.cardCyan {
+  border-color: rgba(56, 189, 248, 0.16);
+}
+
+.cardPurple {
+  border-color: var(--cur-border-purple);
+}
+
+.cardGlow {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.16), transparent 65%);
+  pointer-events: none;
+}
+
+.cardPurple .cardGlow {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.16), transparent 65%);
+}
+
+.iconTile {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(56, 189, 248, 0.13);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.cardPurple .iconTile {
+  background: rgba(168, 85, 247, 0.13);
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.featureTitle {
+  margin: 0 0 10px;
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+}
+
+.featureBody {
+  margin: 0 0 20px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--cur-muted);
+}
+
+.featureLink,
+.featureLinkPurple {
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none !important;
+}
+
+.featureLink {
+  color: var(--cur-cyan) !important;
+}
+
+.featureLink:hover {
+  color: var(--cur-cyan-light) !important;
+}
+
+.featureLinkPurple {
+  color: var(--cur-purple-light) !important;
+}
+
+.featureLinkPurple:hover {
+  color: #d8b4fe !important;
+}
+
+/* ===== QUICK NAVIGATION ===== */
+.quick {
+  position: relative;
+  z-index: 4;
+  padding: 60px 60px 70px;
+  background: var(--cur-bg-panel);
+  border-top: 1px solid rgba(125, 211, 252, 0.08);
+}
+
+.quickTitle {
+  max-width: 1160px;
+  margin: 0 auto 26px;
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+}
+
+.quickGrid {
+  max-width: 1160px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.quickLink {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: rgba(15, 22, 41, 0.7);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 14px;
+  padding: 15px 16px;
+  text-decoration: none !important;
+  color: var(--cur-body) !important;
+  font-size: 14px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.quickLink:hover {
+  border-color: var(--cur-border-cyan);
+  color: var(--cur-cyan-light) !important;
+  background: rgba(15, 22, 41, 0.9);
+}
+
+.quickLink svg {
+  flex-shrink: 0;
+}
+
+/* ===== RESPONSIVE ===== */
+@media screen and (max-width: 1100px) {
+  .heroInner {
+    grid-template-columns: 1fr;
+    padding: 120px 40px 0;
+  }
+
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .quickGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .features {
+    padding: 100px 40px 60px;
+  }
+
+  .quick {
+    padding: 50px 40px 60px;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .hero {
+    min-height: 520px;
+  }
+
+  .heroInner {
+    padding: 90px 20px 0;
+  }
+
+  .heroTitle {
+    font-size: 44px;
+  }
+
+  .heroLead {
+    font-size: 15.5px;
+  }
+
+  .sectionTitle {
+    font-size: 28px;
+  }
+
+  .features {
+    padding: 70px 20px 48px;
+  }
+
+  .quick {
+    padding: 40px 20px 48px;
+  }
+
+  .quickGrid {
+    grid-template-columns: 1fr;
+  }
+}

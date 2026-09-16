@@ -1,0 +1,33 @@
+---
+id: collateraljoinquote
+title: "CollateralJoinQuote"
+description: "What creating `count` positions costs right now"
+sidebar_label: "CollateralJoinQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"count":3,"principalEachNanoErgs":"2915000000","txFeeEachNanoErgs":"1000000","permitsLit":["19370000000","19380000000","19390000000"],"permitTotalLit":"58140000000","totalNanoErgs":"8748000000","firstPosition":1247,"emissionTipBoxId":"88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6","affordNow":true,"shortfallNanoErgs":"0","ownRoomLeft":4,"manualJoinAllowed":true,"blockedReason":"AUTO_COLLATERALIZE","lenderAddresses":["3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y"],"freeLenderKeys":4,"keysRequired":3}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CollateralJoinQuote"}
+>
+</Heading>
+
+
+
+What creating `count` positions costs right now
+
+<Schema
+  schema={{"description":"What creating `count` positions costs right now","type":"object","x-tags":"collateral-market","required":["count","principalEachNanoErgs","txFeeEachNanoErgs","permitsLit","permitTotalLit","totalNanoErgs","firstPosition","emissionTipBoxId","affordNow","shortfallNanoErgs","ownRoomLeft","manualJoinAllowed","lenderAddresses","freeLenderKeys","keysRequired"],"properties":{"count":{"type":"integer","format":"int32","example":3},"principalEachNanoErgs":{"type":"string","description":"Fixed by contract, identical for every position. Decimal string.","example":"2915000000"},"txFeeEachNanoErgs":{"type":"string","description":"Network fee per join transaction. Decimal string.","example":"1000000"},"permitsLit":{"type":"array","description":"Permit for each position, in join order. Each join lengthens the queue, so these escalate. Decimal strings.\n","items":{"type":"string"},"example":["19370000000","19380000000","19390000000"]},"permitTotalLit":{"type":"string","description":"Sum of `permitsLit`. Decimal string.","example":"58140000000"},"totalNanoErgs":{"type":"string","description":"Total ERG leaving the wallet — principals plus fees. Decimal string.","example":"8748000000"},"firstPosition":{"type":"integer","format":"int64","description":"Queue position the first join takes; the rest follow consecutively","example":1247},"emissionTipBoxId":{"type":"string","description":"Emission box the quote was made against. Send back as `expectedEmissionBoxId`.","example":"88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6"},"affordNow":{"type":"boolean","description":"Whether the wallet can cover it today","example":true},"shortfallNanoErgs":{"type":"string","description":"How much short the wallet is when `affordNow` is false. Decimal string.","example":"0"},"ownRoomLeft":{"type":"integer","format":"int32","description":"Positions the configured exposure budget would still allow after this","example":4},"manualJoinAllowed":{"type":"boolean","description":"Whether `POST /collateral/join` will accept this join. Disable the send control when false. The join endpoint checks the same conditions itself, so a quote taken before a configuration change does not license the send.\n","example":true},"blockedReason":{"type":"string","enum":["AUTO_COLLATERALIZE","NO_LENDER_KEYS","BUDGET_EXHAUSTED","INSUFFICIENT_FUNDS"],"description":"Why `manualJoinAllowed` is false; absent when it is true. Only the first applicable reason is reported, in the order listed above.\n\n`AUTO_COLLATERALIZE` — the client joins on its own timer and refuses manual joins. `BUDGET_EXHAUSTED` — `maxOwnCollateral` leaves room for fewer positions than requested. `NO_LENDER_KEYS` — `freeLenderKeys + keysDerivable` is below `keysRequired`. `INSUFFICIENT_FUNDS` — the wallet cannot cover `totalNanoErgs`.\n","example":"AUTO_COLLATERALIZE"},"lenderAddresses":{"type":"array","description":"The lender keys this join would use, in join order, matching `permitsLit` index for index. Shorter than `count` when the join would derive new keys to make up the difference; those addresses do not exist yet and cannot be named in advance. Empty when `blockedReason` is `NO_LENDER_KEYS`.\n","items":{"type":"string"},"example":["3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y"]},"freeLenderKeys":{"type":"integer","format":"int32","description":"Keys with status FREE at the moment of quoting","example":4},"keysRequired":{"type":"integer","format":"int32","description":"Keys this join consumes — one per position, so equal to `count`","example":3}},"title":"CollateralJoinQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

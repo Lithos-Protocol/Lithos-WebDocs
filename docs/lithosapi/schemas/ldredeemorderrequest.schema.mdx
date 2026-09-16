@@ -1,0 +1,33 @@
+---
+id: ldredeemorderrequest
+title: "LDRedeemOrderRequest"
+description: "The provision a redeem order closes, and its fees"
+sidebar_label: "LDRedeemOrderRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"provisionBoxId":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65","executorFee":"3000000","maxMinerFee":"1000000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDRedeemOrderRequest"}
+>
+</Heading>
+
+
+
+The provision a redeem order closes, and its fees
+
+<Schema
+  schema={{"description":"The provision a redeem order closes, and its fees","type":"object","x-tags":"lithosdex","required":["provisionBoxId"],"properties":{"provisionBoxId":{"type":"string","example":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65"},"executorFee":{"type":"string","description":"nanoERG paid to whoever fills the order, out of the ERG it releases. A fill broadcast to the mempool pays its miner fee out of this. Miners skip orders paying less than they accept. Omit for the client's default. Decimal string.\n","example":"3000000"},"maxMinerFee":{"type":"string","description":"Most nanoERG a fill may pay as a miner fee, out of `executorFee`. Must be below `executorFee`. Omit for the client's default. Decimal string.\n","example":"1000000"}},"title":"LDRedeemOrderRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -1,0 +1,72 @@
+---
+id: get-contract-ids
+title: "List UTXO ids for blocks"
+description: "Get a page of UTXO ids (hex encoded) for usable rollups in the current canonically committed synchronization view. The list is empty while canonical synchronization is unavailable."
+sidebar_label: "List UTXO ids for blocks"
+hide_title: true
+hide_table_of_contents: true
+api: eJzVVt9v2zYQ/lcIPm2AFstOasd6M9qiC9ZhBZoCA9JgOVEniw1FquQpjWfofx+O9K/E3tZgT3syJOvuvvu+u49cywqD8roj7aws5DskAaKDJQpXi0/Xv/8mdBXEDw0+CrTKVVj9KGrnRR+gNCi8M6bvgtBWUINC9d6jJaHAOqsVGLMSyrWtJsJKhJVVjXdW/wlcTjxo/HYmrhsURgcSOghsO1qJb402uM9xFKeD6C08gDaM4eyzlZl0Hfr471UlC7lEeu0seVB0VQWZSYJlkMWNLI1T90HeZrIDDy0Sen6/lpq7/9qjX8lMWmhRFtLoVpPMpMevvfZYyaIGEzB7xhk3YPu2RM+cacI28hF7Iic8Uu8ZYlANtiCLtaRVx/m1JVyil5msnW+B0qvzicxkq61u+1YW4zyTLTxuH3IuXkNvSBav8mHITiN3dR3wO6GnbxlpIPAUdYzYa+/aF8LeYcuH4Zarh87ZgIGjJ3nOP08BLLyH1eGoyUwqZwkt8cfQdUarqOvoS+CI9TEe4BzyeWunMkdtDiIDeW2XMpP4CG1n+NXlpZrMZ/V8XsFsPJvUU4BJjnWJUE3nABc5TsrZ7PwCxpez82o6VTCuymk5nleT8UVVTuVwkO3mv6e7HYZhOCD2OYFvvXf+JaSdCBdbnaLkYvHhijcmUeTKL6ieTtKNxE1Rj8D5GR6BNnGtPG8i6aR5+vDU6JyCwfZyKMarPB92RU6odipHiyGwe+FjZ0BbbZdxoFMSHgd+2uLfy35lCb1lr0H/gH7zxbDr7ER125voP7Ig3x9t1psYh1XKJA7/ZD1JU6y76HRScEg6t0iN2ziYZJOiRhZytLGtTCZ4ybJ6b2QhG6KuGI2MU2AaF6iY53l+RM57TY0L4rXRbM+sMO9nQNV7TauPPB1JsUWnf8HVoue6R8vaaXGPKwE9Nc5v3bgPWIlyJVKJ5OcNhCaRrUMMaftAokTRGVBYsT2uXM+K21ovM9HbCr24MykFRAw/Q2juUrrN9IsHMD2y/d81aIy7S9a/tYEYtfdA6PQf9/FFdMgGoUIfyde2die6+3Al3jjVt2gpdcbnHI/LhjwVyTsTv7oKTYh9f7YNehTg48Ch4lOOHDeqnA068EoKUN6FIMCuhKMGvdA8dLsyYTuVT8vE1ljrhG58lp+xrNvBORY0eQCo6AH72QjFaLTU1PTlmXLtKMX99ME7csqZyEfnArUQV2zD3Xv2/93pzzzsJvAJaeu97/x/rw6b+SF8pFE0Dd77SOB6s4CH9wbeMX6zXpcQ8JM3w8Cv0wHMa1np2N/fHLmHjH3vxeEkQB7t/RUlboYspOQbwcsQ/Nv5/w/Vd9eMfflbfvA6GePN7ZBtF4+pSVELpbA7jDo6sDjLzgnfvb2Ww/AXVr6rOw==
+sidebar_class_name: "get api-method"
+info_path: docs/lithosapi/lithos-client-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"List UTXO ids for blocks"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/blocks"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Get a page of UTXO ids (hex encoded) for usable rollups in the current canonically committed synchronization view. The list is empty while canonical synchronization is unavailable.
+
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"in":"query","name":"limit","required":false,"description":"The number of items in list to return","schema":{"type":"integer","format":"int32","minimum":10,"maximum":100,"default":50}},{"in":"query","name":"offset","required":false,"description":"The offset to start the list from","schema":{"type":"integer","format":"int32","default":0}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Array of UTXO ids","content":{"application/json":{"schema":{"type":"array","description":"Array of UTXO ids","items":{"type":"string","example":"88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6"},"example":["88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6"]}}}},"default":{"description":"Error","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

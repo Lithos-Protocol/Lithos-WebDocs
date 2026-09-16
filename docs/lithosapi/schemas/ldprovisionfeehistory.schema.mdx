@@ -1,0 +1,33 @@
+---
+id: ldprovisionfeehistory
+title: "LDProvisionFeeHistory"
+description: "Bucketed fee history for a single provision"
+sidebar_label: "LDProvisionFeeHistory"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65","history":[{"height":1312460,"timestamp":1765432100000,"periodX":"210000000","periodY":"6350000","cumulativeX":"8420000000","cumulativeY":"254300000"}],"partial":false}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDProvisionFeeHistory"}
+>
+</Heading>
+
+
+
+Bucketed fee history for a single provision
+
+<Schema
+  schema={{"description":"Bucketed fee history for a single provision","type":"object","x-tags":"lithosdex","required":["boxId","history","partial"],"properties":{"boxId":{"type":"string","example":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65"},"history":{"type":"array","items":{"description":"One bucket of fee history","type":"object","x-tags":"lithosdex","required":["height","periodX","periodY","cumulativeX","cumulativeY"],"properties":{"height":{"type":"integer","format":"int32","description":"Block height at the end of this bucket","example":1312460},"timestamp":{"type":"integer","format":"int64","description":"Unix milliseconds at the end of this bucket. Absent if unresolved.","example":1765432100000},"periodX":{"type":"string","description":"nanoERG fees taken during this bucket. Decimal string.","example":"210000000"},"periodY":{"type":"string","example":"6350000"},"cumulativeX":{"type":"string","description":"nanoERG fees taken from the start of the range to here. Decimal string.","example":"8420000000"},"cumulativeY":{"type":"string","example":"254300000"}},"title":"LDFeeHistoryPoint"}},"partial":{"type":"boolean","description":"True when the series does not reach back to the pool's start.","example":false}},"title":"LDProvisionFeeHistory"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

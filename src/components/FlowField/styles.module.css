@@ -1,0 +1,110 @@
+/* Decorative streamline band. Sits behind content and never takes pointer events. */
+.wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  /* The SVG scales with width, so at wide viewports it renders taller than the
+     band and `overflow: hidden` slices the lowest streamline mid-stroke — a hard
+     horizontal cut just above the content. Fade the lower third instead, so the
+     lines dissolve into the page however far they reach. */
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 58%, transparent 96%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 58%, transparent 96%);
+}
+
+/* Scales to the container WIDTH with its aspect preserved (height:auto), so it
+   tracks zoom and the cube-to-streamline geometry never distorts. The wrapper
+   clips the overflow at the bottom; the band's cubes sit near the top, so the
+   top streamline is always intact. */
+.svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: auto;
+}
+
+.cube {
+  animation-name: bandBlockFloat;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  /* Promote to its own layer up front — without this the first few frames of
+     the float judder while the layer is rasterised on page load. */
+  will-change: transform;
+}
+
+@keyframes bandBlockFloat {
+  0%, 100% { transform: translateY(4.5px); }
+  50% { transform: translateY(-4.5px); }
+}
+
+/* ===== HERO FIELD ===== */
+.heroWrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* The hero box matches the viewBox aspect, so `meet` fits it exactly — no crop,
+   no letterbox, and cube-to-streamline geometry is preserved at any zoom. */
+.heroSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.blockFloat {
+  animation: curBlockFloatHero 8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.blockFloatB {
+  animation: curBlockFloatB 12s ease-in-out infinite -1.5s;
+  will-change: transform;
+}
+
+.glowPulse {
+  animation: curGlowPulseHero 5s ease-in-out infinite;
+}
+
+.ripple {
+  animation: curRippleHero 2s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes curBlockFloatHero {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
+/* Sits low with a short rise — the homepage's lower cube. */
+@keyframes curBlockFloatB {
+  0%, 100% { transform: translateY(7px); }
+  50% { transform: translateY(1px); }
+}
+
+@keyframes curGlowPulseHero {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.95; }
+}
+
+@keyframes curRippleHero {
+  0% { transform: scale(0.6); opacity: 0.55; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cube,
+  .blockFloat,
+  .blockFloatB,
+  .glowPulse,
+  .ripple {
+    animation: none;
+  }
+}

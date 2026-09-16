@@ -1,0 +1,34 @@
+---
+id: lddepositrequest
+title: "LDDepositRequest"
+description: "A deposit to quote. Supply `availableX` and `availableY` for the most shares those funds can buy, or `shares` for the cheapest deposit that buys exactly that many."
+sidebar_label: "LDDepositRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"availableX":"5000000000","availableY":"151000000","shares":"1176470"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDDepositRequest"}
+>
+</Heading>
+
+
+
+A deposit to quote. Supply `availableX` and `availableY` for the most shares those funds can buy, or `shares` for the cheapest deposit that buys exactly that many.
+
+
+<Schema
+  schema={{"description":"A deposit to quote. Supply `availableX` and `availableY` for the most shares those funds can buy, or `shares` for the cheapest deposit that buys exactly that many.\n","type":"object","x-tags":"lithosdex","properties":{"availableX":{"type":"string","description":"nanoERG available to deposit. Decimal string.","example":"5000000000"},"availableY":{"type":"string","description":"Raw token units available to deposit. Decimal string.","example":"151000000"},"shares":{"type":"string","description":"Exact number of LP shares to buy. Decimal string.","example":"1176470"}},"title":"LDDepositRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

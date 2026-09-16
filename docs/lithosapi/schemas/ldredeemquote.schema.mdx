@@ -1,0 +1,33 @@
+---
+id: ldredeemquote
+title: "LDRedeemQuote"
+description: "Quote for closing a LithosDex provision"
+sidebar_label: "LDRedeemQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"shares":"12500000000","amountX":"53125000000","amountY":"1605000000","withinMinSupply":true,"unclaimedX":"402000000","unclaimedY":"12100000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDRedeemQuote"}
+>
+</Heading>
+
+
+
+Quote for closing a LithosDex provision
+
+<Schema
+  schema={{"description":"Quote for closing a LithosDex provision","type":"object","x-tags":"lithosdex","required":["shares","amountX","amountY","withinMinSupply","unclaimedX","unclaimedY"],"properties":{"shares":{"type":"string","description":"LP shares that would be closed. Decimal string.","example":"12500000000"},"amountX":{"type":"string","description":"nanoERG returned. Liquidity only — fees settle separately. Decimal string.","example":"53125000000"},"amountY":{"type":"string","description":"Raw token units returned. Decimal string.","example":"1605000000"},"withinMinSupply":{"type":"boolean","description":"False when closing this provision would take supply under the contract's minimum, which the pool refuses.\n","example":true},"unclaimedX":{"type":"string","description":"Unclaimed ERG fees. **Lost** if the provision is redeemed without claiming them first. Decimal string.\n","example":"402000000"},"unclaimedY":{"type":"string","description":"Token side of the same. Decimal string.","example":"12100000"}},"title":"LDRedeemQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

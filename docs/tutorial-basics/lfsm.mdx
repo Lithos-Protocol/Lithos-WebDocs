@@ -1,0 +1,341 @@
+---
+sidebar_position: 3
+tags:
+  - lfsm
+description: The contract set that runs Lithos, its parameters, and its trust boundaries.
+---
+
+# LFSM
+
+<span className="badge badge--warning">Expert</span>
+
+*Assumes ErgoScript, Ergo box registers, context variables and AVL trees. For the protocol without the
+contracts, read [Lithos Protocol](../intro.mdx).*
+
+The Lithos Finite State Machine (LFSM) is the contract set that runs Lithos. It governs LIT emission,
+the collateral queue, the rollups that collect and score miner work, the fraud proofs that remove
+invalid work, and the payout that ends each rollup.
+
+Nothing off-chain holds authority. The Lithos client builds transactions and chooses when to send them,
+but every rule that decides whether a transaction is valid lives in a contract. A patched client
+changes what its operator attempts, never what the protocol accepts.
+
+This page maps the contract set, its parameters and its trust boundaries. The rollup phases and their
+transformations are covered in detail in [LFSM Core](./lfsm-core.md). The LithosDex is a separate
+product and is not part of the LFSM.
+
+:::info Values on this page are testnet values
+Token IDs, contract addresses and genesis constants in the current build are placeholders and will
+change before mainnet. Do not record any of them as final.
+:::
+
+## The four contract groups
+
+The LFSM divides into four groups, each owning one part of the protocol:
+
+| Group | Contracts | Governs |
+|---|---|---|
+| `collateral/` | `Emission_Guard`, `LIT_Emissions`, `Collateral_Enforcer`, `Emission_Config`, `Emission_Gate`, `Collateral_Mainnet` | LIT emission, the collateral queue, and the boxes miners spend to make a block a Lithos block |
+| `rollups/` | `Holding`, `Evaluation`, `Payout`, `FP_Control` | The three-phase lifecycle of one block's payout |
+| `fraudproofs/` | Eight `FP_*` contracts | Removing NISPs that do not hold up |
+| `dictionaries/` | `MinerDictionary`, `MinerData` | Miner identity and difficulty commitments |
+
+## How the groups connect
+
+A single collateral box travels through most of the protocol. The following shows its path, and where
+each group acts on it:
+
+![The queue side, where the emission box authorises Join, Activate and Clear to move a position from queue box to collateral box, and the rollup side, where a spent collateral box becomes a holding box, then an evaluation box, then a payout box. The miner dictionary supplies the commitments that fraud proofs check scores against.](/img/lfsm-lifecycle.png)
+
+*The two halves are joined by exactly one event: a finder spending a collateral box.*
+
+Before that spend, a position is queue policy and the enforcer governs it. After the spend, the value
+belongs to a rollup and the queue never sees it again.
+
+## The emission and queue subsystem
+
+The **emission box** is a singleton authenticated by its own NFT. It holds the entire mined LIT supply,
+the set of currently active lender keys, and the queue's head and tail counters.
+
+Its script is `Emission_Guard`, which is about 26 lines. The Guard authenticates, then executes two
+scripts that ride in context variables:
+
+| Check | Form |
+|---|---|
+| `authenticConfig` | The config NFT sits on `dataInputs(0)` |
+| `authenticEMScript` | `blake2b256(var 64) == CONST_EM_SCRIPT_HASH`, a Guard constant |
+| `authenticEnforcerScript` | `blake2b256(var 65) == config.R5`, replaceable through the config box |
+| `authenticGuard` | `SELF.tokens(0)._1 == CONST_EMISSION_NFT` |
+
+**That split is the design.** Emission arithmetic is pinned by a constant inside the Guard, so it is
+fixed at genesis. Queue policy is pinned by a config register, so it can be replaced by a multisig, DAO, or some
+sort of NISP-based voting mechanism in the future.
+
+`authenticGuard` carries more weight than it looks. Without it, anyone could build a box under the
+public Guard script and run the full emission logic against tokens of their own minting.
+
+### Three operations, permanently
+
+`CTX_OP` is a byte in context variable 0, taking the value 0, 1 or 2, with `sigmaProp(false)` as the
+else branch. A fourth operation cannot be added after genesis.
+
+| Op | Name | Effect |
+|---|---|---|
+| 0 | Join | A lender locks principal in ERG plus a permit in LIT into a queue box at the tail |
+| 1 | Activate | The head queue box becomes a live collateral box, and this block's LIT is emitted into it |
+| 2 | Clear | A queue box is removed because its lender key is already in the active set |
+
+Ordering is not in the emission contract. `LIT_Emissions.ergo` declares `queueHead`, `queueTail`,
+`nextHead` and `nextTail`, and reads none of them on any of the three paths. Queue order exists only in
+`Collateral_Enforcer.ergo`, which is the replaceable half.
+
+:::danger Clear does not refund
+A cleared box is forfeited, principal and permit, to whoever builds the clearing transaction. Not
+refunding is deliberate, because a refund would make queue spam free.
+
+The client consequence is severe: **use a fresh lender key for every queue box.** A lender who joins
+with a key still present in the active set loses that box outright.
+:::
+
+### The permit thermostat
+
+The permit is a quantity of LIT locked alongside the ERG principal and returned when the collateral box
+is spent. It is never consumed. The enforcer evaluates the required amount at Join, from the current
+queue backlog:
+
+```scala
+backlog        = queueTail - queueHead
+scaled         = permitFloor.toBigInt + (permitSlope.toBigInt * backlog.toBigInt)
+permitRequired = if (scaled >= permitCeiling.toBigInt) permitCeiling else scaled.toLong
+```
+
+Three properties are worth not undoing:
+
+- **The intermediate is a `BigInt`, and the clamp happens before narrowing.** An overflow here would
+  not fail one transaction. It would make every Join unsatisfiable until a config fix.
+- **The comparison is `==`, not `>=`.** Over-posting is harmless to the pool, but it makes boxes
+  heterogeneous, which is permit-as-bid by accident.
+- **The function is self-damping.** Stuffing the queue raises the permit for every later join,
+  including the spammer's own.
+
+The function is frozen in the enforcer hash. The three numbers live in config `R4` and are tunable by a
+multisig spend with no redeploy.
+
+### What the enforcer checks at Join
+
+Every queue-side check happens at Join and nowhere later:
+
+| Check | Form |
+|---|---|
+| Principal floor | `queueOut.value >= BLOCK_REWARD - FEE_CAP + DUST_BUDGET` |
+| Dust budget | `queueOut.R4 == CONST_DUST_BUDGET` |
+| Permit amount | `queueLIT._2 == permitRequired` |
+| Permit identity | `queueLIT._1 == CONST_LIT_ID` |
+| Dlog companion | `queueProp.propBytes == proveDlog(CTX_GE).propBytes` |
+| Not the identity point | `CTX_GE.getEncoded(0) != 0.toByte` |
+| Extension flag | `queueOut.R6[Byte] == 0x00` |
+| Queue position | `queueOut.R7 == queueTail`, and the tail advances by exactly 1 |
+
+The dlog and identity-point checks exist because a lender key that cannot receive a coinbase can never
+satisfy `lenderIsBlockMiner`. Such a box would sit at the head of the queue and refuse to activate,
+which stalls the queue permanently. The same reasoning applies to the extension flag: a nonzero flag
+routes the spend through a script named by config `R6`, and a rejecting script there makes the box
+unspendable forever.
+
+> **Anything that makes Activate refuse the head stalls the queue. Every such condition is therefore
+> checked at Join, where refusing costs the joiner a transaction rather than costing everyone the
+> queue.**
+
+## The rollup chain
+
+Every Lithos block spawns one rollup. Three contracts run it, and each hands the box to the next:
+
+| Phase | Contract | Length | Accepts |
+|---|---|---|---|
+| Holding | `Holding.ergo` | `HOLDING_PERIOD` blocks | NISP submissions |
+| Evaluation | `Evaluation.ergo` | `EVAL_PERIOD` blocks | Fraud proofs |
+| Payout | `Payout.ergo` | Until drained | Payment batches |
+
+Holding and Evaluation share a register layout:
+
+| Register | Type | Meaning |
+|---|---|---|
+| R4 | `AvlTree` | The NISP tree, keyed `hashedPropBytes -> NISP`. Starts empty |
+| R5 | `Int` | Miner count. Incremented per insert in Holding, decremented per removal in Evaluation |
+| R6 | `BigInt` | Sum of submitted scores. This is a sum of `Long` scores held in a `BigInt`, not a tau value |
+| R7 | `Long` | Period start height |
+| R8 | `Long` | The rollup's own block height, read by fraud proofs as `currentBlock` |
+
+Payout reuses R4 through R6 unchanged and redefines the rest: R7 holds the total block reward, and R8
+holds the token reward.
+
+Two structural properties follow from the tree:
+
+- **AVL insert fails on a duplicate key**, so one identity submits at most one NISP per rollup. No
+  counter is needed to enforce it.
+- **Payout removes each miner from the tree as it pays them**, so a batch cannot pay the same miner
+  twice.
+
+Rollup lifetime is `HOLDING_PERIOD + EVAL_PERIOD + NISP_WINDOW`, which is 880 blocks. The extra
+`NISP_WINDOW` term covers the worst-case height a super share in a valid NISP can carry.
+
+For the transformations, their guards and the payout paths, read [LFSM Core](./lfsm-core.md).
+
+## Miner identity and commitments
+
+A miner's payout identity is `blake2b256(propBytes)`. The stratum address and worker name are
+cosmetic and carry no weight anywhere in the protocol.
+
+**`MinerDictionary.ergo`** is a singleton authenticated by its own NFT, holding one AVL tree in R4 that
+maps `hashedPropBytes -> minerDataTokenId`. It has two byte-dispatched operations:
+
+| Op | Effect |
+|---|---|
+| 0 Add | Mints one token into a new `MinerData` box and inserts the miner into the tree |
+| 1 Remove | Destroys the miner's data box and removes the key |
+
+The minted token takes the dictionary box's ID at the moment of registration, so every miner's token is
+distinct, and the dictionary is the only record of which token belongs to whom.
+
+**`MinerData.ergo`** is one box per miner, floored at `CONST_MIN_DATA_BOX_AMNT`, carrying that token:
+
+| Register | Type | Meaning |
+|---|---|---|
+| R4 | `Coll[(Int, Long)]` | One or two commitments as `(commitHeight, score)`, **index 0 newest** |
+| R5 | `Coll[Byte]` | First 32 bytes are `blake2b256(miner propBytes)`. The remainder is extensible |
+
+Every `changeDiff` must produce exactly two commitments, with the previous newest preserved at index 1.
+The box therefore always carries the commitment currently in effect and the one before it, and never
+more history than that.
+
+### Why the commitment exists
+
+> **A score chosen after the shares are known measures luck, not hashrate.**
+
+Without a binding commitment, a miner picks the highest score whose super-share threshold their best 10
+shares still clear, after seeing them. That is post-hoc target fitting. It reintroduces exactly the
+variance problem NISPs exist to remove, and it rewards whoever tunes hardest rather than whoever mines
+most.
+
+`FP_InvalidDiff` does not close this. It proves the 10 shares meet the threshold of the score claimed in
+that very NISP, not the score the miner committed to. Only `FP_NonMatchingCommitment` closes it.
+
+### The governing commitment
+
+Two timing rules live in `changeDiff` and they do different jobs:
+
+1. A new commitment takes effect `NISP_WINDOW` blocks in the future. This is the notice period that
+   makes a commitment binding.
+2. A commitment cannot be replaced too soon after the last one. This keeps the commitment governing an
+   older rollup present in one of the two slots for as long as that rollup can still be challenged.
+
+`FP_NonMatchingCommitment` anchors on `currentBlock`, taken from the evaluation box's R8, rather than on
+submission height. Submission height is not recorded on-chain and is miner-controlled, so anchoring
+there would let a miner sit on a NISP until a different commitment took effect. The rule it applies:
+
+```scala
+if (currentBlock - commitments(0)._1 >= NISP_WINDOW) commitments(0)._2
+else                                                commitments.getOrElse(1, (0, -1L))._2
+```
+
+The `-1L` fallback covers a miner holding only a registration commitment that had not yet taken effect
+at `currentBlock`. No NISP can carry a score of `-1`, because Holding accepts only a score above zero,
+so any submission in that state is fraudulent by construction.
+
+## Fraud proofs
+
+Nine proof types are defined and eight are live. Each spends the evaluation box, removes one NISP from
+the tree, and decrements R5 and R6 accordingly:
+
+| Proof | Proves that the miner |
+|---|---|
+| `FP_InvalidDiff` | Submitted a share that does not reach the super-share threshold of the score claimed |
+| `FP_IncorrectN` | Submitted a super share whose `N` value does not match its height |
+| `FP_InvalidFormat` | Submitted a NISP whose byte layout is malformed or out of bounds |
+| `FP_NotInWindow` | Submitted at least one share outside the NISP window |
+| `FP_NonUniqueHeaders` | Submitted two or more shares with identical header IDs |
+| `FP_MalformedGE` | Submitted a header carrying an invalid group element for the miner public key |
+| `FP_TransactionNotIncluded` | Submitted a collateral transaction and proof that do not match the header's Merkle root |
+| `FP_NonMatchingCommitment` | Submitted a score that is not the commitment in effect at the rollup's block height |
+
+`FP_MalformedTransaction_old` is the ninth. It is suffixed `_old` and does not ship.
+
+Two properties govern how the set is designed:
+
+- **A false negative is fatal and a false positive is not.** A proof that declines to fire lets theft
+  through permanently. A proof that fires wrongly removes one honest NISP from one rollup. Proofs must
+  therefore err toward firing.
+- **`FP_CONTROL` is immutable at launch.** There is no key and no DAO. Changing the accepted proof set
+  requires a hardfork to a new NFT, so the audit has to be complete before launch and there is no
+  recovery from an incomplete one.
+
+## Parameters
+
+The following parameters are compiled into contracts or injected at compile time. Values are from
+`LFSMHelpers.scala` and the contracts themselves:
+
+| Parameter | Value | Usage |
+|---|---|---|
+| `TARGET_MAX_LITHOS` | `2^256 - 1` | The numerator in every score and tau conversion |
+| `HOLDING_PERIOD` | 360 blocks | Length of the Holding phase. About 12 hours at mainnet's 2-minute blocks, 4.5 hours at testnet's 45-second blocks |
+| `EVAL_PERIOD` | 360 blocks | Length of the Evaluation phase, same durations |
+| `NISP_WINDOW` | 160 blocks | How far before a block a super share may have been mined and still count. About 2 hours at testnet's 45-second blocks. The mainnet equivalent is 60 blocks |
+| `NISP_COEFFICIENT` | 10000 | Divides a miner's tau to give the super-share threshold |
+| `NISP_MAX` | 26000 bytes | Maximum NISP size, enforced by `Holding.ergo` |
+| `NISP_MIN` | 7948 bytes | Minimum NISP size, enforced by `Holding.ergo`. Stops a short NISP from causing an index error when a fraud proof iterates its 10 shares |
+| `TX_PROOF_MIN` | 502 bytes | Minimum size of a super share's transaction proof |
+| `TX_PROOF_MAX` | 4000 bytes | Maximum size of a super share's transaction proof |
+| `TX_SIZE_MIN` | 450 bytes | Minimum size of the collateral transaction inside a transaction proof |
+| `COLLAT_BOX_MIN` | 50 bytes | Minimum size of the collateral box inside that transaction |
+| `NUM_LVLS_MAX` | 16 | Maximum Merkle proof depth for a transaction proof |
+| `MIN_DATA_BOX_AMNT` | 1000000 nanoERG | Value floor for a `MinerData` box |
+| `PERMIT_FLOOR` | 1,000 LIT | Permit at an empty queue |
+| `PERMIT_CEIL` | 30,000 LIT | Permit ceiling, whatever the backlog |
+| `PERMIT_SLOPE` | 10 LIT per queued box | Slope of the thermostat between the two |
+
+## Score and tau
+
+A miner's **score** is the difficulty value their NISP claims, and it is the only input to their share
+of a payout. Score and tau are reciprocal through `TARGET_MAX_LITHOS`:
+
+```text
+score = (2^256 - 1) / tau
+tau   = (2^256 - 1) / score
+```
+
+The same function converts in both directions, which is why `LFSMHelpers.convertTauOrScore` takes one
+argument and names neither.
+
+Two derived quantities matter to the contracts:
+
+- **The super-share threshold** is `minerTau / NISP_COEFFICIENT`, which is `tau / 10,000`. A share at or
+  below it counts as a super share. `FP_InvalidDiff` recomputes this from the score in the NISP and
+  checks all 10 shares against it.
+- **A payment** is `paymentFromScore(score, totalScore, totalValue)`, evaluated as
+  `(totalValue * score) / totalScore` in `BigInt` and narrowed to `Long`. The truncation deficit is
+  under one nanoERG per miner.
+
+Difficulty strings in the client's configuration, such as `"4.0G"` or `"1.52M"`, are parsed into tau by
+`parseDiffValueForStratum`, which supports `K`, `M`, `G`, `T` and `P`.
+
+## What can change and what cannot
+
+The LFSM deliberately draws its upgrade boundary in one place. Knowing which side a thing sits on
+decides whether it is a design decision or a deployment one:
+
+| Fixed at genesis | Replaceable |
+|---|---|
+| The emission arithmetic in `LIT_Emissions.ergo`, pinned by a Guard constant | The queue policy in `Collateral_Enforcer.ergo`, pinned by config `R5` |
+| The three operation bytes, with `sigmaProp(false)` as the else branch | The permit floor, ceiling and slope, held in config `R4` |
+| `lenderAlreadyActive` as the condition for Clear | Which queue box Clear may target, which is enforcer policy |
+| The collateral contract hash, held inside the immutable emission script | The collateral extension script, named by config `R6` |
+| The accepted fraud proof set, held by an immutable `FP_CONTROL` | The rollup holding hash, stamped from config `R7` at activation |
+
+Replacing the enforcer is not a hot swap. The queue has to drain first, because boxes joined under one
+policy and activated under another can disagree about what the old boxes promised.
+
+## Next steps
+
+- [LFSM Core](./lfsm-core.md): the rollup contracts, their transformations and the payout paths.
+- [NISPs](./NISPs.md): the proof format, super shares and how a NISP is built.
+- [Lithos Protocol](../intro.mdx): the same system without the contracts.

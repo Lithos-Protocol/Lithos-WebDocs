@@ -1,0 +1,14 @@
+# Normalise line endings: LF in the repository, native in working copies.
+* text=auto
+
+# Binary assets, never normalised or diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Generated from examples/lithosapi.yaml; collapsed in pull request diffs.
+docs/lithosapi/** linguist-generated=true
+yarn.lock linguist-generated=true

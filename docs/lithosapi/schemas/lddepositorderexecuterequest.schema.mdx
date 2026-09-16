@@ -1,0 +1,33 @@
+---
+id: lddepositorderexecuterequest
+title: "LDDepositOrderExecuteRequest"
+description: "A deposit order to sign and place"
+sidebar_label: "LDDepositOrderExecuteRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"amountX":"5000000000","amountY":"152000000","minShares":"1170587","executorFee":"3000000","maxMinerFee":"1000000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDDepositOrderExecuteRequest"}
+>
+</Heading>
+
+
+
+A deposit order to sign and place
+
+<Schema
+  schema={{"description":"A deposit order to sign and place","type":"object","x-tags":"lithosdex","required":["amountX","amountY","minShares"],"properties":{"amountX":{"type":"string","description":"Most nanoERG the order offers to the reserves, not counting the provision box. Decimal string.\n","example":"5000000000"},"amountY":{"type":"string","description":"Raw token units the order offers. Decimal string.","example":"152000000"},"minShares":{"type":"string","description":"Fewest shares the order accepts, checked against the pool when it fills. Required and must be positive. A floor far under the quote's `shares` lets a pool moved earlier in the same block take the difference. Decimal string.\n","example":"1170587"},"executorFee":{"type":"string","description":"nanoERG paid to whoever fills the order. Omit for the client's default. Decimal string.","example":"3000000"},"maxMinerFee":{"type":"string","description":"Most nanoERG a fill may pay as a miner fee, out of `executorFee`. Must be below `executorFee`. Omit for the client's default. Decimal string.\n","example":"1000000"}},"title":"LDDepositOrderExecuteRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

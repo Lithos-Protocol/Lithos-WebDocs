@@ -1,0 +1,24 @@
+---
+id: lithosdex
+title: "Lithos Dex"
+description: "Lithos Dex"
+custom_edit_url: null
+---
+
+
+
+Swap, provide liquidity and collect fees on the LithosDex pool.
+
+Swaps, deposits and redemptions can be placed as **orders** under `/dex/orders`, which any miner fills for the order's executor fee, or sent **directly**, spending the pool at once. Prefer orders: a miner filling orders may replace an unconfirmed direct spend of the pool, which then has to be resent.
+
+**All amounts are decimal strings, not JSON numbers.** A 409 means a box you quoted against has moved: re-read, re-quote and resend.
+
+
+
+
+```mdx-code-block
+import ApiCategoryPage from '@site/src/components/ApiCategoryPage';
+
+<ApiCategoryPage />
+```
+      

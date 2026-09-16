@@ -1,0 +1,33 @@
+---
+id: collaterallenderkeystatus
+title: "CollateralLenderKeyStatus"
+description: "One wallet address that may hold a lending position"
+sidebar_label: "CollateralLenderKeyStatus"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"address":"3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y","status":"ACTIVE","position":411}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CollateralLenderKeyStatus"}
+>
+</Heading>
+
+
+
+One wallet address that may hold a lending position
+
+<Schema
+  schema={{"description":"One wallet address that may hold a lending position","type":"object","x-tags":"collateral-market","required":["address","status"],"properties":{"address":{"type":"string","example":"3WwbQFz3vgi8ChY9dM1haQLGDeQYe5U9z98bwWW4TqxxEAvyYu5y"},"status":{"type":"string","enum":["FREE","QUEUED","ACTIVE","RETIRING"],"description":"FREE has no position and can join. QUEUED is waiting in the queue. ACTIVE holds a live collateral box. RETIRING held one until recently and cannot be reused yet. Only FREE keys are available to a join. One key holds at most one position; a second position under a key already in the active set is forfeited.\n","example":"ACTIVE"},"position":{"type":"integer","format":"int64","description":"Queue position, when QUEUED","example":411}},"title":"CollateralLenderKeyStatus"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

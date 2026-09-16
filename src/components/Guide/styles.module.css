@@ -1,0 +1,237 @@
+/* ==========================================================
+   Guide content components — screens 02 / 03
+   ========================================================== */
+
+/* ===== NUMBERED STEP CARD ===== */
+.step {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 22px;
+  padding: 24px 26px;
+  margin: 24px 0;
+}
+
+.stepCyan {
+  border-color: rgba(56, 189, 248, 0.16);
+}
+
+.stepPurple {
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.stepHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.stepBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-family: var(--cur-font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.stepCyan .stepBadge {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: var(--cur-cyan-light);
+}
+
+.stepPurple .stepBadge {
+  background: rgba(168, 85, 247, 0.14);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: var(--cur-purple-light);
+}
+
+.stepTitle {
+  margin: 0;
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+}
+
+.stepBody > :first-child {
+  margin-top: 0;
+}
+
+.stepBody > :last-child {
+  margin-bottom: 0;
+}
+
+/* ===== REQUIREMENT CARDS ===== */
+.reqGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.reqCard {
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.reqLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 6px;
+}
+
+.reqValue {
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+}
+
+.reqNote {
+  font-size: 12.5px;
+  color: var(--cur-muted);
+  margin-top: 4px;
+  line-height: 1.55;
+}
+
+/* ===== FEATURE ROW ===== */
+.featureRow {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+}
+
+.featureDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+
+.dotCyan {
+  background: var(--cur-cyan);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+.dotPurple {
+  background: var(--cur-purple);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+}
+
+.featureTitle {
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--cur-text);
+}
+
+.featureBody {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--cur-muted);
+  margin-top: 2px;
+}
+
+/* ===== PROGRESS RAIL ===== */
+.progress {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 18px;
+  padding: 15px 17px;
+  margin-top: 20px;
+}
+
+.progressLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 12px;
+}
+
+.progressItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--cur-dim);
+  padding: 5px 0;
+}
+
+.progressActive {
+  color: var(--cur-cyan-light);
+  font-weight: 600;
+}
+
+.progressDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cur-fainter);
+  flex-shrink: 0;
+}
+
+.progressDotActive {
+  background: var(--cur-cyan);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+  animation: modDotPulse 2.4s ease-in-out infinite;
+}
+
+/* ===== HELP CARD ===== */
+.helpCard {
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  border-radius: 18px;
+  padding: 15px 17px;
+  margin-top: 16px;
+}
+
+.helpTitle {
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: var(--cur-cyan-light);
+  margin-bottom: 6px;
+}
+
+.helpBody {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--cur-muted);
+}
+
+.helpBody a {
+  color: var(--cur-cyan);
+}
+
+@media screen and (max-width: 900px) {
+  .reqGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Declared locally: css-loader scopes animation names per module, so a
+   global keyframe name would hash to something that matches nothing. */
+@keyframes modDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

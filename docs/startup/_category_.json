@@ -1,0 +1,8 @@
+{
+  "label": "Startup Guide",
+  "position": 0,
+  "link": {
+    "type": "generated-index",
+    "description": "Set up an Ergo node, configure the Lithos client, and start mining."
+  }
+}

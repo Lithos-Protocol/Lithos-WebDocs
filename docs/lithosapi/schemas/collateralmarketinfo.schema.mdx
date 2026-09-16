@@ -1,0 +1,34 @@
+---
+id: collateralmarketinfo
+title: "CollateralMarketInfo"
+description: "One snapshot of the collateral market. ERG amounts are nanoERG decimal strings; permit and emission amounts are LIT base units as decimal strings."
+sidebar_label: "CollateralMarketInfo"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"syncHeight":484719,"activationCounter":1234,"queueHead":410,"queueTail":1247,"queueLength":837,"activeSetSize":97,"activeSetMax":100,"bootstrapping":false,"proofsOfSpendAvailable":2,"queuedNanoErgs":"2439835500000","activeNanoErgs":"282755000000","permitLitLocked":"12840000000","principalNanoErgs":"2915000000","currentPermitLit":"19370000000","permitFloorLit":"1000000000000","permitCeilingLit":"30000000000000","permitSlopeLitPerBox":"10000000000","emissionPhase":"DECAYING","foundersActive":true,"currentEpoch":0,"nextPhaseChangeHeight":250000,"emissionRatePublicLit":"500000000000","emissionRatePrivateLit":"140000000000","emissionRateTotalLit":"640000000000","scheduleEndsAtHeight":2825000}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CollateralMarketInfo"}
+>
+</Heading>
+
+
+
+One snapshot of the collateral market. ERG amounts are nanoERG decimal strings; permit and emission amounts are LIT base units as decimal strings.
+
+
+<Schema
+  schema={{"description":"One snapshot of the collateral market. ERG amounts are nanoERG decimal strings; permit and emission amounts are LIT base units as decimal strings.\n","type":"object","x-tags":"collateral-market","required":["syncHeight","activationCounter","queueHead","queueTail","queueLength","activeSetSize","activeSetMax","bootstrapping","proofsOfSpendAvailable","queuedNanoErgs","activeNanoErgs","permitLitLocked","principalNanoErgs","currentPermitLit","permitFloorLit","permitCeilingLit","permitSlopeLitPerBox","emissionPhase","foundersActive","currentEpoch","emissionRatePublicLit","emissionRatePrivateLit","emissionRateTotalLit","scheduleEndsAtHeight"],"properties":{"syncHeight":{"type":"integer","format":"int32","description":"Chain height this snapshot was taken at","example":484719},"activationCounter":{"type":"integer","format":"int32","description":"Activations paid so far — the emission box's position in the schedule","example":1234},"queueHead":{"type":"integer","format":"int64","description":"Position of the queue box that activates next","example":410},"queueTail":{"type":"integer","format":"int64","description":"Position the next join will take","example":1247},"queueLength":{"type":"integer","format":"int64","description":"Positions waiting — queueTail less queueHead","example":837},"activeSetSize":{"type":"integer","format":"int32","description":"Distinct lender keys currently holding a live collateral box","example":97},"activeSetMax":{"type":"integer","format":"int32","description":"Slots the active set can hold. Fixed by contract.","example":100},"bootstrapping":{"type":"boolean","description":"True while the set is still filling and an Activate needs no retirement","example":false},"proofsOfSpendAvailable":{"type":"integer","format":"int32","description":"Retirements usable next block — how many queued positions could activate now","example":2},"queuedNanoErgs":{"type":"string","description":"Total principal sitting in the queue. Decimal string.","example":"2439835500000"},"activeNanoErgs":{"type":"string","description":"Total value across the live collateral boxes. Decimal string.","example":"282755000000"},"permitLitLocked":{"type":"string","description":"LIT locked as permits across the queue and the active set. Decimal string.","example":"12840000000"},"principalNanoErgs":{"type":"string","description":"What one join posts — block reward less fee cap plus dust. Fixed by contract. Decimal string.","example":"2915000000"},"currentPermitLit":{"type":"string","description":"The permit the NEXT join pays at this backlog, before any escalation. Decimal string.","example":"19370000000"},"permitFloorLit":{"type":"string","description":"Permit at an empty queue, from the config box. Decimal string.","example":"1000000000000"},"permitCeilingLit":{"type":"string","description":"The most a permit can ever be. Decimal string.","example":"30000000000000"},"permitSlopeLitPerBox":{"type":"string","description":"Permit added per queued box. Decimal string.","example":"10000000000"},"emissionPhase":{"type":"string","enum":["DECAYING","STEPPED","FLAT_50","ENDED"],"description":"Public emission rate phase. DECAYING drops every two epochs; STEPPED is the two fixed intermediate rates; FLAT_50 is the final constant rate; ENDED means the schedule is complete.\n","example":"DECAYING"},"foundersActive":{"type":"boolean","description":"True while the private founder allocation is still being paid alongside the public rate","example":true},"currentEpoch":{"type":"integer","format":"int32","description":"Schedule epoch of the last activation","example":0},"nextPhaseChangeHeight":{"type":"integer","format":"int32","nullable":true,"description":"Height of the next rate change or epoch boundary. Null once ENDED.","example":250000},"emissionRatePublicLit":{"type":"string","description":"Public LIT per activation at this point in the schedule. Decimal string.","example":"500000000000"},"emissionRatePrivateLit":{"type":"string","description":"Founder-side LIT per activation, zero once that period ends. Decimal string.","example":"140000000000"},"emissionRateTotalLit":{"type":"string","description":"What one Activate actually emits, capped by what the box still holds. Decimal string.","example":"640000000000"},"scheduleEndsAtHeight":{"type":"integer","format":"int32","description":"Activation count the schedule ends at (2,825,000)","example":2825000}},"title":"CollateralMarketInfo"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

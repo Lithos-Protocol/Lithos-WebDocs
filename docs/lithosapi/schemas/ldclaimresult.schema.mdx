@@ -1,0 +1,33 @@
+---
+id: ldclaimresult
+title: "LDClaimResult"
+description: "Result of a LithosDex fee claim transaction"
+sidebar_label: "LDClaimResult"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"outcome":"accepted","claimedX":"253000000","claimedY":"7690000","successorBoxId":"5035b2e112b4f5b873dd3444c01df1e7e697807fd84fe96790eacb128e46428d","txId":"40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDClaimResult"}
+>
+</Heading>
+
+
+
+Result of a LithosDex fee claim transaction
+
+<Schema
+  schema={{"description":"Result of a LithosDex fee claim transaction","type":"object","x-tags":"lithosdex","required":["outcome","claimedX","claimedY","successorBoxId","txId"],"properties":{"outcome":{"type":"string","enum":["accepted","rejected","uncertain"],"description":"Node submission outcome; uncertain retains the known transaction ID and input ownership."},"claimedX":{"type":"string","description":"nanoERG paid out of the vault. Decimal string.","example":"253000000"},"claimedY":{"type":"string","description":"Raw token units paid out of the vault. Decimal string.","example":"7690000"},"successorBoxId":{"type":"string","description":"New provision box id. Use it for the next request.","example":"5035b2e112b4f5b873dd3444c01df1e7e697807fd84fe96790eacb128e46428d"},"txId":{"type":"string","example":"40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7"}},"title":"LDClaimResult"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

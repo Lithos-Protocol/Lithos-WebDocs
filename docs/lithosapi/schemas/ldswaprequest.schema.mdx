@@ -1,0 +1,33 @@
+---
+id: ldswaprequest
+title: "LDSwapRequest"
+description: "Amount and direction of a swap to quote"
+sidebar_label: "LDSwapRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"amountIn":"1000000000","ergIn":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDSwapRequest"}
+>
+</Heading>
+
+
+
+Amount and direction of a swap to quote
+
+<Schema
+  schema={{"description":"Amount and direction of a swap to quote","type":"object","x-tags":"lithosdex","required":["amountIn","ergIn"],"properties":{"amountIn":{"type":"string","description":"Total handed to the pool, fees included — this is what leaves the wallet. Decimal string.\n","example":"1000000000"},"ergIn":{"type":"boolean","description":"True to sell ERG for the token, false to sell the token for ERG","example":true}},"title":"LDSwapRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

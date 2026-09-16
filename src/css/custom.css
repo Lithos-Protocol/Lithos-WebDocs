@@ -1,0 +1,1536 @@
+/* Google Fonts — "Currents" redesign: Syne display, DM Sans body, JetBrains Mono code */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ==================================================
+   CURRENTS — design tokens
+   Near-black field, horizontal streamlines, isometric
+   cubes. Cyan → indigo → purple.
+   ================================================== */
+:root,
+[data-theme='dark'] {
+  /* Backgrounds */
+  --cur-bg-base: #060913;
+  --cur-bg-deep: #04060d;
+  --cur-bg-panel: #0a0f1e;
+  --cur-bg-card: rgba(15, 22, 41, 0.55);
+  --cur-bg-card-solid: rgba(15, 22, 41, 0.6);
+  --cur-bg-well: rgba(6, 9, 19, 0.65);
+  --cur-bg-swap: #0a1020;
+
+  /* Accents */
+  --cur-cyan: #38bdf8;
+  --cur-cyan-light: #7dd3fc;
+  --cur-cyan-pale: #a5f3fc;
+  --cur-cyan-paler: #e0f2fe;
+  --cur-indigo: #818cf8;
+  --cur-purple: #a855f7;
+  --cur-purple-light: #c084fc;
+  --cur-green: #6ee7b7;
+  --cur-amber: #f59e0b;
+  --cur-amber-light: #fbbf24;
+
+  /* Text ramp */
+  --cur-text: #f1f5f9;
+  --cur-body: #cbd5e1;
+  --cur-muted: #94a3b8;
+  --cur-dim: #64748b;
+  --cur-faint: #475569;
+  --cur-fainter: #334155;
+
+  /* Borders */
+  --cur-border-cool: rgba(125, 211, 252, 0.12);
+  --cur-border-cool-strong: rgba(125, 211, 252, 0.18);
+  --cur-border-cyan: rgba(56, 189, 248, 0.28);
+  --cur-border-purple: rgba(168, 85, 247, 0.18);
+
+  /* Type */
+  --cur-font-display: 'Syne', 'Inter', system-ui, sans-serif;
+  --cur-font-body: 'DM Sans', 'Inter', system-ui, sans-serif;
+  --cur-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Amounts. Syne is a display face with irregular figure placement — numbers
+     sit unevenly on the baseline at large sizes. Inter has proper lining,
+     tabular figures, so columns of amounts align and do not jitter as they
+     update. */
+  --cur-font-num: 'Inter', 'DM Sans', system-ui, sans-serif;
+
+  /* Signature gradients. First and last stop match so wordFlow loops seamlessly. */
+  --cur-grad-word: linear-gradient(90deg, #38bdf8 0%, #818cf8 25%, #a855f7 50%, #818cf8 75%, #38bdf8 100%);
+  --cur-grad-word-purple: linear-gradient(90deg, #a855f7 0%, #38bdf8 25%, #818cf8 50%, #38bdf8 75%, #a855f7 100%);
+  --cur-grad-btn: linear-gradient(115deg, #0ea5e9, #38bdf8);
+  --cur-grad-card-border: linear-gradient(150deg, rgba(56, 189, 248, 0.55), rgba(168, 85, 247, 0.35) 55%, rgba(125, 211, 252, 0.12));
+}
+
+/* ===== CURRENTS motion ===== */
+@keyframes curWordFlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes curBlockFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+@keyframes curBlockFloatC {
+  0%, 100% { transform: translateY(4.5px); }
+  50% { transform: translateY(-4.5px); }
+}
+@keyframes curFlowSway {
+  0%, 100% { transform: skewX(0deg) scaleY(1); }
+  25% { transform: skewX(-2.6deg) scaleY(1.015); }
+  50% { transform: skewX(0deg) scaleY(1); }
+  75% { transform: skewX(2.6deg) scaleY(0.985); }
+}
+@keyframes curDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes curRippleOut {
+  0% { transform: scale(0.6); opacity: 0.55; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes curGlowPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.95; }
+}
+
+/* A gradient word that sweeps. Endpoints are identical, so the loop is seamless. */
+.curFlowWord {
+  display: inline-block;
+  background: var(--cur-grad-word);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: curWordFlow 7s linear infinite;
+}
+
+/* background-image only — the `background` SHORTHAND would reset background-clip
+   to border-box and background-size to auto, painting the whole box instead of
+   the glyphs and killing the sweep. */
+.curFlowWordPurple {
+  background-image: var(--cur-grad-word-purple);
+  animation-duration: 8s;
+}
+
+/* Motion budget: backgrounds drift slowly; nothing animates on hover but colour. */
+@media (prefers-reduced-motion: reduce) {
+  .curFlowWord,
+  .curFlowWordPurple {
+    animation: none;
+    background-position: 0% 50%;
+  }
+  [class*='curBlock'],
+  [class*='curRipple'],
+  [class*='curFlowSway'] {
+    animation: none !important;
+  }
+}
+
+/* ==================================================
+   LITHOS CLIENT — Dark Design System
+   Sky Blue (#38bdf8) + Purple (#a855f7) on Dark Navy
+   ================================================== */
+
+:root,
+[data-theme='dark'] {
+  /* Primary: Sky Blue */
+  --ifm-color-primary: #38bdf8;
+  --ifm-color-primary-dark: #1db4f4;
+  --ifm-color-primary-darker: #0ea5e9;
+  --ifm-color-primary-darkest: #0284c7;
+  --ifm-color-primary-light: #56c8fa;
+  --ifm-color-primary-lighter: #67cefb;
+  --ifm-color-primary-lightest: #87d9fc;
+
+  /* Custom tokens */
+  --lithos-purple: #a855f7;
+  --lithos-purple-dark: #7c3aed;
+  --lithos-purple-light: #c084fc;
+  --lithos-sky: #38bdf8;
+  --lithos-sky-dark: #0ea5e9;
+  --lithos-sky-light: #7dd3fc;
+
+  /* Backgrounds */
+  --lithos-bg-0: #060913;
+  --lithos-bg-1: #0a0f1e;
+  --lithos-bg-2: #0f1629;
+  --lithos-bg-3: #141d33;
+  --lithos-border: rgba(56, 189, 248, 0.1);
+  --lithos-border-soft: rgba(255, 255, 255, 0.05);
+
+  /* Text */
+  --lithos-text: #e2e8f0;
+  --lithos-text-muted: #94a3b8;
+  --lithos-text-dim: #64748b;
+
+  /* Infima overrides */
+  --ifm-background-color: #0a0f1e;
+  --ifm-background-surface-color: #0f1629;
+  --ifm-font-color-base: #e2e8f0;
+  --ifm-font-color-secondary: #94a3b8;
+  --ifm-heading-color: #f1f5f9;
+  --ifm-link-color: #38bdf8;
+  --ifm-link-hover-color: #7dd3fc;
+  --ifm-link-decoration: none;
+
+  /* Navbar */
+  --ifm-navbar-background-color: rgba(6, 9, 19, 0.94);
+  --ifm-navbar-link-color: #94a3b8;
+  --ifm-navbar-link-hover-color: #38bdf8;
+  --ifm-navbar-link-active-color: #38bdf8;
+  --ifm-navbar-height: 3.5rem;
+  --ifm-navbar-shadow: 0 1px 0 0 rgba(56, 189, 248, 0.1);
+
+  /* Sidebar */
+  --ifm-menu-color: #94a3b8;
+  --ifm-menu-color-active: #38bdf8;
+  --ifm-menu-color-background-active: rgba(56, 189, 248, 0.08);
+  --ifm-menu-color-background-hover: rgba(56, 189, 248, 0.04);
+
+  /* Footer */
+  --ifm-footer-background-color: #060913;
+  --ifm-footer-color: #64748b;
+  --ifm-footer-link-color: #94a3b8;
+  --ifm-footer-link-hover-color: #38bdf8;
+
+  /* Tables */
+  --ifm-table-border-color: rgba(56, 189, 248, 0.1);
+  --ifm-table-stripe-background: rgba(15, 22, 41, 0.5);
+  --ifm-toc-border-color: rgba(56, 189, 248, 0.1);
+
+  /* Code */
+  --ifm-code-background: rgba(6, 9, 19, 0.9);
+  --ifm-code-color: #7dd3fc;
+  --ifm-pre-background: #060913;
+  --docusaurus-highlighted-code-line-bg: rgba(56, 189, 248, 0.07);
+
+  /* Misc */
+  --ifm-hr-border-color: rgba(56, 189, 248, 0.1);
+  --ifm-card-border-radius: 12px;
+  --ifm-global-border-width: 1px;
+
+  /* Typography */
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', monospace;
+  --ifm-code-font-size: 88%;
+  --ifm-font-size-base: 16px;
+  --ifm-line-height-base: 1.7;
+}
+
+/* ===== GLOBAL BASE ===== */
+html {
+  background-color: var(--lithos-bg-0);
+}
+
+body {
+  background-color: var(--lithos-bg-1);
+  color: var(--lithos-text);
+  font-family: var(--ifm-font-family-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== NAVBAR — glass pill =====
+   Docusaurus renders a full-width bar; the Currents design is a floating pill
+   inset from the gutters. Achieved by making .navbar transparent and styling
+   .navbar__inner as the pill itself. */
+.navbar {
+  background: transparent !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: none;
+  box-shadow: none !important;
+  height: auto;
+  padding: 20px 30px 0;
+}
+
+.navbar__inner {
+  max-width: 1220px;
+  margin: 0 auto;
+  background: rgba(10, 15, 30, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 999px;
+  padding: 8px 12px 8px 20px;
+  flex-wrap: nowrap;
+}
+
+.navbar__brand {
+  margin-right: 0;
+}
+
+.navbar__brand:hover {
+  color: inherit;
+}
+
+.navbar__title {
+  font-family: var(--cur-font-display);
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  /* The wordmark is solid white here — the gradient is reserved for hero words. */
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+.navbar__logo {
+  height: 24px;
+  width: 24px;
+  margin-right: 10px;
+  filter: none;
+}
+
+.navbar__logo img {
+  height: 24px;
+  width: 24px;
+  object-fit: contain;
+}
+
+.navbar__items {
+  gap: 4px;
+}
+
+.navbar__link {
+  font-family: var(--cur-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--cur-muted) !important;
+  border-radius: 999px;
+  padding: 8px 16px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.navbar__link:hover {
+  color: var(--cur-cyan-light) !important;
+  background: rgba(56, 189, 248, 0.08);
+  text-decoration: none;
+}
+
+.navbar__link--active {
+  color: var(--cur-cyan-light) !important;
+  background: rgba(56, 189, 248, 0.14);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* LithosDex carries the purple identity. */
+.navbar__link--dex:hover {
+  color: var(--cur-purple-light) !important;
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.navbar__link--dex.navbar__link--active {
+  color: var(--cur-purple-light) !important;
+  background: rgba(168, 85, 247, 0.16);
+}
+
+/* Right side: search + GitHub read as outlined pills. */
+.navbar__items--right .navbar__link {
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  font-size: 12.5px;
+  color: var(--cur-dim) !important;
+}
+
+.navbar__items--right .navbar__link:hover {
+  color: var(--cur-cyan-light) !important;
+  border-color: var(--cur-border-cyan);
+}
+
+.navbar-sidebar {
+  background: var(--cur-bg-panel);
+}
+
+/* ===== SIDEBAR ===== */
+.theme-doc-sidebar-container {
+  background: var(--lithos-bg-1) !important;
+  border-right: 1px solid rgba(56, 189, 248, 0.08) !important;
+}
+
+.menu {
+  padding: 0.75rem 0.5rem;
+}
+
+.menu__link {
+  border-radius: 6px;
+  font-size: 0.855rem;
+  font-weight: 400;
+  color: #94a3b8;
+  padding: 0.3rem 0.75rem;
+  transition: color 0.15s, background 0.15s;
+}
+
+.menu__link:hover {
+  color: #e2e8f0;
+  background: rgba(56, 189, 248, 0.05);
+  text-decoration: none;
+}
+
+.menu__link--active {
+  color: var(--lithos-sky) !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+  font-weight: 500;
+}
+
+.menu__caret::before {
+  border-color: #4a5568 !important;
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-wrapper {
+  background: var(--lithos-bg-1);
+}
+
+/* ===== TOC ===== */
+.table-of-contents__link {
+  color: var(--lithos-text-muted);
+  font-size: 0.8rem;
+  transition: color 0.15s;
+}
+
+.table-of-contents__link:hover,
+.table-of-contents__link--active {
+  color: var(--lithos-sky);
+}
+
+/* ===== HEADINGS ===== */
+h1, h2, h3, h4, h5, h6 {
+  color: #f1f5f9;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+  padding-bottom: 0.4rem;
+}
+
+/* ===== CODE ===== */
+code {
+  background: rgba(6, 9, 19, 0.85);
+  color: var(--lithos-sky-light);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 87%;
+}
+
+pre {
+  background: #060913 !important;
+  border: 1px solid rgba(56, 189, 248, 0.1) !important;
+  border-radius: 10px !important;
+}
+
+pre code {
+  background: transparent !important;
+  border: none !important;
+  color: #e2e8f0;
+  padding: 0;
+}
+
+.prism-code {
+  background: #060913 !important;
+}
+
+/* ===== ADMONITIONS ===== */
+.admonition {
+  background: var(--lithos-bg-2) !important;
+  border-radius: 8px;
+  border-left-width: 3px !important;
+}
+
+.admonition-note {
+  border-left-color: var(--lithos-sky) !important;
+}
+
+.admonition-tip {
+  border-left-color: #10b981 !important;
+}
+
+.admonition-warning {
+  border-left-color: #f59e0b !important;
+}
+
+.admonition-danger {
+  border-left-color: #ef4444 !important;
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--lithos-bg-2);
+  border: 1px solid rgba(56, 189, 248, 0.08);
+  border-radius: var(--ifm-card-border-radius);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  border-color: rgba(56, 189, 248, 0.22);
+  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.07);
+}
+
+/* ===== BUTTONS ===== */
+.button--primary {
+  background: linear-gradient(135deg, var(--lithos-sky-dark), var(--lithos-sky));
+  border: none;
+  color: #060913 !important;
+  font-weight: 700;
+}
+
+.button--primary:hover {
+  background: linear-gradient(135deg, var(--lithos-sky), var(--lithos-sky-light));
+  color: #060913 !important;
+}
+
+.button--secondary {
+  background: transparent;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  color: var(--lithos-purple-light) !important;
+  font-weight: 600;
+}
+
+.button--secondary:hover {
+  background: rgba(168, 85, 247, 0.08);
+  border-color: var(--lithos-purple);
+  color: var(--lithos-purple-light) !important;
+}
+
+/* ===== PAGINATION NAV ===== */
+.pagination-nav__link {
+  background: var(--lithos-bg-2);
+  border: 1px solid rgba(56, 189, 248, 0.08);
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+
+.pagination-nav__link:hover {
+  border-color: rgba(56, 189, 248, 0.25);
+}
+
+.pagination-nav__sublabel {
+  color: var(--lithos-text-dim);
+}
+
+.pagination-nav__label {
+  color: var(--lithos-sky);
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  background: var(--lithos-bg-0) !important;
+  border-top: 1px solid rgba(56, 189, 248, 0.08);
+}
+
+.footer__title {
+  color: #e2e8f0 !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.footer__link-item {
+  color: #64748b !important;
+  font-size: 0.875rem;
+  transition: color 0.15s;
+}
+
+.footer__link-item:hover {
+  color: var(--lithos-sky) !important;
+  text-decoration: none;
+}
+
+.footer__copyright {
+  color: #334155;
+  font-size: 0.78rem;
+  border-top: 1px solid rgba(56, 189, 248, 0.06);
+  padding-top: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+/* ===== TABLES ===== */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+th {
+  background: var(--lithos-bg-2) !important;
+  color: var(--lithos-sky) !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+td, th {
+  border-color: rgba(56, 189, 248, 0.08) !important;
+  padding: 0.6rem 0.9rem;
+}
+
+tr:nth-child(even) td {
+  background: rgba(15, 22, 41, 0.4);
+}
+
+/* ===== BREADCRUMBS ===== */
+.breadcrumbs__link {
+  color: var(--lithos-text-muted);
+  font-size: 0.85rem;
+}
+
+.breadcrumbs__item--active .breadcrumbs__link {
+  color: var(--lithos-text);
+  font-weight: 500;
+}
+
+/* ===== TAGS ===== */
+.tag {
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  color: var(--lithos-sky);
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--lithos-bg-0);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e2d4a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.3);
+}
+
+/* ===== SELECTION ===== */
+::selection {
+  background: rgba(56, 189, 248, 0.18);
+  color: #f1f5f9;
+}
+
+/* ===== API METHOD LABELS (SIDEBAR) ===== */
+.api-method > .menu__link {
+  align-items: center;
+  justify-content: start;
+}
+
+.api-method > .menu__link::before {
+  width: 46px;
+  height: 17px;
+  font-size: 10px;
+  line-height: 17px;
+  text-transform: uppercase;
+  font-weight: 700;
+  border-radius: 4px;
+  margin-right: var(--ifm-spacing-horizontal);
+  text-align: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-family: var(--ifm-font-family-monospace);
+  letter-spacing: 0.02em;
+}
+
+.get > .menu__link::before {
+  content: "get";
+  background: linear-gradient(135deg, #0284c7, #38bdf8);
+}
+
+.post > .menu__link::before {
+  content: "post";
+  background: linear-gradient(135deg, #059669, #10b981);
+}
+
+.put > .menu__link::before {
+  content: "put";
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+}
+
+.delete > .menu__link::before {
+  content: "del";
+  background: linear-gradient(135deg, #b91c1c, #ef4444);
+}
+
+.patch > .menu__link::before {
+  content: "patch";
+  background: linear-gradient(135deg, #b45309, #f59e0b);
+}
+
+/* ===== OPENAPI EXPLORER ===== */
+.openapi-explorer__request-form {
+  background: var(--lithos-bg-2) !important;
+  border: 1px solid rgba(56, 189, 248, 0.1) !important;
+  border-radius: 8px !important;
+}
+
+
+/* Language tabs in API docs */
+.openapi-tabs__code-item--active {
+  border-bottom-color: var(--lithos-sky) !important;
+  color: var(--lithos-sky) !important;
+}
+
+/* ===== STANDARD DOCUSAURUS CODE BLOCK =====
+   .theme-code-block is the only reliable global class on the container.
+   The title div is the first child when present (and NOT the only child). */
+
+/* Entire block: override the Prism-theme inline-style background */
+.theme-code-block {
+  background: #060913 !important;
+  border: 1px solid rgba(56, 189, 248, 0.1) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+/* Title bar — first child that has a sibling (i.e. the content div follows it) */
+.theme-code-block > div:first-child:not(:only-child) {
+  background: #0a0f1e !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12) !important;
+  border-top-left-radius: 10px !important;
+  border-top-right-radius: 10px !important;
+  color: #38bdf8 !important;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Strip the inner pre's own border/radius — the outer .theme-code-block already provides them */
+.theme-code-block pre {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+
+/* ===== OPENAPI CODE BLOCK LINE NUMBERS =====
+   The line-number cell is position:sticky and reads --ifm-pre-background,
+   which the openapi theme overrides to --prism-background-color.
+   Without explicitly setting both, the sticky gutter gets the wrong colour. */
+:root,
+[data-theme='dark'] {
+  --prism-background-color: #060913;
+}
+
+.openapi-explorer__code-block {
+  --ifm-pre-background: #060913;
+  --prism-background-color: #060913;
+}
+
+.openapi-explorer__code-block-container {
+  background: #060913 !important;
+}
+
+.openapi-explorer__code-block-code-line-number {
+  background: #060913 !important;
+}
+
+/* ===== CATEGORY PAGE ===== */
+.theme-doc-sidebar-item-category > .menu__list-item-collapsible {
+  font-weight: 600;
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ==========================================================
+   CURRENTS — docs pages (screens 02 / 03 / 05)
+   Applied through Docusaurus' own doc layout classes rather than
+   swizzling, so upstream markup changes stay safe.
+   ========================================================== */
+
+html,
+body {
+  background: var(--cur-bg-base);
+  font-family: var(--cur-font-body);
+}
+
+/* Sub-pages open a decorative band under the floating nav pill. */
+.theme-doc-markdown {
+  padding-top: 8px;
+}
+
+main .container {
+  padding-top: 40px;
+}
+
+/* ----- Article typography ----- */
+.theme-doc-markdown h1,
+article h1 {
+  font-family: var(--cur-font-display);
+  font-weight: 800;
+  font-size: 50px;
+  /* Syne descenders clip at line-height 1. */
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  color: var(--cur-text);
+  padding-bottom: 6px;
+}
+
+.theme-doc-markdown h2,
+article h2 {
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.025em;
+  color: var(--cur-text);
+  margin-top: 2.4rem;
+}
+
+.theme-doc-markdown h3,
+article h3 {
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+}
+
+.theme-doc-markdown p,
+article p {
+  font-size: 15px;
+  line-height: 1.72;
+  color: var(--cur-muted);
+}
+
+/* The first paragraph after the title reads as a lead. */
+.theme-doc-markdown > header + p,
+article > header + p {
+  font-size: 17px;
+  line-height: 1.78;
+  color: var(--cur-body);
+}
+
+.theme-doc-markdown li,
+article li {
+  font-size: 15px;
+  line-height: 1.72;
+  color: var(--cur-muted);
+}
+
+/* ----- Sidebar as a glass card -----
+   Style the nav itself, NOT the scroll container. The container is a
+   height:100% scrolling element; giving it padding and a border made its
+   content overflow and clip. */
+.theme-doc-sidebar-container {
+  background: transparent !important;
+  border-right: none !important;
+}
+
+.theme-doc-sidebar-container .menu {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 20px;
+  margin: 16px 12px 24px;
+  padding: 12px 8px;
+}
+
+/* The collapse button sits over the card; keep it on the same ground. */
+.theme-doc-sidebar-container button[class*='collapseSidebarButton'] {
+  background: var(--cur-bg-panel);
+  border-top: 1px solid rgba(125, 211, 252, 0.1);
+}
+
+.menu {
+  font-family: var(--cur-font-body);
+  font-size: 13.5px;
+}
+
+.menu__link {
+  border-radius: 10px;
+  color: var(--cur-muted);
+  padding: 7px 12px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.menu__link:hover {
+  background: rgba(56, 189, 248, 0.07);
+  color: var(--cur-cyan-light);
+}
+
+.menu__link--active,
+.menu__link--active:hover {
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--cur-cyan-light) !important;
+  font-weight: 600;
+}
+
+/* Category labels read as uppercase mono group heads. */
+.menu__list-item-collapsible > .menu__link--sublist {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+/* ----- Table of contents ----- */
+.table-of-contents {
+  font-size: 13px;
+  border-left: 1px solid rgba(125, 211, 252, 0.1);
+}
+
+.table-of-contents__link {
+  color: var(--cur-dim);
+}
+
+.table-of-contents__link:hover,
+.table-of-contents__link--active {
+  color: var(--cur-cyan-light);
+}
+
+/* 2px cyan indicator on the active item. */
+.table-of-contents__left-border li > .table-of-contents__link--active {
+  border-left: 2px solid var(--cur-cyan);
+  margin-left: -1px;
+  padding-left: 10px;
+}
+
+/* ----- Code blocks ----- */
+.theme-code-block {
+  background: var(--cur-bg-well) !important;
+  border: 1px solid rgba(125, 211, 252, 0.12) !important;
+  border-radius: 18px !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+.theme-code-block pre,
+.theme-code-block code {
+  font-family: var(--cur-font-mono) !important;
+  font-size: 13px !important;
+}
+
+/* Title bar — first child that has a sibling. */
+.theme-code-block > div:first-child:not(:only-child) {
+  background: rgba(10, 15, 30, 0.7) !important;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.1) !important;
+  font-family: var(--cur-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cur-dim) !important;
+}
+
+code {
+  font-family: var(--cur-font-mono);
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  border-radius: 6px;
+  font-size: 0.88em;
+  color: var(--cur-cyan-light);
+}
+
+/* ----- Admonitions as tinted callouts ----- */
+.theme-admonition {
+  background: var(--cur-bg-card) !important;
+  border: 1px solid rgba(125, 211, 252, 0.14) !important;
+  border-radius: 18px !important;
+  box-shadow: none !important;
+  font-size: 14.5px;
+}
+
+.theme-admonition-info,
+.theme-admonition-note {
+  border-color: rgba(56, 189, 248, 0.24) !important;
+  background: rgba(56, 189, 248, 0.06) !important;
+}
+
+.theme-admonition-warning,
+.theme-admonition-caution {
+  border-color: rgba(245, 158, 11, 0.28) !important;
+  background: rgba(245, 158, 11, 0.06) !important;
+}
+
+.theme-admonition-danger {
+  border-color: rgba(239, 68, 68, 0.28) !important;
+  background: rgba(239, 68, 68, 0.06) !important;
+}
+
+.theme-admonition-tip {
+  border-color: rgba(16, 185, 129, 0.28) !important;
+  background: rgba(16, 185, 129, 0.06) !important;
+}
+
+/* ----- Breadcrumbs / pagination ----- */
+.breadcrumbs__item .breadcrumbs__link {
+  font-size: 12.5px;
+  color: var(--cur-dim);
+  background: transparent;
+}
+
+.breadcrumbs__item--active .breadcrumbs__link {
+  color: var(--cur-cyan-light);
+  background: transparent;
+}
+
+.pagination-nav__link {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 18px;
+  transition: border-color 0.15s;
+}
+
+.pagination-nav__link:hover {
+  border-color: var(--cur-border-cyan);
+}
+
+.pagination-nav__sublabel {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+.pagination-nav__label {
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+}
+
+/* ----- Footer ----- */
+.footer {
+  background: var(--cur-bg-base) !important;
+  border-top: 1px solid rgba(125, 211, 252, 0.08);
+  font-family: var(--cur-font-body);
+}
+
+.footer__title {
+  font-family: var(--cur-font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e2e8f0;
+}
+
+.footer__link-item {
+  font-size: 13px;
+  color: var(--cur-dim);
+}
+
+.footer__link-item:hover {
+  color: var(--cur-cyan-light);
+}
+
+.footer__copyright {
+  font-size: 12.5px;
+  color: var(--cur-faint);
+}
+
+/* ----- Tables ----- */
+/* Infima ships `table { display: block }` so that wide tables can scroll. A
+   block-level table sizes its rows to their content rather than to the block, so with
+   our `width: 100%` the row group stopped short of the right edge and the leftover
+   space inside the rounded border read as an empty extra column. It was worst on
+   two-column tables, whose content is narrowest. `display: table` restores real
+   column distribution; long cells now wrap instead of scrolling, which suits
+   prose-filled docs tables. */
+table {
+  display: table;
+  table-layout: auto;
+  width: 100%;
+  font-size: 14px;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+table thead tr {
+  background: rgba(10, 15, 30, 0.7);
+}
+
+table th {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-cyan);
+  border: none;
+}
+
+table td {
+  border: none;
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+  color: var(--cur-muted);
+}
+
+table tbody tr:nth-child(even) {
+  background: rgba(6, 9, 19, 0.3);
+}
+
+@media screen and (max-width: 640px) {
+  .theme-doc-markdown h1,
+  article h1 {
+    font-size: 34px;
+  }
+
+  .theme-doc-markdown h2,
+  article h2 {
+    font-size: 22px;
+  }
+}
+
+/* ==========================================================
+   CURRENTS — API endpoint pages (screen 05)
+
+   IMPORTANT: `.openapi-left-panel__container` and
+   `.openapi-right-panel__container` are LAYOUT COLUMNS (col--7 / col--5) in a
+   flex row, not cards. Giving them a background, border or radius paints a
+   bare column as a floating card and makes the right-hand column read as
+   misplaced. Style the CONTENT inside them instead.
+   ========================================================== */
+
+/* Method pill beside the path. */
+.openapi__method-endpoint {
+  background: var(--cur-bg-well) !important;
+  border: 1px solid rgba(125, 211, 252, 0.12) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+}
+
+.openapi__method-endpoint-path {
+  font-family: var(--cur-font-mono) !important;
+  font-size: 13.5px !important;
+  color: var(--cur-cyan-light) !important;
+}
+
+/* ----- Sidebar verb badges ----- */
+.api-method > .menu__link::before,
+.schema > .menu__link::before {
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  padding: 3px 6px;
+  border-radius: 6px;
+  margin-right: 8px;
+}
+
+.get > .menu__link::before {
+  content: 'get';
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: var(--cur-cyan-light);
+}
+
+.post > .menu__link::before {
+  content: 'post';
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: var(--cur-green);
+}
+
+.put > .menu__link::before {
+  content: 'put';
+  background: rgba(168, 85, 247, 0.18);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: var(--cur-purple-light);
+}
+
+.delete > .menu__link::before {
+  content: 'del';
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.patch > .menu__link::before {
+  content: 'patch';
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: var(--cur-amber-light);
+}
+
+.schema > .menu__link::before {
+  content: 'model';
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.28);
+  color: var(--cur-purple-light);
+}
+
+/* ----- Schema / parameter rows ----- */
+.openapi-schema__property {
+  font-family: var(--cur-font-mono) !important;
+  color: var(--cur-cyan-light) !important;
+}
+
+.openapi-schema__name {
+  font-family: var(--cur-font-mono) !important;
+  color: var(--cur-dim) !important;
+}
+
+.openapi-schema__required {
+  color: #fca5a5 !important;
+  font-size: 11px !important;
+  font-family: var(--cur-font-mono) !important;
+}
+
+.openapi-schema__divider {
+  border-color: rgba(125, 211, 252, 0.12) !important;
+}
+
+/* The theme ships these with a grey 6.4px-radius border that clashes with the
+   design; bring them onto the Currents surface instead of leaving them grey. */
+.openapi-security__details,
+.tabs-container.openapi-tabs__code-container,
+details.openapi-markdown__details {
+  background: var(--cur-bg-well) !important;
+  border: 1px solid rgba(125, 211, 252, 0.12) !important;
+  border-radius: 16px !important;
+}
+
+/* ----- Tab strips ----- */
+.openapi-tabs__item,
+.tabs__item {
+  font-family: var(--cur-font-body) !important;
+  font-size: 13px !important;
+  color: var(--cur-dim) !important;
+}
+
+.openapi-tabs__item--active,
+.tabs__item--active,
+.openapi-tabs__code-item--active,
+.openapi-tabs__mime-item.active {
+  border-bottom-color: var(--cur-cyan) !important;
+  color: var(--cur-cyan-light) !important;
+  background: rgba(56, 189, 248, 0.07) !important;
+}
+
+/* ONLY the small status pills get a pill radius — the header SECTION that
+   contains them is full width, and rounding it draws a stray 500px capsule. */
+.openapi-tabs__response-code-item {
+  font-family: var(--cur-font-mono) !important;
+  font-size: 12px !important;
+  border-radius: 999px !important;
+}
+
+.openapi-tabs__response-code-item--active {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: var(--cur-green) !important;
+}
+
+.openapi-tabs__response-header-section {
+  border-radius: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* ----- "Try it" / request form ----- */
+.openapi-explorer__request-form,
+.openapi-demo__request-container {
+  background: rgba(168, 85, 247, 0.05) !important;
+  border: 1px solid rgba(168, 85, 247, 0.22) !important;
+  border-radius: 18px !important;
+}
+
+.openapi-explorer__request-btn,
+.openapi-demo__execute-btn {
+  background: var(--cur-grad-btn) !important;
+  border: none !important;
+  border-radius: 999px !important;
+  color: #060913 !important;
+  font-family: var(--cur-font-display) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 22px rgba(56, 189, 248, 0.26) !important;
+}
+
+.openapi-explorer__form-item-input,
+.openapi-demo__form-item-input {
+  background: var(--cur-bg-well) !important;
+  border: 1px solid rgba(125, 211, 252, 0.14) !important;
+  border-radius: 12px !important;
+  color: #e2e8f0 !important;
+  font-family: var(--cur-font-mono) !important;
+  font-size: 12.5px !important;
+}
+
+/* ----- Response panel -----
+   Prism sets its background as an inline style, so !important is what wins. */
+.openapi-explorer__response-container,
+.openapi-explorer__response-container > div {
+  background-color: #060913 !important;
+}
+
+.openapi-explorer__response-container,
+.openapi-explorer__code-block-container {
+  border: 1px solid rgba(125, 211, 252, 0.12) !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+.openapi-explorer__response-title-container {
+  background-color: rgba(10, 15, 30, 0.7) !important;
+  border-bottom-color: rgba(125, 211, 252, 0.1) !important;
+  font-family: var(--cur-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ==========================================================
+   CURRENTS — copy scrim
+   Darkens the flow field behind a block of text so a bright streamline can
+   never cut through it. Shared by the homepage hero, the API atlas header and
+   the LithosDex header.
+
+   The ellipse is given an EXPLICIT size. With the default farthest-corner
+   radius an off-centre gradient is still opaque when it reaches the near edge,
+   which shows up as a hard vertical seam on that side; sizing it relative to
+   the box makes it fade out on all four sides.
+   ========================================================== */
+.curScrimHost {
+  position: relative;
+}
+
+.curScrimHost::before {
+  content: '';
+  position: absolute;
+  /* Reaches further left than right: the copy is left-aligned in its column, so
+     the leftmost characters sat near the edge of the old box where the gradient
+     had already thinned out. */
+  inset: -60px -150px -48px -240px;
+  /* Sized so the gradient reaches zero before the NEAREST box edge, not the
+     farthest. Overshooting on the right left it ~55% opaque where the box ends,
+     which showed as a hard seam against the hero cube's purple glow. Centre is
+     nudged left of middle to sit over the left-aligned copy. */
+  background: radial-gradient(
+    ellipse 52% 125% at 48% 50%,
+    rgba(6, 9, 19, 0.94) 0%,
+    rgba(6, 9, 19, 0.9) 40%,
+    rgba(6, 9, 19, 0.6) 62%,
+    rgba(6, 9, 19, 0) 88%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Tighter variant for sub-page headers, which sit in a shallower band. */
+.curScrimHostTight::before {
+  inset: -40px -130px -30px -190px;
+}
+
+/* ==========================================================
+   CURRENTS — API page spacing corrections
+   ========================================================== */
+
+/* The endpoint path is an <h2>, so the article heading rules gave it a 2.4rem
+   top margin INSIDE a flex bar — which is what made the bar ~89px tall and
+   pushed the URL off centre. Reset it to a plain inline label. */
+.openapi__method-endpoint {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px;
+}
+
+.openapi__method-endpoint > .openapi__method-endpoint-path,
+.openapi__method-endpoint h1,
+.openapi__method-endpoint h2,
+.openapi__method-endpoint h3 {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.45 !important;
+  font-size: 13.5px !important;
+}
+
+.openapi__method-endpoint .badge {
+  line-height: 1.3 !important;
+  flex-shrink: 0;
+}
+
+/* Disclosure rows and schema/parameter rows are padded on the LEFT only by the
+   theme. Against a rounded border that leaves the triangle and the `required`
+   chip clipping the container edge, so pad all four sides and clip children to
+   the radius. */
+details.openapi-markdown__details,
+.openapi-security__details,
+.tabs-container.openapi-tabs__code-container {
+  overflow: hidden !important;
+}
+
+details.openapi-markdown__details > summary,
+.openapi-security__details > summary {
+  padding: 10px 16px !important;
+}
+
+.openapi-schema__list-item,
+.openapi-params__list-item,
+.openapi-schema__list > li,
+.openapi-params__list > li,
+.openapi-markdown__details > div,
+.openapi-schema__container {
+  padding-right: 16px !important;
+}
+
+.openapi-schema__list-item,
+.openapi-params__list-item {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+.openapi-schema__required {
+  margin-right: 4px !important;
+  white-space: nowrap;
+}
+
+/* Response status pills read as labels, so give them full-strength text. */
+.openapi-tabs__response-code-item {
+  color: var(--cur-text) !important;
+}
+
+.openapi-tabs__response-code-item--active {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  color: #ffffff !important;
+}
+
+/* ----- Response body -----
+   The theme sets padding-left/top/bottom inline on the body wrapper and zeroes
+   padding-top on the `code` inside it. The result: an opening brace hard against
+   the top border, a larger gap at the bottom, and the payload running into the
+   right edge with no padding at all.
+
+   Pad the WRAPPER evenly on all four sides (inline styles mean !important is
+   what wins here) and let the code sit flush inside it, so the block is centred
+   in its panel and long lines scroll instead of overrunning the border. */
+.openapi-explorer__response-container > div:not(.openapi-explorer__response-title-container) {
+  padding: 1rem !important;
+}
+
+.openapi-explorer__response-container pre,
+.openapi-explorer__response-container code,
+.openapi-explorer__response-container .prism-code {
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+
+/* Long payloads scroll inside the panel rather than pushing past its border. */
+.openapi-explorer__response-container pre {
+  overflow: auto !important;
+  max-width: 100%;
+}
+
+/* ==========================================================
+   CURRENTS — API page detail corrections (round 2)
+   ========================================================== */
+
+/* The disclosure arrow is an absolutely-positioned ::before at left:0. Against
+   a rounded container that puts it hard on the border, and it sat top-aligned
+   rather than on the text's centre line. Inset it and centre it vertically;
+   the summary gains matching left padding so the label clears it. */
+details.openapi-markdown__details > summary,
+.openapi-security__details > summary,
+details.openapi-markdown__details > summary.openapi-markdown__summary {
+  padding: 10px 16px 10px 38px !important;
+}
+
+details.openapi-markdown__details > summary::before,
+.openapi-security__details > summary::before,
+details.openapi-markdown__details > summary.openapi-markdown__summary::before {
+  left: 16px !important;
+  top: 50% !important;
+  /* Centre with a negative margin, NOT translateY: the theme rotates this
+     pseudo-element to signal open/closed, and any transform we set here is
+     replaced by that rotation — which silently drops the centring. */
+  margin: -6px 0 0 0 !important;
+}
+
+/* Language/variant tab strip sat ~26px above its sample: a margin-top--md
+   wrapper plus the strip's own bottom padding. */
+.openapi-tabs__code-container .margin-top--md {
+  margin-top: 6px !important;
+}
+
+.openapi-tabs__code-list-container {
+  padding-bottom: 4px !important;
+}
+
+/* Response body: a 16px pad against a 16px radius let the corner curve clip the
+   opening and closing braces. More vertical room, slightly tighter radius. */
+.openapi-explorer__response-container {
+  border-radius: 14px !important;
+}
+
+.openapi-explorer__response-container > div:not(.openapi-explorer__response-title-container) {
+  padding: 20px 18px !important;
+}
+
+/* ==========================================================
+   CURRENTS — sticky doc rail
+   The TOC pins itself; anything placed after it stayed in normal flow and rode
+   up over the pinned TOC on scroll. Pin the RAIL and let the TOC sit static
+   inside it, so "On this page" and the status card move as one block.
+   ========================================================== */
+.docRail {
+  position: sticky;
+  /* Clears the floating nav pill (nav padding + pill height), not just the
+     nominal navbar height. */
+  top: calc(var(--ifm-navbar-height) + 2.6rem);
+  max-height: calc(100vh - var(--ifm-navbar-height) - 4.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* Neutralise the TOC's OWN stickiness — both the hashed wrapper and the inner
+   list. Styling only the inner <ul> was not enough: the wrapper is the sticky
+   element, so on scroll it slid down while the status card stayed at its flow
+   position, and the two overlapped. */
+.docRail [class*='tableOfContents'],
+.docRail .table-of-contents {
+  position: static !important;
+  top: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.docRail::-webkit-scrollbar {
+  width: 6px;
+}
+
+.docRail::-webkit-scrollbar-thumb {
+  background: rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+}
+
+.docRail::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* The response payload arrives wrapped in the theme's own code-block container,
+   which the docs styles give an 18px radius, a border and overflow:hidden. With
+   the inner <pre> padding zeroed, the braces sat 1px from THAT rounded border
+   and were clipped by it — a panel inside a panel. Strip the inner chrome so the
+   outer response panel's padding is the only thing around the text. */
+.openapi-explorer__response-container .theme-code-block,
+.openapi-explorer__response-container [class*='codeBlockContainer'],
+.openapi-explorer__response-container [class*='codeBlockContent'] {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  overflow: visible !important;
+}

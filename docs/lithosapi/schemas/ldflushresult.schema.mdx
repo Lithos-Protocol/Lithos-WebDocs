@@ -1,0 +1,33 @@
+---
+id: ldflushresult
+title: "LDFlushResult"
+description: "Result of a LithosDex flush transaction"
+sidebar_label: "LDFlushResult"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"outcome":"accepted","flushedX":"3180000000","flushedY":"96400000","txId":"40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDFlushResult"}
+>
+</Heading>
+
+
+
+Result of a LithosDex flush transaction
+
+<Schema
+  schema={{"description":"Result of a LithosDex flush transaction","type":"object","x-tags":"lithosdex","required":["outcome","flushedX","flushedY","txId"],"properties":{"outcome":{"type":"string","enum":["accepted","rejected","uncertain"],"description":"Node submission outcome; uncertain retains the known transaction ID and input ownership."},"flushedX":{"type":"string","description":"nanoERG moved into the vault. Decimal string.","example":"3180000000"},"flushedY":{"type":"string","description":"Raw token units moved into the vault. Decimal string.","example":"96400000"},"txId":{"type":"string","example":"40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7"}},"title":"LDFlushResult"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

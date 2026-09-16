@@ -1,0 +1,33 @@
+---
+id: lddepositquote
+title: "LDDepositQuote"
+description: "Quote for a LithosDex liquidity deposit"
+sidebar_label: "LDDepositQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"shares":"1176470","amountX":"5000000000","amountY":"151058823","shareOfSupply":0.00117,"provisionBoxValue":"600000000","totalErgRequired":"5600000000","entryX":"41820000000000000000000000","entryY":"1264000000000000000000000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDDepositQuote"}
+>
+</Heading>
+
+
+
+Quote for a LithosDex liquidity deposit
+
+<Schema
+  schema={{"description":"Quote for a LithosDex liquidity deposit","type":"object","x-tags":"lithosdex","required":["shares","amountX","amountY","shareOfSupply","provisionBoxValue","totalErgRequired","entryX","entryY"],"properties":{"shares":{"type":"string","description":"LP shares the deposit unlocks; becomes the provision's size. Decimal string.","example":"1176470"},"amountX":{"type":"string","description":"nanoERG the pool takes. Decimal string.","example":"5000000000"},"amountY":{"type":"string","description":"Raw token units the pool takes. Decimal string.","example":"151058823"},"shareOfSupply":{"type":"number","format":"double","description":"Fraction of the pool the provision will represent once it lands","example":0.00117},"provisionBoxValue":{"type":"string","description":"nanoERG that must also fund the new provision box, on top of amountX. Decimal string.","example":"600000000"},"totalErgRequired":{"type":"string","description":"Total nanoERG leaving the wallet, network fee aside. Decimal string.","example":"5600000000"},"entryX":{"type":"string","description":"Accumulator the provision enters at. It is owed nothing accrued before this. Decimal string.\n","example":"41820000000000000000000000"},"entryY":{"type":"string","description":"Token side of the same. Decimal string.","example":"1264000000000000000000000"}},"title":"LDDepositQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

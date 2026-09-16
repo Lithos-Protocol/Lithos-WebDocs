@@ -1,0 +1,33 @@
+---
+id: ldresizeresult
+title: "LDResizeResult"
+description: "Result of a LithosDex provision resize transaction"
+sidebar_label: "LDResizeResult"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"outcome":"accepted","boxId":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65","newShares":"20000000000","amountX":"31875000000","amountY":"963000000","txId":"40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDResizeResult"}
+>
+</Heading>
+
+
+
+Result of a LithosDex provision resize transaction
+
+<Schema
+  schema={{"description":"Result of a LithosDex provision resize transaction","type":"object","x-tags":"lithosdex","required":["outcome","boxId","newShares","amountX","amountY","txId"],"properties":{"outcome":{"type":"string","enum":["accepted","rejected","uncertain"],"description":"Node submission outcome; uncertain retains the known transaction ID and input ownership."},"boxId":{"type":"string","description":"New provision box id. Use it for the next request.","example":"ce00d6e0f4fd3390c0519bb0d24824e1e6b06978163f4845a7cf2c1c7d8f1b65"},"newShares":{"type":"string","example":"20000000000"},"amountX":{"type":"string","example":"31875000000"},"amountY":{"type":"string","example":"963000000"},"txId":{"type":"string","example":"40b7d045a858d537cdbf072e46ffbb86c0c9f6b0e93c369c1ffcba76797636d7"}},"title":"LDResizeResult"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -1,0 +1,33 @@
+---
+id: ldswaporderrequest
+title: "LDSwapOrderRequest"
+description: "A swap order to quote"
+sidebar_label: "LDSwapOrderRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"amountIn":"1000000000","ergIn":true,"executorFee":"3000000","maxMinerFee":"1000000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDSwapOrderRequest"}
+>
+</Heading>
+
+
+
+A swap order to quote
+
+<Schema
+  schema={{"description":"A swap order to quote","type":"object","x-tags":"lithosdex","required":["amountIn","ergIn"],"properties":{"amountIn":{"type":"string","description":"Total handed to the pool, pool fees included. The executor fee is separate. Decimal string.\n","example":"1000000000"},"ergIn":{"type":"boolean","description":"True to sell ERG for the token, false to sell the token for ERG","example":true},"executorFee":{"type":"string","description":"nanoERG paid to whoever fills the order. A fill broadcast to the mempool pays its miner fee out of this. Miners skip orders paying less than they accept. Omit for the client's default. Decimal string.\n","example":"3000000"},"maxMinerFee":{"type":"string","description":"Most nanoERG a fill may pay as a miner fee, out of `executorFee`. Must be below `executorFee`. Omit for the client's default. Decimal string.\n","example":"1000000"}},"title":"LDSwapOrderRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

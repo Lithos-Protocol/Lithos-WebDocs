@@ -1,0 +1,2664 @@
+/* ==========================================================
+   LithosDex — "Currents" design
+   Near-black field, glass cards, cyan→indigo→purple.
+   Class names are kept stable from the previous implementation so
+   every panel inherits the new look without structural churn.
+   ========================================================== */
+
+.page {
+  position: relative;
+  min-height: 100vh;
+  background: var(--cur-bg-base);
+  font-family: var(--cur-font-body);
+  overflow: hidden;
+  /* Sub-pages carry a deep top pad so the decorative band under the nav stays
+     open — the handoff's placement rule: nothing opaque over a cube. */
+  padding: 88px 44px 56px;
+}
+
+/* The old radial glows are superseded by the flow field, but keep two soft
+   ambient blobs low in the page so long pages do not go flat. */
+.pageGlow1,
+.pageGlow2 {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pageGlow1 {
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.16), transparent 65%);
+  top: 380px;
+  left: -80px;
+}
+
+.pageGlow2 {
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.13), transparent 65%);
+  bottom: 120px;
+  right: -90px;
+}
+
+/* Retired: the 48px grid belonged to the previous design. */
+.grid {
+  display: none;
+}
+
+.shell {
+  position: relative;
+  z-index: 4;
+  max-width: 1192px;
+  margin: 0 auto;
+}
+
+/* ===== HEADER ===== */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--cur-font-display);
+  font-weight: 800;
+  font-size: 46px;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--cur-text);
+}
+
+.subtitle {
+  margin: 10px 0 0;
+  font-size: 14.5px;
+  color: var(--cur-muted);
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* ===== STATUS PILL ===== */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-family: var(--cur-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--cur-border-cool);
+  color: var(--cur-muted);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotOk {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+  animation: modDotPulse 2.4s ease-in-out infinite;
+}
+
+.dotWarn {
+  background: var(--cur-amber);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+  animation: modDotPulse 2.4s ease-in-out infinite;
+}
+
+.dotBad {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+}
+
+/* ===== STAT STRIP — six glass cells ===== */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.stat {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 18px;
+  padding: 15px 17px;
+  min-width: 0;
+}
+
+/* Awaiting-flush cell is the LithosDex-purple one. */
+.statPurple {
+  border-color: var(--cur-border-purple);
+}
+
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  margin-top: 6px;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statValueCyan {
+  color: var(--cur-cyan);
+}
+
+.statValuePurple {
+  color: var(--cur-purple-light);
+}
+
+.statValueSoft {
+  color: #e2e8f0;
+}
+
+.statSub {
+  font-size: 11px;
+  color: var(--cur-faint);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== TABS — pill rail ===== */
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--cur-bg-card-solid);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 999px;
+  padding: 5px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 9px 22px;
+  border-radius: 999px;
+  color: var(--cur-muted);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--cur-purple-light);
+  text-decoration: none;
+}
+
+.tabActive,
+.tabActive:hover {
+  background: var(--cur-grad-btn);
+  color: #060913;
+  font-weight: 600;
+}
+
+/* Faded and inert until an API key is set; the lock glyph and the title
+   attribute say why, so it does not read as a broken link. */
+.tabLocked,
+.tabLocked:hover {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--cur-faint);
+  opacity: 0.55;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 22px;
+  padding: 20px 22px;
+  min-width: 0;
+}
+
+.cardWide {
+  max-width: 100%;
+}
+
+.cardNarrow {
+  max-width: 520px;
+}
+
+.cardTitle {
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.025em;
+  color: var(--cur-text);
+  margin: 0 0 0.4rem;
+}
+
+.cardDesc {
+  font-size: 13.5px;
+  color: var(--cur-muted);
+  margin: 0 0 1.15rem;
+  line-height: 1.7;
+}
+
+/* Small uppercase mono section label, used across the right column. */
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+/* ===== SWAP CARD — 1px gradient border around an opaque body ===== */
+.swapCardWrap {
+  border-radius: 27px;
+  padding: 1px;
+  background: var(--cur-grad-card-border);
+}
+
+.swapCard {
+  position: relative;
+  background: var(--cur-bg-swap);
+  border-radius: 26px;
+  padding: 24px;
+  overflow: hidden;
+}
+
+.swapGlow {
+  position: absolute;
+  top: -70px;
+  left: -50px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.16), transparent 65%);
+  pointer-events: none;
+}
+
+.swapHead {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  gap: 1rem;
+}
+
+.swapTitle {
+  margin: 0;
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+  color: var(--cur-text);
+}
+
+.swapHint {
+  font-size: 11.5px;
+  color: var(--cur-faint);
+  white-space: nowrap;
+}
+
+/* ===== AMOUNT WELLS ===== */
+.field {
+  position: relative;
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 20px;
+  padding: 16px 18px;
+  transition: border-color 0.15s;
+}
+
+.fieldPurple {
+  border-color: rgba(168, 85, 247, 0.14);
+}
+
+.field:focus-within {
+  border-color: var(--cur-border-cyan);
+}
+
+.fieldHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 10px;
+}
+
+.fieldLabel {
+  font-size: 12.5px;
+  color: var(--cur-dim);
+}
+
+.fieldBalance {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  color: var(--cur-faint);
+  white-space: nowrap;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 36px;
+  letter-spacing: -0.03em;
+  color: var(--cur-text);
+  padding: 0;
+}
+
+.input::placeholder {
+  color: var(--cur-fainter);
+}
+
+.input:disabled {
+  color: var(--cur-cyan-light);
+  opacity: 1;
+  -webkit-text-fill-color: var(--cur-cyan-light);
+}
+
+.inputText {
+  font-family: var(--cur-font-body);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+/* Asset chip with a mini isometric-cube glyph. */
+.asset {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.assetErg {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid var(--cur-border-cyan);
+  color: var(--cur-cyan-light);
+}
+
+.assetTok {
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: var(--cur-purple-light);
+}
+
+/* ===== DIRECTION CONNECTOR ===== */
+.flipWrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: -12px 0;
+  z-index: 2;
+}
+
+.flip {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 50%;
+}
+
+.flip svg {
+  overflow: visible;
+  display: block;
+}
+
+.flip:hover .flipDisc {
+  stroke: rgba(56, 189, 248, 0.6);
+}
+
+.flip:hover .flipArrow {
+  stroke: var(--cur-cyan-light);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ===== SUMMARY ROWS ===== */
+.summary {
+  position: relative;
+  background: rgba(6, 9, 19, 0.5);
+  border: 1px solid rgba(125, 211, 252, 0.08);
+  border-radius: 18px;
+  margin-top: 18px;
+  padding: 4px 16px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.06);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowLabel {
+  font-size: 13px;
+  color: var(--cur-dim);
+}
+
+.rowValue {
+  font-family: var(--cur-font-mono);
+  font-size: 12.5px;
+  color: #e2e8f0;
+  text-align: right;
+  word-break: break-all;
+}
+
+.rowValueAccent {
+  color: var(--cur-cyan-light);
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  appearance: none;
+  position: relative;
+  width: 100%;
+  margin-top: 18px;
+  padding: 15px;
+  border: none;
+  border-radius: 999px;
+  font-family: var(--cur-font-display);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  color: #060913;
+  background: var(--cur-grad-btn);
+  box-shadow: 0 8px 26px rgba(56, 189, 248, 0.26);
+  transition: filter 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  filter: brightness(1.07);
+  box-shadow: 0 10px 32px rgba(56, 189, 248, 0.34);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btnPurple {
+  background: linear-gradient(115deg, #7c3aed, #a855f7);
+  color: #fff;
+  box-shadow: 0 8px 26px rgba(168, 85, 247, 0.26);
+}
+
+.btnPurple:hover:not(:disabled) {
+  box-shadow: 0 10px 32px rgba(168, 85, 247, 0.34);
+}
+
+.btnGhost {
+  background: transparent;
+  border: 1px solid var(--cur-border-cool-strong);
+  color: var(--cur-muted);
+  box-shadow: none;
+  font-family: var(--cur-font-body);
+  font-weight: 500;
+}
+
+.btnGhost:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--cur-cyan-light);
+  box-shadow: none;
+  filter: none;
+}
+
+.btnDanger {
+  background: linear-gradient(115deg, #b45309, #f59e0b);
+  color: #060913;
+  box-shadow: 0 8px 26px rgba(245, 158, 11, 0.22);
+}
+
+.btnDanger:hover:not(:disabled) {
+  box-shadow: 0 10px 32px rgba(245, 158, 11, 0.3);
+}
+
+.btnSm {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-family: var(--cur-font-body);
+  font-weight: 500;
+}
+
+.btnRow {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.btnRow .btn {
+  margin-top: 0;
+  flex: 1;
+  min-width: 150px;
+}
+
+/* ===== CHIPS ===== */
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 999px;
+  color: var(--cur-muted);
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  color: var(--cur-cyan-light);
+  border-color: var(--cur-border-cyan);
+}
+
+.chipActive,
+.chipActive:hover {
+  background: var(--cur-cyan);
+  border-color: var(--cur-cyan);
+  color: #060913;
+  font-weight: 600;
+  padding: 5px 12px;
+}
+
+/* ===== ALERTS ===== */
+.alert {
+  margin-top: 16px;
+  padding: 12px 15px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.65;
+  border: 1px solid;
+  word-break: break-word;
+}
+
+.alertError {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.alertOk {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--cur-green);
+}
+
+.alertInfo {
+  background: rgba(56, 189, 248, 0.07);
+  border-color: rgba(56, 189, 248, 0.22);
+  color: var(--cur-cyan-light);
+}
+
+.alertWarn {
+  background: rgba(245, 158, 11, 0.09);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--cur-amber-light);
+}
+
+.alertTitle {
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+/* Explicit opt-in before an irreversible loss (redeeming unclaimed fees). */
+.ackRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ackRow input {
+  accent-color: var(--cur-amber);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.txId {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  word-break: break-all;
+  opacity: 0.85;
+}
+
+/* Marks a chart whose series does not span its whole range. */
+.partialTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--cur-amber-light);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ===== LISTS ===== */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item {
+  background: rgba(6, 9, 19, 0.55);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 18px;
+  padding: 15px 17px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.item:hover {
+  border-color: var(--cur-border-cyan);
+}
+
+.itemActive {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.itemStatic {
+  cursor: default;
+}
+
+.itemStatic:hover {
+  border-color: rgba(125, 211, 252, 0.1);
+}
+
+.itemFlagged {
+  border-left: 3px solid rgba(245, 158, 11, 0.75);
+}
+
+.itemHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.itemHeadLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.itemId {
+  font-family: var(--cur-font-mono);
+  font-size: 12px;
+  color: var(--cur-cyan-light);
+}
+
+.itemShare {
+  font-family: var(--cur-font-mono);
+  font-size: 12px;
+  color: var(--cur-purple-light);
+  font-weight: 600;
+}
+
+.itemGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.itemCell {
+  min-width: 0;
+}
+
+.itemCellLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 0.25rem;
+}
+
+.itemCellValue {
+  font-family: var(--cur-font-mono);
+  font-size: 12.5px;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.feeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--cur-amber-light);
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.feeBadgeDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cur-amber);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.8);
+  flex-shrink: 0;
+}
+
+/* ===== EMPTY / LOADING ===== */
+.empty {
+  text-align: center;
+  padding: 2.2rem 1rem;
+  color: var(--cur-dim);
+  font-size: 13.5px;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(56, 189, 248, 0.2);
+  border-top-color: var(--cur-cyan);
+  border-radius: 50%;
+  animation: curSpin 0.7s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes curSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== LAYOUT ===== */
+/* Paired cards share a row height. `start` left the shorter card floating
+   against the taller one's baseline, which reads as a layout slip rather than
+   as a deliberate difference. */
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* Swap page: fixed card + fluid right column. */
+.swapLayout {
+  display: grid;
+  grid-template-columns: 500px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.swapCol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.rightColHead {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ===== SETTINGS ===== */
+.settingsPanel {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--cur-border-cool-strong);
+  border-radius: 22px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.settingsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settingsClose {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--cur-dim);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.3rem 0.45rem;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.settingsClose:hover {
+  color: var(--cur-text);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.settings {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.settingRow {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.settingLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+/* ===== AUTO-REFRESH CONTROL ===== */
+.settingCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 0.5rem;
+}
+
+.settingCheck input {
+  accent-color: var(--cur-cyan);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Reads as unavailable rather than merely empty until the box is ticked. */
+.settingInput:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.settingUnit {
+  font-family: var(--cur-font-mono);
+  font-size: 11px;
+  color: var(--cur-dim);
+  white-space: nowrap;
+}
+
+.settingInputRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settingInputRow .settingInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.settingInput {
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 14px;
+  padding: 10px 14px;
+  color: #e2e8f0;
+  font-family: var(--cur-font-mono);
+  font-size: 12.5px;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.settingInput:focus {
+  border-color: var(--cur-border-cyan);
+}
+
+.settingHint {
+  font-size: 11.5px;
+  color: var(--cur-dim);
+  line-height: 1.6;
+}
+
+.linkBtn {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--cur-cyan);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.linkBtn:hover {
+  color: var(--cur-cyan-light);
+}
+
+/* ===== BIG STAT (flush page) ===== */
+.bigStat {
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 18px;
+  padding: 15px 17px;
+  margin-bottom: 10px;
+}
+
+.bigStatValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  line-height: 1.15;
+  word-break: break-all;
+}
+
+.bigStatLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-top: 0.35rem;
+}
+
+/* ===== ACCUMULATOR GRID ===== */
+.accGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 0.5rem;
+}
+
+.accCol {
+  background: rgba(6, 9, 19, 0.6);
+  border: 1px solid rgba(125, 211, 252, 0.08);
+  border-radius: 14px;
+  padding: 11px 13px;
+  min-width: 0;
+}
+
+.accLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 0.3rem;
+}
+
+.accValue {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  color: var(--cur-cyan-light);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.accGap {
+  color: var(--cur-amber-light);
+}
+
+/* ===== TOTALS (fees page) ===== */
+.totalsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.totalCard {
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 18px;
+  padding: 16px 18px;
+}
+
+.totalCardOk {
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+.totalCardWarn {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.totalLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  margin-bottom: 0.6rem;
+}
+
+.totalValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  line-height: 1.15;
+  word-break: break-all;
+}
+
+.totalValueAlt {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  color: var(--cur-body);
+  line-height: 1.15;
+  margin-top: 0.5rem;
+  word-break: break-all;
+}
+
+.totalSub {
+  font-size: 11px;
+  color: var(--cur-faint);
+  margin-top: 0.15rem;
+}
+
+.valueOk {
+  color: var(--cur-green);
+}
+
+.valueWarn {
+  color: var(--cur-amber-light);
+}
+
+/* ===== PRICE CHART CARD ===== */
+.priceCard {
+  background: var(--cur-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 22px;
+  padding: 18px 20px 10px;
+}
+
+.priceHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.priceValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  margin-top: 4px;
+}
+
+.priceDelta {
+  font-family: var(--cur-font-body);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.priceDeltaUp {
+  color: var(--cur-green);
+}
+
+.priceDeltaDown {
+  color: #fca5a5;
+}
+
+.rangePills {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.rangePill {
+  appearance: none;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--cur-dim);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.rangePill:hover {
+  color: var(--cur-cyan-light);
+}
+
+.rangePillActive,
+.rangePillActive:hover {
+  background: rgba(56, 189, 248, 0.14);
+  color: var(--cur-cyan-light);
+}
+
+/* ===== CHART ===== */
+.chartWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chartTall {
+  min-width: 420px;
+}
+
+.axisText {
+  fill: var(--cur-dim);
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+}
+
+/* Static emphasis dot on charts. The pulsing-ripple variant read as random
+   circles phasing in and out on top of the permit curve, so it is gone here. */
+.endDot {
+  opacity: 0.95;
+}
+
+/* ===== POOL COMPOSITION ===== */
+.compRow {
+  margin-bottom: 14px;
+}
+
+.compHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--cur-muted);
+  margin-bottom: 6px;
+  gap: 0.75rem;
+}
+
+.compAmount {
+  font-family: var(--cur-font-mono);
+  color: #e2e8f0;
+}
+
+.compTrack {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(6, 9, 19, 0.7);
+  overflow: hidden;
+}
+
+.compFill {
+  height: 100%;
+  border-radius: 99px;
+}
+
+.compFillErg {
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+}
+
+.compFillTok {
+  background: linear-gradient(90deg, #7c3aed, #c084fc);
+}
+
+.compFoot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--cur-dim);
+  padding-top: 8px;
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+  gap: 0.75rem;
+}
+
+.compFootValue {
+  font-family: var(--cur-font-mono);
+  color: var(--cur-cyan-light);
+}
+
+/* ===== RECENT SWAPS ===== */
+.swapRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 9px 0;
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+}
+
+.swapDirErg {
+  font-size: 13px;
+  color: var(--cur-cyan-light);
+  white-space: nowrap;
+}
+
+.swapDirTok {
+  font-size: 13px;
+  color: var(--cur-purple-light);
+  white-space: nowrap;
+}
+
+.swapAmount {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12.5px;
+  color: var(--cur-muted);
+  text-align: right;
+}
+
+.swapAge {
+  font-size: 12px;
+  color: var(--cur-faint);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ===== RESPONSIVE ===== */
+@media screen and (max-width: 1100px) {
+  .swapLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media screen and (max-width: 900px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .accGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .page {
+    padding: 56px 16px 40px;
+  }
+
+  .title {
+    font-size: 34px;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .swapCard {
+    padding: 18px;
+  }
+
+  .input {
+    font-size: 28px;
+  }
+
+  .tab {
+    padding: 8px 15px;
+    font-size: 12.5px;
+  }
+}
+
+/* Declared locally: css-loader scopes animation names per module, so a
+   global keyframe name would hash to something that matches nothing. */
+@keyframes modDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Denomination beside a stat value — same line, quieter so the number leads. */
+.statUnit {
+  font-size: 0.62em;
+  font-weight: 600;
+  color: var(--cur-dim);
+  letter-spacing: 0.02em;
+  margin-left: 1px;
+}
+
+/* ===== RECENT SWAPS — tx · direction · amount · height · age =====
+   The list scrolls rather than growing the card: the API caps at ~50 rows and
+   an unbounded list would stretch the column far past the swap card beside it. */
+.swapList {
+  max-height: 268px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  margin-right: -4px;
+  padding-right: 4px;
+}
+
+.swapList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.swapList::-webkit-scrollbar-thumb {
+  background: rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+}
+
+.swapList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.swapRow {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1.2fr) minmax(0, 1fr) 92px 46px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+}
+
+.swapTx {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  color: var(--cur-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.swapHeight {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12px;
+  color: var(--cur-dim);
+  text-align: center;
+  justify-self: center;
+  white-space: nowrap;
+}
+
+/* Unconfirmed swaps can still roll back — mark them rather than leaving a blank. */
+.swapPending {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cur-amber-light);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 5px;
+  padding: 2px 8px;
+  text-align: center;
+  justify-self: center;
+  white-space: nowrap;
+}
+
+/* ==========================================================
+   Collateral Market additions � cm prefix, css-module hashing
+   keeps these from colliding with the Dex copy of this file.
+   Colour semantics unchanged: cyan = ERG, purple = LIT.
+   ========================================================== */
+
+/* ===== COLLATERAL ADDITIONS — tables, hover tooltip, positions grid ===== */
+
+/* Tables must always span their card; a bare width rule on the table class can
+   lose to content sizing once columns are few. */
+.cmTableWrap > table {
+  width: 100%;
+}
+
+/* ===== PERMIT-CURVE HOVER ===== */
+.cmChartBox {
+  position: relative;
+}
+
+.cmCursorLine {
+  stroke: rgba(125, 211, 252, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.cmHoverTip {
+  position: absolute;
+  top: 10px;
+  pointer-events: none;
+  background: rgba(6, 9, 19, 0.94);
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-family: var(--cur-font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: nowrap;
+  z-index: 5;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.cmHoverTipLabel {
+  color: var(--cur-dim);
+}
+
+.cmTipPaid {
+  color: var(--cur-cyan-light);
+  font-weight: 600;
+}
+
+.cmTipToday {
+  color: var(--cur-purple-light);
+  font-weight: 600;
+}
+
+/* ===== POSITIONS SQUARE GRID ===== */
+.cmPosHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.cmPosCount {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  color: var(--cur-dim);
+  margin-right: auto;
+}
+
+.cmPosGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 22px);
+  gap: 7px;
+  justify-content: start;
+  align-content: start;
+  height: 168px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 2px;
+  margin-right: -4px;
+}
+
+.cmPosGrid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cmPosGrid::-webkit-scrollbar-thumb {
+  background: rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+}
+
+.cmPosCell {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.cmPosCell:hover {
+  transform: scale(1.18);
+}
+
+.cmPosQueued {
+  background: rgba(168, 85, 247, 0.16);
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+.cmPosQueued:hover {
+  border-color: #c084fc;
+}
+
+.cmPosLive {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.42);
+}
+
+.cmPosLive:hover {
+  border-color: #7dd3fc;
+}
+
+.cmPosSelected,
+.cmPosSelected:hover {
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.55), 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+/* Expanded box detail: spans the full row so the squares reflow beneath it. */
+.cmPosDetail {
+  grid-column: 1 / -1;
+  background: rgba(6, 9, 19, 0.72);
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 16px;
+  padding: 13px 16px 5px;
+  margin-top: 2px;
+  animation: cmDetailIn 0.16s ease-out;
+}
+
+.cmPosDetailLive {
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+@keyframes cmDetailIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmPosDetail {
+    animation: none;
+  }
+}
+/* ==========================================================
+   BOX GRID — one square per collateral box
+   Geometry (34px cell, 8px gap) is mirrored in BoxGrid.js, which
+   derives the column count from it. Change both together.
+   ========================================================== */
+/* Boxes are placed with transforms, not grid tracks: `grid-column` cannot be
+   transitioned, so a grid-placed layout can only snap between states. The
+   container is just a positioned canvas whose height follows the row count. */
+.cmBoxGrid {
+  position: relative;
+  width: 100%;
+  /* No padding — the column maths reads clientWidth and would drift. */
+  padding: 0;
+  transition: height 0.24s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* Zoom rescales every cell at once; riding the tile's transition through that
+   makes the whole grid swim, so motion is suppressed until the width settles. */
+.cmBoxGridStatic .cmBox,
+.cmBoxGridStatic .cmBoxTile,
+.cmBoxGridStatic.cmBoxGrid {
+  transition: none;
+}
+
+.cmBox {
+  appearance: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0;
+  cursor: pointer;
+  /* Sharp corners: these read as chips on a ledger, not as pills. */
+  border-radius: 2px;
+  border: 1px solid transparent;
+  transition:
+    transform 0.24s cubic-bezier(0.2, 0.7, 0.3, 1),
+    background 0.12s,
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+
+/* Someone else's box: outline only, so a wall of them stays quiet. */
+.cmBoxOther {
+  background: rgba(148, 163, 184, 0.07);
+  border-color: rgba(148, 163, 184, 0.26);
+}
+
+.cmBoxOther:hover {
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(203, 213, 225, 0.6);
+}
+
+/* Yours: filled and ringed. Most of the grid belongs to other people, so this
+   has to be findable at a glance rather than merely different. */
+.cmBoxMineLive {
+  background: rgba(56, 189, 248, 0.34);
+  border-color: #38bdf8;
+  box-shadow: inset 0 0 0 1px rgba(224, 242, 254, 0.35);
+}
+
+.cmBoxMineLive:hover {
+  background: rgba(56, 189, 248, 0.5);
+}
+
+.cmBoxMineQueued {
+  background: rgba(168, 85, 247, 0.34);
+  border-color: #c084fc;
+  box-shadow: inset 0 0 0 1px rgba(243, 232, 255, 0.32);
+}
+
+.cmBoxMineQueued:hover {
+  background: rgba(168, 85, 247, 0.5);
+}
+
+/* Colour alone should not carry "mine" — a clipped corner says it too. */
+.cmBoxMineLive::after,
+.cmBoxMineQueued::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-width: 0 8px 8px 0;
+  border-style: solid;
+  border-color: transparent rgba(6, 9, 19, 0.85) transparent transparent;
+}
+
+/* Head of the queue — the box that activates into the next free slot. */
+.cmBoxHead {
+  box-shadow: 0 0 0 2px var(--cur-amber), 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+/* Tail of the queue — cyan, matching the far end of the direction arrow above
+   the grid, exactly as the head's amber ring matches its near end. Cyan is the
+   live-set "mine" fill, but nothing in the QUEUE grid uses it, so there is no
+   collision here. */
+.cmBoxTail {
+  box-shadow: 0 0 0 2px var(--cur-cyan), 0 0 10px rgba(56, 189, 248, 0.45);
+}
+
+/* ===== EXPANDED TILE ===== */
+.cmBoxTile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  border-radius: 3px;
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  overflow: hidden;
+  box-shadow: 0 6px 22px rgba(2, 6, 18, 0.75);
+  /* Grows out of, and shrinks back into, the square that was clicked. */
+  transition:
+    transform 0.24s cubic-bezier(0.2, 0.7, 0.3, 1),
+    width 0.24s cubic-bezier(0.2, 0.7, 0.3, 1),
+    height 0.24s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* Contents fade in only once there is room for them, so nothing is ever
+   rendered squashed into a 34px square mid-flight. */
+.cmTileInner {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 11px 10px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 0.16s ease-out;
+}
+
+.cmBoxTileOpen .cmTileInner {
+  opacity: 1;
+  transition: opacity 0.18s ease-in 0.08s;
+}
+
+/* The tile carries the colour of the square it grew from — a tinted wash over
+   an opaque base, so the fill reads as "the same box, larger" without ever
+   dropping the contrast the text needs. */
+.cmTileToneLive {
+  background-color: #05131d;
+  background-image: linear-gradient(180deg, rgba(56, 189, 248, 0.26), rgba(56, 189, 248, 0.08));
+  border-color: #38bdf8;
+  border-width: 2px;
+}
+
+.cmTileToneQueued {
+  background-color: #0f0819;
+  background-image: linear-gradient(180deg, rgba(168, 85, 247, 0.26), rgba(168, 85, 247, 0.08));
+  border-color: #c084fc;
+  border-width: 2px;
+}
+
+.cmTileToneOther {
+  background-color: #0a0f18;
+  background-image: linear-gradient(180deg, rgba(148, 163, 184, 0.18), rgba(148, 163, 184, 0.05));
+  border-color: rgba(203, 213, 225, 0.55);
+}
+
+.cmTileHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.13);
+}
+
+.cmTileTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--cur-font-mono);
+  font-size: 11px;
+  color: var(--cur-cyan-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmTileClose {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--cur-dim);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 3px;
+  flex-shrink: 0;
+}
+
+.cmTileClose:hover {
+  color: var(--cur-text);
+}
+
+.cmTileGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 12px;
+}
+
+.cmTileField {
+  min-width: 0;
+}
+
+.cmTileLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+.cmTileValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmTileErg {
+  color: var(--cur-cyan-light);
+}
+
+.cmTileLit {
+  color: var(--cur-purple-light);
+}
+
+.cmTileAddr {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  color: var(--cur-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Header and fields sit against a tinted wash now, so they need a touch more
+   weight than they did on the old flat-dark tile. */
+.cmTileToneLive .cmTileTitle {
+  color: #e0f2fe;
+}
+
+.cmTileToneQueued .cmTileTitle {
+  color: #f3e8ff;
+}
+
+.cmTileToneOther .cmTileTitle {
+  color: #e2e8f0;
+}
+
+/* Card title paired with a status pill on the right. */
+.cmCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+/* Shown on the grids only while no API key is set. */
+.cmKeyHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  color: var(--cur-cyan-light);
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+@media screen and (max-width: 860px) {
+  .cmKeyHint {
+    white-space: normal;
+  }
+}
+
+/* Tail counterpart to the amber `feeBadge` used for the head — cyan, matching
+   the tail ring and the arrow's far end. */
+.cmTailBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  color: var(--cur-cyan-light);
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ===== QUEUE DIRECTION AXIS ===== */
+.cmQueueAxis {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 10px;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cmQueueEnd {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--cur-dim);
+  white-space: nowrap;
+}
+
+.cmQueueEndHead {
+  color: var(--cur-amber-light);
+}
+
+/* The rule between the two ends carries the direction of travel: amber at the
+   head, fading toward the tail, with a solid arrowhead so the direction reads
+   at a glance rather than on inspection. */
+.cmQueueFlow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 40px;
+}
+
+.cmQueueFlowLine {
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0.75),
+    rgba(125, 211, 252, 0.5) 55%,
+    var(--cur-cyan)
+  );
+}
+
+.cmQueueArrow {
+  color: var(--cur-cyan);
+  font-size: 11px;
+  line-height: 1;
+  margin-left: -1px;
+  flex-shrink: 0;
+}
+
+.cmQueueLegend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  color: var(--cur-dim);
+}
+
+.cmLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cmLegendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmBoxGrid,
+  .cmBox,
+  .cmBoxTile,
+  .cmTileInner {
+    transition: none;
+  }
+}
+
+.cmTableWrap {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.cmTableWrap::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.cmTableWrap::-webkit-scrollbar-thumb {
+  background: rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+}
+
+.cmTableWrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cmTable {
+  /* Infima styles markdown tables `display: block` so they scroll on mobile.
+     That applies here too, and a block box lays its columns out shrink-to-fit
+     inside the full-width element — so `width: 100%` was honoured while the
+     columns bunched to the left and left half the card empty. `.cmTableWrap`
+     already owns the horizontal scrolling, so restore real table layout. */
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Headers and values are both centred, so a column reads as one aligned stack
+   rather than a left-aligned label sitting over right-aligned figures. */
+.cmTh {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  text-align: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.14);
+  white-space: nowrap;
+}
+
+.cmThNum {
+  text-align: center;
+}
+
+.cmTd {
+  padding: 10px;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.06);
+  color: #e2e8f0;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.cmTr:last-child .cmTd {
+  border-bottom: none;
+}
+
+/* Tabular figures, centred under their header like every other column. */
+.cmNum {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Rows belonging to the reader � matched against the wallet's lender keys. */
+.cmMine {
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.cmMine .cmTd:first-child {
+  box-shadow: inset 3px 0 0 rgba(56, 189, 248, 0.6);
+}
+
+.cmAddr {
+  font-family: var(--cur-font-mono);
+  font-size: 12px;
+  color: var(--cur-muted);
+}
+
+/* ===== ACTIVE-SET GAUGE RING ===== */
+.cmGauge {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.cmGaugeRing {
+  /* Two arcs against the empty remainder, both set inline as percentages of
+     the slot cap: --p is the live set (cyan), --q carries the queue behind it
+     (purple). Reading them on one dial is the point — the queue is exactly
+     what will fill the cyan arc as blocks land. conic-gradient starts at 12
+     o'clock and runs clockwise. */
+  --p: 0;
+  --q: 0;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #38bdf8 0,
+    #38bdf8 calc(var(--p) * 1%),
+    rgba(6, 9, 19, 0.85) calc(var(--p) * 1%),
+    rgba(6, 9, 19, 0.85) calc(var(--p) * 1% + 2deg),
+    #a855f7 calc(var(--p) * 1% + 2deg),
+    #a855f7 calc((var(--p) + var(--q)) * 1%),
+    rgba(125, 211, 252, 0.09) calc((var(--p) + var(--q)) * 1%)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Key for the two arcs, sat under the dial. */
+.cmGaugeKey {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  color: var(--cur-dim);
+}
+
+.cmGaugeKeyDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.cmGaugeHole {
+  width: 114px;
+  height: 114px;
+  border-radius: 50%;
+  background: #0a0f1e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.cmGaugeValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: var(--cur-cyan-light);
+  line-height: 1;
+}
+
+.cmGaugeLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+/* ===== PHASE BADGE ===== */
+.cmPhaseBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.cmPhaseDecaying {
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.cmPhaseStepped {
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.cmPhaseFlat {
+  color: var(--cur-green);
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.cmPhaseEnded {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* ===== EMISSION PROGRESS TRACK ===== */
+.cmTrackWrap {
+  position: relative;
+  padding: 5px 0;
+  margin-top: 12px;
+}
+
+.cmTrack {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(6, 9, 19, 0.7);
+  overflow: hidden;
+}
+
+.cmFill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+}
+
+.cmMarker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: rgba(192, 132, 252, 0.95);
+  box-shadow: 0 0 7px rgba(192, 132, 252, 0.8);
+  z-index: 2;
+}
+
+.cmMarkerEnd {
+  background: rgba(245, 158, 11, 0.95);
+  box-shadow: 0 0 7px rgba(245, 158, 11, 0.8);
+}
+
+.cmTrackLabels {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 6px;
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  color: var(--cur-faint);
+}
+
+/* ===== BOXES-AHEAD MINI BAR (queue table) ===== */
+.cmAhead {
+  min-width: 120px;
+}
+
+.cmAheadTrack {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(6, 9, 19, 0.7);
+  overflow: hidden;
+}
+
+.cmAheadFill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #7c3aed, #c084fc);
+}
+
+.cmAheadText {
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  color: var(--cur-faint);
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+/* ===== COUNT STEPPER (join form) ===== */
+.cmStepperRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cmStepperLabel {
+  font-size: 12.5px;
+  color: var(--cur-dim);
+}
+
+.cmStepper {
+  display: inline-flex;
+  align-items: center;
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.cmStepBtn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--cur-muted);
+  font-family: var(--cur-font-num);
+  font-size: 19px;
+  line-height: 1;
+  width: 46px;
+  height: 42px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.cmStepBtn:hover:not(:disabled) {
+  color: var(--cur-cyan-light);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.cmStepBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cmStepValue {
+  min-width: 58px;
+  text-align: center;
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--cur-text);
+}
+
+/* ===== COST BREAKDOWN ===== */
+.cmPermitLines {
+  border-left: 2px solid rgba(168, 85, 247, 0.35);
+  margin: 2px 0 2px 7px;
+  padding-left: 13px;
+}
+
+.cmPermitNote {
+  font-size: 11.5px;
+  color: var(--cur-faint);
+  padding: 6px 0 2px;
+  line-height: 1.55;
+}
+
+/* ===== STATUS CHIPS (lender keys / positions) ===== */
+.cmStatusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.cmStatusDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.cmStatusFree {
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.cmStatusQueued {
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.cmStatusActive {
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+/* A key whose box was spent recently and is still named by a proof-of-spend.
+   Not usable for a join until that clears — amber, because it resolves on its
+   own and needs no action. */
+.cmStatusRetiring {
+  color: var(--cur-amber-light);
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+/* ===== JOIN: LENDER KEYS ===== */
+.cmKeysBlock {
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+
+.cmKeyRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(125, 211, 252, 0.06);
+}
+
+.cmKeyRow:first-of-type {
+  border-top: none;
+}
+
+.cmKeyIndex {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cur-dim);
+  min-width: 52px;
+}
+
+.cmKeyAddr {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  color: var(--cur-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmKeyPending {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  color: var(--cur-faint);
+  font-style: italic;
+}
+
+/* ===== JOIN: IRREVERSIBILITY ACKNOWLEDGEMENT ===== */
+.cmAckRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 16px 0 14px;
+  padding: 13px 15px;
+  border-radius: 16px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--cur-muted);
+  cursor: pointer;
+}
+
+.cmAckRow input {
+  accent-color: var(--cur-amber);
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cmAckRow strong {
+  color: var(--cur-amber-light);
+}
+
+.cmAckRow input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ===== EXPLAINER CARDS ===== */
+.cmExplainers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.cmExplainers .card {
+  margin-top: 0;
+}
+
+/* ===== BLOCKS-FOUND BARS ===== */
+.cmBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 170px;
+  padding-top: 12px;
+}
+
+/* A card that should occupy the whole of its stretched row. */
+.cmCardFill {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Takes the slack inside a filled card, so the bars grow into the height
+   instead of leaving a band of dead space under them. */
+.cmBarsFill {
+  flex: 1;
+  height: auto;
+  min-height: 170px;
+}
+
+.cmBarCol {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cmBarValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 11px;
+  color: #e2e8f0;
+}
+
+.cmBar {
+  width: 100%;
+  max-width: 54px;
+  min-height: 2px;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.22);
+}
+
+.cmBarLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  color: var(--cur-dim);
+  white-space: nowrap;
+}
+
+/* ===== CHART LEGEND & FOOTNOTES ===== */
+.cmLegend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--cur-dim);
+}
+
+.cmLegendSwatch {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+/* Dashed variant for the theoretical-curve overlay legend entry. */
+.cmSwatchDashed {
+  background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px);
+}
+
+.cmFootnote {
+  font-size: 11.5px;
+  color: var(--cur-faint);
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+/* ===== PAGER ===== */
+.cmPager {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.cmPagerInfo {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  color: var(--cur-dim);
+  margin-right: auto;
+}
+
+@media screen and (max-width: 900px) {
+  .cmExplainers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

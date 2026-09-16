@@ -1,0 +1,33 @@
+---
+id: ldswaporderquote
+title: "LDSwapOrderQuote"
+description: "Quote for a LithosDex swap order against the current pool"
+sidebar_label: "LDSwapOrderQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"swap":{"ergIn":true,"amountIn":"1000000000","protocolFee":"1500000","ammFee":"1497750","tradedIn":"998500000","amountOut":"30124883","totalFee":"2997750","spotBefore":0.0302,"spotAfter":0.0301,"executionPrice":0.0301,"priceImpact":0.0031,"isExecutable":true},"executorFee":"3000000","maxMinerFee":"1000000","netOutput":"30124883","totalErgRequired":"1004000000","ergReturned":"1000000","networkFee":"2000000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDSwapOrderQuote"}
+>
+</Heading>
+
+
+
+Quote for a LithosDex swap order against the current pool
+
+<Schema
+  schema={{"description":"Quote for a LithosDex swap order against the current pool","type":"object","x-tags":"lithosdex","required":["swap","executorFee","maxMinerFee","netOutput","totalErgRequired","ergReturned","networkFee"],"properties":{"swap":{"description":"Quote for a LithosDex swap","type":"object","x-tags":"lithosdex","required":["ergIn","amountIn","protocolFee","ammFee","tradedIn","amountOut","totalFee","spotBefore","spotAfter","executionPrice","priceImpact","isExecutable"],"properties":{"ergIn":{"type":"boolean","example":true},"amountIn":{"type":"string","description":"Total handed to the pool, fees included. Decimal string.","example":"1000000000"},"protocolFee":{"type":"string","description":"Taken out of the input and set aside for liquidity providers. Decimal string.","example":"1500000"},"ammFee":{"type":"string","description":"The curve's own fee on the remainder; stays in the pool. Decimal string.","example":"1497750"},"tradedIn":{"type":"string","description":"What actually reaches the curve — amountIn less protocolFee. Decimal string.","example":"998500000"},"amountOut":{"type":"string","description":"What comes back. Decimal string.","example":"30124883"},"totalFee":{"type":"string","description":"Every fee the swap pays, on the input side. Decimal string.","example":"2997750"},"spotBefore":{"type":"number","format":"double","description":"Pre-trade price, ignoring fees and depth","example":0.0302},"spotAfter":{"type":"number","format":"double","description":"Price once the swap lands, ignoring fees","example":0.0301},"executionPrice":{"type":"number","format":"double","description":"Output per unit of input, fees and depth included","example":0.0301},"priceImpact":{"type":"number","format":"double","description":"How far execution fell short of the pre-trade price, as a fraction","example":0.0031},"isExecutable":{"type":"boolean","description":"False when the pool would reject the swap — nothing reaches the curve, or the output would meet or exceed the reserve it is drawn from.\n","example":true}},"title":"LDSwapQuote"},"executorFee":{"type":"string","description":"The executor fee applied, the request's or the client's default. Decimal string.","example":"3000000"},"maxMinerFee":{"type":"string","description":"The miner fee cap applied. Decimal string.","example":"1000000"},"netOutput":{"type":"string","description":"What the owner receives if the order fills against the current pool: `swap.amountOut`, less `executorFee` when selling the token. Negative when the fee exceeds the output, and such an order cannot fill. Decimal string.\n","example":"30124883"},"totalErgRequired":{"type":"string","description":"nanoERG locked in the order box: `ergReturned`, plus `amountIn` and `executorFee` when selling ERG. Decimal string.\n","example":"1004000000"},"ergReturned":{"type":"string","description":"nanoERG of `totalErgRequired` returned to the owner with the fill. Decimal string.","example":"1000000"},"networkFee":{"type":"string","description":"nanoERG paid to place the order. Decimal string.","example":"2000000"}},"title":"LDSwapOrderQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -1,0 +1,33 @@
+---
+id: ldflushcheck
+title: "LDFlushCheck"
+description: "State of a prospective flush from the pool into the vault"
+sidebar_label: "LDFlushCheck"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"pendingX":"3180000000","pendingY":"96400000","canFlush":true,"poolAccX":"41820000000000000000000000","poolAccY":"1264000000000000000000000","vaultAccX":"38640000000000000000000000","vaultAccY":"1167600000000000000000000","vaultBalanceAfterX":"12600000000","vaultBalanceAfterY":"380700000","lastFlushHeight":1298100,"currentHeight":1312460}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDFlushCheck"}
+>
+</Heading>
+
+
+
+State of a prospective flush from the pool into the vault
+
+<Schema
+  schema={{"description":"State of a prospective flush from the pool into the vault","type":"object","x-tags":"lithosdex","required":["pendingX","pendingY","canFlush","poolAccX","poolAccY","vaultAccX","vaultAccY","vaultBalanceAfterX","vaultBalanceAfterY","currentHeight"],"properties":{"pendingX":{"type":"string","description":"nanoERG fees the pool is holding for the vault. Decimal string.","example":"3180000000"},"pendingY":{"type":"string","description":"Token side of the same. Decimal string.","example":"96400000"},"canFlush":{"type":"boolean","description":"A flush needs something to move, or the pool rejects it","example":true},"poolAccX":{"type":"string","description":"The pool's current ERG accumulator. Decimal string.","example":"41820000000000000000000000"},"poolAccY":{"type":"string","example":"1264000000000000000000000"},"vaultAccX":{"type":"string","description":"The vault's ERG accumulator. Trails the pool's; the gap is exactly the money the vault does not yet have. Decimal string.\n","example":"38640000000000000000000000"},"vaultAccY":{"type":"string","example":"1167600000000000000000000"},"vaultBalanceAfterX":{"type":"string","description":"What the vault would hold once the flush lands. Decimal string.","example":"12600000000"},"vaultBalanceAfterY":{"type":"string","example":"380700000"},"lastFlushHeight":{"type":"integer","format":"int32","example":1298100},"currentHeight":{"type":"integer","format":"int32","example":1312460}},"title":"LDFlushCheck"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

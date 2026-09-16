@@ -1,0 +1,61 @@
+{
+  "name": "lithos-webdocs",
+  "version": "1.0.0",
+  "description": "Documentation, REST API reference and web interface for the Lithos Protocol client.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lithos-Protocol/Lithos-WebDocs.git"
+  },
+  "homepage": "https://github.com/Lithos-Protocol/Lithos-WebDocs#readme",
+  "bugs": {
+    "url": "https://github.com/Lithos-Protocol/Lithos-WebDocs/issues"
+  },
+  "engines": {
+    "node": ">=18.0"
+  },
+  "//": "private: this site is deployed by copying build/ into the client, never published to npm.",
+  "private": true,
+  "scripts": {
+    "docusaurus": "docusaurus",
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "postbuild": "node scripts/postbuild.js",
+    "swizzle": "docusaurus swizzle",
+    "deploy": "docusaurus deploy",
+    "clear": "docusaurus clear",
+    "serve": "docusaurus serve",
+    "write-translations": "docusaurus write-translations",
+    "write-heading-ids": "docusaurus write-heading-ids",
+    "gen-api-docs": "docusaurus gen-api-docs",
+    "postgen-api-docs": "node scripts/restore-api-customizations.js",
+    "clean-api-docs": "docusaurus clean-api-docs",
+    "gen-api-docs:version": "docusaurus gen-api-docs:version",
+    "postgen-api-docs:version": "node scripts/restore-api-customizations.js",
+    "clean-api-docs:version": "docusaurus clean-api-docs:version",
+    "restore-api-customizations": "node scripts/restore-api-customizations.js"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.7.0",
+    "@docusaurus/preset-classic": "3.7.0",
+    "@mdx-js/react": "^3.0.0",
+    "clsx": "^2.0.0",
+    "docusaurus-plugin-openapi-docs": "4.3.7",
+    "docusaurus-theme-openapi-docs": "4.3.7",
+    "prism-react-renderer": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

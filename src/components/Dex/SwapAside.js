@@ -33,8 +33,24 @@ function timeLabel(ts, range) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+/**
+ * Decimal places for a price, by size. Fixed places read badly once the pair
+ * flips: 4dp shows LIT per ERG (~20) as 20.2693 but ERG per LIT (~0.05) as
+ * 0.0493, three significant digits. Below 1 this keeps about five.
+ */
+function priceDp(v) {
+  const a = Math.abs(v);
+  if (!Number.isFinite(a) || a === 0) return 4;
+  if (a >= 1000) return 2;
+  if (a >= 1) return 4;
+  return Math.min(10, Math.ceil(-Math.log10(a)) + 4);
+}
+
+/** Width of one 9px mono axis glyph in viewBox units, for sizing the label gutter. */
+const AXIS_CHAR_W = 5.6;
+
 /** Smoothed area chart: cyan stroke over a fading fill, with a rippling end dot. */
-function PriceChart({ points, range, tokenName }) {
+function PriceChart({ points, range, pairLabel }) {
   const wrapRef = useRef(null);
   const [hoverIdx, setHoverIdx] = useState(null);
 
@@ -61,9 +77,24 @@ function PriceChart({ points, range, tokenName }) {
     lo = Math.max(0, lo - pad);
     hi += pad;
 
-    const innerW = W - PAD.l - PAD.r;
+    /*
+     * Five gridlines across the padded range. Precision follows the spacing
+     * between them, not the size of the price: a pool that barely moved spans
+     * a few thousandths, and magnitude-based places printed every tick as the
+     * same "20.27". Enough places to tell neighbouring ticks apart.
+     */
+    const tickStep = (hi - lo) / 4;
+    const dp = Math.min(10, Math.max(0, Math.ceil(-Math.log10(tickStep))));
+    const tickVals = [0, 0.25, 0.5, 0.75, 1].map((f) => lo + (hi - lo) * f);
+    const tickLabels = tickVals.map((v) => fmtNum(v, dp));
+
+    // The gutter grows to fit the longest label, so a small price with more
+    // places is not clipped at the card's left edge.
+    const padL = Math.max(PAD.l, Math.ceil(Math.max(...tickLabels.map((t) => t.length)) * AXIS_CHAR_W) + 12);
+
+    const innerW = W - padL - PAD.r;
     const innerH = H - PAD.t - PAD.b;
-    const x = (i) => PAD.l + (i / Math.max(1, series.length - 1)) * innerW;
+    const x = (i) => padL + (i / Math.max(1, series.length - 1)) * innerW;
     const y = (v) => PAD.t + innerH - ((v - lo) / (hi - lo)) * innerH;
 
     const pts = series.map((p, i) => [x(i), y(p.price)]);
@@ -84,13 +115,7 @@ function PriceChart({ points, range, tokenName }) {
     const last = pts[pts.length - 1];
     const baseline = PAD.t + innerH;
 
-    // Five gridlines across the padded range; the price series rarely spans an
-    // order of magnitude, so precision follows the magnitude on screen.
-    const dp = hi >= 1000 ? 0 : hi >= 100 ? 1 : hi >= 1 ? 2 : 5;
-    const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
-      y: baseline - f * innerH,
-      label: fmtNum(lo + (hi - lo) * f, dp),
-    }));
+    const yTicks = tickVals.map((v, i) => ({ y: y(v), label: tickLabels[i] }));
 
     const step = Math.max(1, Math.floor((series.length - 1) / 4));
     const xTicks = (flat ? [series[0]] : series)
@@ -112,6 +137,7 @@ function PriceChart({ points, range, tokenName }) {
       xTicks,
       baseline,
       innerW,
+      padL,
       series,
       flat,
     };
@@ -124,14 +150,14 @@ function PriceChart({ points, range, tokenName }) {
     }
     const rect = wrapRef.current.getBoundingClientRect();
     const mx = ((e.clientX - rect.left) / rect.width) * W;
-    if (mx < PAD.l - 6 || mx > W - PAD.r + 6) {
+    if (mx < model.padL - 6 || mx > W - PAD.r + 6) {
       setHoverIdx(null);
       return;
     }
     // Index into the drawn series, not the raw points: a flat range pads to two
     // entries so it has a line to draw, and the cursor has to agree with it.
     const n = model.series.length;
-    const i = Math.round(((mx - PAD.l) / model.innerW) * (n - 1));
+    const i = Math.round(((mx - model.padL) / model.innerW) * (n - 1));
     setHoverIdx(Math.max(0, Math.min(n - 1, i)));
   };
 
@@ -163,14 +189,14 @@ function PriceChart({ points, range, tokenName }) {
         {model.yTicks.map((t, i) => (
           <g key={i}>
             <line
-              x1={PAD.l}
+              x1={model.padL}
               y1={t.y}
               x2={W - PAD.r}
               y2={t.y}
               stroke="rgba(56,189,248,0.08)"
               strokeWidth="1"
             />
-            <text x={PAD.l - 8} y={t.y + 3.2} className={s.axisText} textAnchor="end">
+            <text x={model.padL - 8} y={t.y + 3.2} className={s.axisText} textAnchor="end">
               {t.label}
             </text>
           </g>
@@ -239,8 +265,8 @@ function PriceChart({ points, range, tokenName }) {
           return (
             <div className={s.hoverTip} style={{ left: `${left}px` }}>
               <div>
-                <span className={s.hoverTipCyan}>{fmtNum(hovered.price, 4)}</span>{' '}
-                <span className={s.hoverTipLabel}>{tokenName} / ERG</span>
+                <span className={s.hoverTipCyan}>{fmtNum(hovered.price, priceDp(hovered.price))}</span>{' '}
+                <span className={s.hoverTipLabel}>{pairLabel}</span>
               </div>
               <div className={s.hoverTipLabel}>
                 {hovered.timestamp != null
@@ -260,22 +286,89 @@ function PriceChart({ points, range, tokenName }) {
   );
 }
 
+/** Remembered per browser: someone who thinks in ERG per LIT should not re-flip on every visit. */
+const PAIR_KEY = 'lithos.dex.priceInverted';
+
+/** Two opposing arrows, for the pair switch. */
+function SwapPairIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" />
+    </svg>
+  );
+}
+
 function PriceCard() {
   const { pool, tick } = useDex();
   const [range, setRange] = useState('24H');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // false: LIT per ERG, the pool's own quote. true: ERG per LIT.
+  const [inverted, setInverted] = useState(false);
+
+  useEffect(() => {
+    try {
+      setInverted(window.localStorage.getItem(PAIR_KEY) === '1');
+    } catch {
+      /* storage unavailable — keep the default */
+    }
+  }, []);
+
+  const flipPair = () => {
+    const next = !inverted;
+    setInverted(next);
+    try {
+      window.localStorage.setItem(PAIR_KEY, next ? '1' : '0');
+    } catch {
+      /* the choice just won't survive a reload */
+    }
+  };
 
   const dec = pool?.tokenDecimals ?? 0;
   const name = pool?.tokenName ?? 'TOKEN';
+  const pairLabel = inverted ? `ERG / ${name}` : `${name} / ERG`;
 
-  // Spot straight off the reserves. The server already ends the series at the
-  // current price, so this only has to agree with it — it is never used to
-  // adjust the chart.
+  /*
+   * Spot straight off the reserves. The server already ends the series at the
+   * current price, so this only has to agree with it — it is never used to
+   * adjust the chart. Inverted, it is computed from the reserves the other way
+   * up rather than as 1/spot, and to more places, since ~0.05 at the default six
+   * would keep only four significant digits.
+   */
   const spot = pool
-    ? ratio(big(pool.reservesY) * 10n ** 9n, big(pool.reservesX) * 10n ** BigInt(dec))
+    ? inverted
+      ? ratio(big(pool.reservesX) * 10n ** BigInt(dec), big(pool.reservesY) * 10n ** 9n, 12)
+      : ratio(big(pool.reservesY) * 10n ** 9n, big(pool.reservesX) * 10n ** BigInt(dec))
     : 0;
+
+  /*
+   * The series flipped point by point. `price` is already a display double with
+   * decimals applied, so 1/price is the same quantity the other way up; a
+   * non-positive price has no inverse and is dropped rather than drawn as
+   * Infinity.
+   */
+  const points = useMemo(() => {
+    const history = data?.history;
+    if (!history || !inverted) return history;
+    return history.filter((p) => p.price > 0).map((p) => ({ ...p, price: 1 / p.price }));
+  }, [data, inverted]);
+
+  /*
+   * Change across the range. Inverting a price does not negate its change: if
+   * LIT per ERG moved by c, ERG per LIT moved by 1/(1+c) − 1. A −22.6% move one
+   * way is +29.2% the other, not +22.6%. A change of −100% or worse has no
+   * inverse to show.
+   */
+  const rawChange = data?.changePct;
+  const change =
+    rawChange == null || !Number.isFinite(rawChange)
+      ? null
+      : !inverted
+        ? rawChange
+        : rawChange > -1
+          ? 1 / (1 + rawChange) - 1
+          : null;
 
   // Re-read when the pool box moves: a new box id means a swap landed, so the
   // series has a new point on the end.
@@ -300,21 +393,32 @@ function PriceCard() {
     };
   }, [range, pool?.utxoId, tick]);
 
-  const up = (data?.changePct ?? 0) >= 0;
+  const up = (change ?? 0) >= 0;
 
   return (
     <div className={s.priceCard}>
       <div className={s.priceHead}>
         <div>
           <div className={s.sectionLabel}>
-            Price · {name} / ERG {data?.partial && <PartialTag />}
+            Price ·{' '}
+            <button
+              type="button"
+              className={s.pairToggle}
+              onClick={flipPair}
+              title={inverted ? `Showing ERG per ${name}. Switch to ${name} per ERG` : `Showing ${name} per ERG. Switch to ERG per ${name}`}
+              aria-label={`Price shown as ${pairLabel}. Switch pair`}
+            >
+              {pairLabel}
+              <SwapPairIcon />
+            </button>{' '}
+            {data?.partial && <PartialTag />}
           </div>
           <div className={s.priceValue}>
-            {spot ? fmtNum(spot, 4) : '—'}{' '}
-            {data && (
+            {spot ? fmtNum(spot, priceDp(spot)) : '—'}{' '}
+            {data && change != null && (
               <span className={`${s.priceDelta} ${up ? s.priceDeltaUp : s.priceDeltaDown}`}>
                 {up ? '+' : ''}
-                {fmtPct(data.changePct, 1)}
+                {fmtPct(change, 1)}
               </span>
             )}
           </div>
@@ -339,7 +443,7 @@ function PriceCard() {
       ) : error ? (
         <div className={s.empty}>{error}</div>
       ) : (
-        <PriceChart points={data?.history} range={range} tokenName={name} />
+        <PriceChart points={points} range={range} pairLabel={pairLabel} />
       )}
     </div>
   );

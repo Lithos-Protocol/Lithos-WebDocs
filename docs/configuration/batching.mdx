@@ -1,0 +1,147 @@
+---
+sidebar_position: 5
+tags:
+  - configuration
+description: Filling other people's DEX orders for their executor fee, and the fees your own orders carry.
+---
+
+# Batching and orders
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you know what a DEX order box is and how mempool chaining works. Start with [Block packages](./candidate.mdx) if not.*
+
+A batcher finds orders that other people have placed, executes them correctly, and keeps the executor
+fee the order's own script pays. This page covers the `batching` block, which configures the two
+batchers, and `lithosdex.orders`, which sets the fees on orders **you** place.
+
+## How a batcher earns
+
+An order is a box whose script pays a fixed executor fee to whoever fills it correctly. The contract
+fixes the price bound, the owner's reward script and the fee. You choose the moment and keep the fee.
+
+**Nothing about filling an order needs your own capital.** No path selects a wallet box: a run is
+funded entirely by the orders it fills, and its takings chain from one execution to the next.
+
+There are two ways to execute, and the difference is the miner fee:
+
+| | Candidate, in your own block | Broadcast, through the mempool |
+|---|---|---|
+| Miner fee | **None** | `min(order cap, broadcastMinerFeeCeiling)` out of the executor fee |
+| Pool box | Confirmed only | Followed to its mempool tip |
+| Competing spends | Superseded | Never displaced |
+| Ships | On for LithosDex, off for ErgoDEX | Off for both |
+
+In your own block an execution pays no fee at all, so the whole executor fee is revenue. A broadcast
+has to pay the network, so its revenue floor is higher.
+
+:::note Two switches must both be on for candidate execution
+`batching.<name>.enabled` runs the batcher, which scans and can broadcast. Inserting executions into
+your own block additionally needs `stratum.candidate.blockTransactions` and the matching
+`stratum.candidate.sources.<name>` source. A batcher runs whether or not this node mines, because
+broadcasting needs no stratum.
+:::
+
+## Settings both batchers share
+
+These keys exist under both `batching.ergodex` and `batching.lithosdex`:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `enabled` | `true` | `true` or `false` | Run this batcher at all |
+| `scanIntervalMs` | 8000 | 5000 to 3600000 ms | Milliseconds between confirmed-order scans. Each pages the node's indexer |
+| `maxTrackedOrders` | 512 | 1 to 4096 | Order ids retained between scans. Boxes are reloaded before execution |
+| `maxOrdersPerBlock` | 20 | 0 to 100 | Transaction slots per candidate build or broadcast pass, carried ancestors included |
+| `minRevenueNanoErg` | 1000000 | 0 to 1000000000000 | Minimum gross revenue per fill. An opening fill must also fund a takings box |
+| `broadcastMinRevenueNanoErg` | 2500000 | 0 to 1000000000000 | Minimum revenue for broadcasts. Net takings must stay positive after the miner fee |
+| `broadcastMinerFeeCeiling` | 2000000 | 0 to 100000000 | Most of the executor fee a broadcast may spend as a network fee, further limited by the order's own cap |
+| `broadcast` | `false` | `true` or `false` | Broadcast fills to the mempool rather than only filling in your own block |
+| `broadcastMempoolOrders` | `true` | `true` or `false` | With `broadcast` on, also broadcast orders still unconfirmed |
+| `skippedOrderTtlMs` | 3600000 | 60000 to 86400000 ms | How long an order that priced but could not be built is left out |
+| `maxSkippedOrders` | 4096 | 0 to 100000 | Such orders remembered at once, oldest forgotten first. About 200 bytes each |
+| `maxAncestorTxs` | 2 | 0 to 100 | Unconfirmed transactions one order may need carried ahead of it. `0` executes confirmed orders only |
+| `maxMempoolOrders` | 64 | 0 to 4096 | Unconfirmed orders one pass takes |
+| `maxMempoolOrdersPerTx` | 4 | 1 to 4096 | Unconfirmed orders any single transaction may contribute |
+| `maxUnbuildablePerRun` | 32 | 1 to 1000 | Orders a run fails to build before it stops trying more |
+| `maxUnbuildablePerTx` | 2 | 1 to 1000 | Orders from one transaction a run fails before passing over that transaction's others |
+
+`deniedPools` also exists on both as a list of pool NFT ids never to execute against. It defaults to
+empty and is **not validated at startup**. Ids are compared lowercased.
+
+## Executing unconfirmed orders
+
+An order placed seconds ago is worth more than one that has sat for a block, so both batchers read the
+mempool themselves and carry the transaction that placed an order ahead of the execution. That is where
+most of the revenue is, and three rules keep it safe.
+
+**A placement must be a wallet's, not a bot's.** Its inputs must be uncontested and spendable by one
+key alone, with no data inputs and no pool output. A transaction that executes an order and places a
+new one fails this test, so a competitor's work is never carried.
+
+**Depth is bounded** by `maxAncestorTxs`. Each carried transaction is one more that can invalidate your
+whole run.
+
+**Spam is bounded per creating transaction, not per order.** Order boxes are cheap to make and
+transactions are not, so unconfirmed orders are taken in rounds across the transactions that created
+them. `maxMempoolOrdersPerTx` caps what any one transaction contributes, so a transaction carrying
+hundreds of order boxes takes four places rather than all of them.
+
+The two `maxUnbuildable` settings work the same way for failures. A run stops after
+`maxUnbuildablePerRun` failures in total, and passes over a single transaction's remaining orders after
+`maxUnbuildablePerTx` of them fail, so one spam transaction cannot use up the whole run's attempts.
+
+:::note What a failure costs you is fees, never funds
+An order that cannot be built is passed over and skipped for an hour. A run that overruns its budget
+offers nothing. An unbuildable order leaves the owner's funds in their own refundable box. Each failure
+is one wasted signature, which is why the bounds exist at all.
+:::
+
+## ErgoDEX only
+
+ErgoDEX executes against many pools, so it has two settings LithosDex does not need:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `batching.ergodex.maxTrackedPools` | 256 | 1 to 1024 | Pools tracked, newest first |
+| `batching.ergodex.maxPoolAgeBlocks` | 20160 | 1 to 10000000 | Skip pools whose current box was included more than this many blocks ago |
+
+The ErgoDEX batcher covers MewDex too, since MewDex is the same contracts under a different interface.
+
+**Its candidate source ships off.** The batcher itself ships on, so it scans, but nothing reaches your
+block until you enable `stratum.candidate.sources.ergodex`.
+
+## LithosDex only
+
+LithosDex executes against the single ERG to LIT pool, so it needs no pool tracking:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `batching.lithosdex.autoFlush` | `true` | `true` or `false` | Close each candidate run with a flush, moving the pool's pending fees to the vault |
+
+A flush is what lets liquidity providers claim the fees the pool has accumulated. It pays you nothing
+and costs nothing in a block besides the small space it takes up in size and cost. It is enabled by default to ensure
+permanent fees are moved quickly. **It is never broadcast**, because a broadcast flush would pay a network fee for no return.
+
+## Fees on orders you place
+
+The `lithosdex.orders` block sets the fees carried by orders **you** place through the API or web
+panel, when the request does not name its own:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `lithosdex.orders.executorFeeNanoErg` | 3000000 | Checked per request | What your order pays whoever fills it |
+| `lithosdex.orders.maxMinerFeeNanoErg` | 1000000 | Checked per request, must be below the executor fee | Most of that fee a filler may spend as a network fee |
+
+Both are paid **only when a miner fills the order**. A cancelled order pays neither.
+
+These are validated per request rather than at startup, so a bad value refuses the order rather than
+refusing to start the client.
+
+**The default executor fee is set to clear the shipped floor of every miner running this client.**
+Miners skip orders paying less than their `minRevenueNanoErg`, so an order priced below that waits
+indefinitely rather than failing.
+
+## Next steps
+
+- [Block packages](./candidate.mdx): the source budgets that gate candidate execution.
+- [Collateral and emission](./emission.mdx): the other thing the client spends on your behalf.

@@ -1,10 +1,11 @@
 ---
 sidebar_position: 5
+sidebar_label: Ergo Voting
 tags: 
   - ergo
 ---
 
-# Voting
+# Ergo Voting
 
 Ergo allows miners to vote on various settings in blocks. Votes can be set in the node config file.
 

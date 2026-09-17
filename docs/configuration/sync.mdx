@@ -1,0 +1,142 @@
+---
+sidebar_position: 8
+tags:
+  - configuration
+description: Following the chain, persisting rollup state, and recovering from forks and faults.
+---
+
+# Synchronization and storage
+
+<span className="badge badge--warning">Expert</span>
+
+*Assumes you understand reorganizations, authenticated dictionaries and checkpointed state. Most miners never change anything on this page.*
+
+The `sync` block controls how the client follows the chain, how it stores what it learns, and how it
+recovers when something goes wrong. It is the largest block and provides in depth control over how
+your client interacts with historical and live blockchain data.
+
+**The defaults are the tested configuration.** Every value here has been exercised under fixed-heap
+budget gates and crash campaigns at its shipped setting. Changing one moves you off that evidence.
+
+## Following the chain
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `sync.startHeight` | 526405 | 2 to 2000000000. **Required** | Block height to start synchronizing from |
+| `sync.pollInterval` | 5 seconds | 1000 to 600000 ms. **Required** | How often the node is polled for new blocks |
+| `sync.catchUpBatchBlocks` | 16 | 1 to 64 | Whole blocks fetched per catch-up request |
+| `sync.revalidationChecks` | 30 seconds | 1000 to 3600000 ms. **Required** | How often the committed header is re-read while idle at the tip |
+| `sync.retriesBeforeAlarm` | 12 | 1 to 10000 | Consecutive failures at one height before a stalled cursor is logged |
+| `sync.cursorWindow` | 720 | 1 to 16000 | Canonical cursors retained for locating a fork |
+
+`pollInterval` is the **largest single term in both node load and block latency**. Raise it for a
+remote or shared node and accept slower tip following.
+
+`catchUpBatchBlocks` looks like a pure throughput knob and is not. Every block arrives with each of its
+input boxes in full, so the response grows with the blocks' contents rather than with the count alone.
+
+**Re-reading the committed header is what detects a same-height fork**, which a height comparison alone
+cannot show. Cursors are about 100 bytes each, so `cursorWindow` is sized for fork-search reach rather
+than for memory, and deeper forks recover from a snapshot instead.
+
+:::note The minimum start height is 2
+The seed reads the header below the start height, so height 1 has nothing beneath it.
+:::
+
+## The mempool view
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `sync.mempool.maxTransactions` | 10000 | 1 to 100000 | Unconfirmed transactions read before a complete revision is abandoned |
+| `sync.mempool.refreshInterval` | 5 seconds | 1000 to 600000 ms. **Required** | How often the relevant mempool is re-read |
+
+The mempool view provides a list of all transactions currently in your node's mempool. The mempool view takes snapshots,
+or *observations* of the mempool at every `refreshInterval`. Because mempools can be spammed, `maxTransactions` can be set
+to lower memory load from spammed pools.
+
+The refresh interval is separate from `pollInterval` on purpose: it trades submission freshness against
+node load.
+
+## Materialized dictionaries
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `sync.materializedDictionaryCacheEntries` | 4 | 1 to 64 | Authenticated dictionary provers retained after lazy materialization |
+
+The client's persistent state is rollup metadata along with digests. A dictionary's prover nodes are reconstructed only when a
+block or a consumer actually touches that dictionary, and this bounds how many stay cached for re-usage afterwards.
+
+Raising it trades memory for fewer reconstructions. The cache also has a fixed internal byte budget
+that this setting does not override, so a dictionary larger than that budget may serve its current
+operation without being cached at all.
+
+## Snapshots
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `sync.snapshots.enabled` | `true` | `true` or `false` | Write persistent checkpoints at all |
+| `sync.snapshots.intervalBlocks` | 10 | 1 to 10000000 | Committed blocks between ordinary checkpoints |
+| `sync.snapshots.retention` | 24 | 2 to 100 | Complete snapshot generations retained |
+| `sync.snapshots.maxEntryBytes` | 67108864 | 1048576 to 536870912 | Largest single subtree, header or metadata entry |
+| `sync.storage.backend` | `leveldb` | A backend the client can resolve. **Required** | Which key-value store to use |
+| `sync.storage.path` | `.lithos/sync` | Any path. **Required** | Where that store lives |
+
+A checkpoint may intentionally lag the tip. The retained volatile suffix between the checkpoint and the
+tip is what bounds routine replay and keeps short reorgs cheap, at the cost of memory.
+
+At the defaults, 24 generations at 10 blocks apart span 240 blocks of history.
+
+**Dictionaries are content-addressed and streamed**, so `maxEntryBytes` bounds one subtree rather than
+a whole dictionary or generation.
+
+:::warning Snapshot schema changes force a full re-sync
+The schema version is checked on every read and a mismatch aborts the load rather than misreading it.
+That is deliberate, and it means a client upgrade that changes the stored layout re-syncs from
+`startHeight` rather than migrating.
+:::
+
+## Quarantine and repair
+
+When one rollup fails to transform, it is quarantined rather than taking the whole client down.
+Unrelated rollups and the canonical cursor keep committing.
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `sync.quarantine.repairAttempts` | 3 | 0 to 100 | Rebuilds attempted from the indexed chain before a rollup is dropped for good |
+| `sync.quarantine.retentionBlocks` | 720 | 1 to 10000000 | Blocks a terminal or exhausted fault stays visible for diagnostics |
+| `sync.quarantine.maintenanceCheckpoints` | `true` | `true` or `false` | Freeze catch-up periodically so a repair can install at an exact cursor |
+| `sync.quarantine.checkpointIntervalBlocks` | 10 | 1 to 100000 | Committed catch-up blocks between those checkpoints |
+| `sync.quarantine.maxTransforms` | 100000 | 1 to 10000000 | Rollup spends followed during one rebuild |
+| `sync.quarantine.repairTimeout` | 3 minutes | 1000 to 3600000 ms. **Required** | Longest one walk may hold a maintenance checkpoint |
+
+`repairAttempts` at 0 never rebuilds. Faults that re-reading cannot clear are dropped regardless of the
+count.
+
+**The checkpoint interval is a direct trade.** At 1, every catch-up block pauses for at least a
+quarantine-list round trip, and for a repair walk when a fault exists. Lower values improve repair
+latency by giving up catch-up throughput. Disabling checkpoints entirely favours throughput, but a long
+repair may then not install until the client reaches the tip.
+
+On timeout, catch-up resumes. The worker stays exclusive, and a late result still has to satisfy its
+original cursor before it can install.
+
+## Miner Dictionary bootstrap
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `sync.minerDictionary.bootstrap` | `true` | `true` or `false` | Rebuild the dictionary from its singleton spend chain |
+| `sync.minerDictionary.maxTransforms` | 100000 | 1 to 10000000 | Dictionary spends followed during bootstrap |
+| `sync.minerDictionary.repairInterval` | 5 minutes | 30000 to 86400000 ms. **Required** | How often a failed bootstrap is retried |
+
+A failed bootstrap records a capability fault rather than stopping the client. Canonical and rollup
+synchronization continue.
+
+**What you lose until it succeeds** is registration and any fraud proof that depends on the dictionary.
+Mining and submission to existing rollups are unaffected, which is why this degrades rather than
+failing.
+
+
+## Next steps
+
+- [Tasks and dispatchers](./runtime.mdx): the remaining runtime blocks.
+- [Configuration overview](./overview.mdx): how validation reports a bad value here.

@@ -1,0 +1,150 @@
+---
+sidebar_position: 1
+tags:
+  - configuration
+description: How the Lithos client reads its configuration, and how startup validation reports mistakes.
+---
+
+# Configuration overview
+
+<span className="badge badge--success">Standard</span>
+
+*For anyone running the Lithos client. No Ergo or smart contract experience needed.*
+
+The Lithos client reads one configuration file at startup. This page covers where that file lives, how
+it inherits the shipped defaults, how to keep secrets out of it, and what the client does when a value
+is wrong. The pages after it document every setting, grouped by what it controls.
+
+It does not cover installing the client. For that, read the [startup guide](../startup-intro.mdx).
+
+## The two files
+
+The client ships with `conf/application.conf`, which contains every setting at its default. **Do not
+edit that file.** Upgrading replaces it, and any change you made goes with it.
+
+Instead you write your own file, `lithos.conf`, in `lithos-client/bin`, and pull in the defaults on its
+first line:
+
+```hocon title="lithos-client/bin/lithos.conf"
+{
+  include file("../conf/application.conf")
+
+  # Your settings here override the defaults above.
+}
+```
+
+Anything you set after the `include` overrides the shipped value. Anything you leave out keeps it. The
+start script passes this file to the client automatically, so there is nothing to point at it.
+
+The format is [HOCON](https://github.com/lightbend/config/blob/main/HOCON.md), which is JSON with
+comments, unquoted keys and dotted paths. These three are equivalent:
+
+```hocon
+node { url = "http://127.0.0.1" }
+node.url = "http://127.0.0.1"
+node { url : "http://127.0.0.1" }
+```
+
+## Reading the reference pages
+
+Every setting is listed with the value it ships with and the range the client accepts:
+
+| Column | Meaning |
+|---|---|
+| Setting | The full dotted key, as you would write it in `lithos.conf` |
+| Default | What the shipped `application.conf` sets, which is what you get if you leave the key out |
+| Range | What startup validation accepts. `Not validated` means the client checks nothing beyond the value's type |
+
+**A range is not a recommendation.** Most of them are far wider than any sensible value, because their
+job is to catch a typo or a misplaced decimal point rather than to tune your client. Where a setting
+has a value worth choosing deliberately, the page says so in prose rather than in the table.
+
+## What happens when a value is wrong
+
+The client validates the whole file before it starts anything, and **it reports every problem at once**
+rather than failing on the first one. A run with three mistakes prints three problems, so one editing
+session fixes all of them:
+
+```text
+The client found 2 configuration problems and cannot start safely:
+
+  stratum.stratumPort
+      70000 is outside 1..65535 (a TCP port)
+
+  emission.maxLenderKeys
+      64 exceeds node.numAddresses (32). Addresses past index 31 would receive funds this
+      client cannot sign for. Raise node.numAddresses to at least 64
+
+Fix these in conf/application.conf and restart.
+```
+
+The client then exits. It does not start with a bad value and warn about it.
+
+Three kinds of problem are reported:
+
+- **A missing required key.** Most settings fall back to a default, but some cannot be guessed and
+  the client refuses to start without them. Each reference page marks these.
+- **A value of the wrong type**, such as text where a number belongs.
+- **A value outside its range**, or one that contradicts another setting.
+
+### Two settings are checked against each other
+
+Most validation looks at one key at a time. Three pairs do not, because a value that is fine alone
+breaks something when combined:
+
+| Pair | Rule | Why |
+|---|---|---|
+| `emission.maxLenderKeys` and `node.numAddresses` | Keys must not exceed addresses | A lender key past the prover's last index receives permit returns and coinbases the client cannot sign for |
+| `wallet.max-optional-inputs` and `wallet.max-wallet-inputs` | Optional must not exceed the total | Otherwise a saturated background queue leaves nothing for a NISP submission or fraud proof to fund itself with |
+| `wallet.consolidation.attempt-timeout-ms` and `wallet.inventory-walk-timeout-ms` | The attempt must be longer than the walk | A pass whose wallet walk uses the whole budget expires before it can send anything |
+
+## Keeping secrets out of the file
+
+`lithos.conf` holds your node API key and wallet password in plain text. To read them from environment
+variables instead, add these lines at the end of the file:
+
+```hocon title="lithos-client/bin/lithos.conf"
+  node.key = ${?NODE_KEY_ENV}
+  node.pass = ${?NODE_PASS_ENV}
+  play.http.secret.key = ${?PLAY_ENV}
+```
+
+The `${?NAME}` form overrides the value above it when the variable is set, and is ignored when it is
+not. That means the file still works unchanged if the variables are missing.
+
+## Settings you should change before running
+
+Four shipped values are placeholders. Three of them are secrets that are published in this
+documentation, so anyone can reproduce them:
+
+| Setting | Why it must change |
+|---|---|
+| `node.key` | Empty. Your node's API key |
+| `node.pass` | Empty. Your node wallet's password |
+| `lithos.apiKeyHash` | The hash of the string `hello`, which is public |
+| `play.http.secret.key` | The literal string `changethissecret` |
+
+`node.storagePath` is also empty and has no sensible default, since it is a path on your machine.
+
+:::danger Change the two shipped secrets
+The default `lithos.apiKeyHash` is the hash of `hello`. Anyone who reaches your client's API with that
+key can move funds. See [Node connection and security](./node.mdx).
+:::
+
+## The setting groups
+
+| Page | Covers | Level |
+|---|---|---|
+| [Node connection and security](./node.mdx) | `node`, `lithos.apiKeyHash`, `play.http.secret.key` | Standard |
+| [Stratum and difficulty](./stratum.mdx) | `stratum`, excluding `stratum.candidate` | Standard |
+| [Block packages](./candidate.mdx) | `stratum.candidate`, including the transaction sources | Advanced |
+| [Batching and orders](./batching.mdx) | `batching`, `lithosdex.orders` | Advanced |
+| [Collateral and emission](./emission.mdx) | `emission` | Advanced |
+| [Wallet and consolidation](./wallet.mdx) | `wallet` | Advanced |
+| [Synchronization and storage](./sync.mdx) | `sync` | Expert |
+| [Tasks and dispatchers](./runtime.mdx) | `state`, `lithos-tasks`, `lithos-contexts` | Expert |
+
+## Next steps
+
+- [Node connection and security](./node.mdx): the settings every client must have.
+- [Startup guide](../startup-intro.mdx): installing and first run.

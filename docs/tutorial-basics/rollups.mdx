@@ -1,0 +1,772 @@
+---
+sidebar_position: 4
+tags:
+  - lfsm
+description: How a rollup is opened by the genesis transaction, collects NISPs, survives fraud proofs, and pays its miners.
+---
+
+# Rollups
+
+<span className="badge badge--warning">Expert</span>
+
+*Assumes ErgoScript, Ergo box registers, context variables and AVL trees. Read [LFSM](./lfsm.mdx) first for how this contract group fits the rest of the protocol.*
+
+Every Lithos block opens one **rollup**: a single box that moves through three contracts, collects the
+NISPs of every miner who worked on that block, lets anyone remove the ones that do not hold up, and pays
+out whatever is left. It is an optimistic rollup. Submissions are accepted almost unchecked, and the
+checking happens afterwards, only where someone claims fraud.
+
+This page follows one rollup from the transaction that opens it to the transaction that consumes it. It
+covers each contract's registers, spending paths and the exact conditions each path enforces. It does
+not cover what the individual fraud proofs check; that is the [NISPs](./NISPs.mdx) and
+[LFSM](./lfsm.mdx) pages.
+
+![A rollup's lifecycle. A collateral box is spent by the genesis transaction into a holding box, which accepts NISP submissions and, in its genesis block only, top-ups, for 360 blocks. It transforms into an evaluation box that accepts fraud proofs for 360 blocks, then into a payout box that pays miners through partial payouts until a final payout or a drain consumes it.](/img/rollup-state-machine.png)
+
+*One box, three contracts. Every loop is a spend that recreates the box under the same contract.*
+
+## The contracts and their constants
+
+The rollup chain is four scripts, three of which ever sit on a box:
+
+| Contract | On a box | Role |
+|---|---|---|
+| `Holding_Guard` | Yes, 137 bytes | Checks the logic's hash, runs the miner's signing script, dispatches |
+| `Holding_Logic` | No, context var 64 | Every holding rule: submissions, top-ups, the transform |
+| `Evaluation` | Yes | Applies fraud proofs, slashes bonds, transforms to payout |
+| `Payout` | Yes | Pays miners their share and bond, burns the rollup NFT |
+
+Each contract is compiled with the next one's hash, so the chain can only move forward:
+
+| Constant | Compiled into | Value |
+|---|---|---|
+| `CONST_HOLDING_LOGIC_HASH` | `Holding_Guard` | `blake2b256` of the logic's serialized value bytes |
+| `CONST_PERIOD_LENGTH` | `Holding_Logic`, `Evaluation` | 360 blocks in each |
+| `CONST_EVAL_PROPBYTES` | `Holding_Logic` | Hash of `Evaluation`'s proposition bytes |
+| `CONST_PAYOUT_PROPBYTES` | `Evaluation` | Hash of `Payout`'s proposition bytes |
+| `CONST_FP_ID` | `Evaluation` | Token id of the `FP_CONTROL` singleton |
+| `CONST_FEE_HASH` | `Payout` | Hash of the miner fee proposition, for the drain |
+| `CONST_MIN_ENTRY_BOND` | All three rollup contracts | 2,000,000 nanoERG |
+| `CONST_BOND_DIVISOR` | All three rollup contracts | 25 |
+
+The bond formula is compiled into all three contracts identically, because each one handles the same
+money at a different stage:
+
+```scala
+def bondForScore(bondScore: Long): Long = {
+  val bondProportional = bondScore / CONST_BOND_DIVISOR
+  if(bondProportional > CONST_MIN_ENTRY_BOND) bondProportional else CONST_MIN_ENTRY_BOND
+}
+```
+
+### Registers
+
+All three phases share one layout. R7's slots change meaning at the payout boundary:
+
+| Register | Type | Holding and Evaluation | Payout |
+|---|---|---|---|
+| R4 | `AvlTree` | NISP commitment tree | The same tree, emptied as miners are paid |
+| R5 | `Int` | Miner count | Miner count, constant |
+| R6 | `BigInt` | Sum of scores | Sum of scores, constant |
+| R7(0) | `Long` | Period start height | Total ERG reward, excluding bonds |
+| R7(1) | `Long` | The rollup's block height | Total LIT reward |
+| R7(2) | `Long` | Bond total | Bond total still owed |
+| R8, R9 | any | Free for extensions | Free for extensions |
+
+Every rollup box carries the **rollup NFT at token index 0** and LIT at index 1.
+
+## The genesis transaction
+
+A rollup is opened by the **genesis transaction**, which the block finder inserts into their own block
+candidate before doing the proof-of-work. It spends one collateral box as `INPUTS(0)` and must produce a
+holding box as `OUTPUTS(0)`. `Collateral_Mainnet` enforces everything about that output.
+
+![The genesis transaction's holding output. The collateral box at INPUTS(0) is spent into a holding box at OUTPUTS(0), whose script hash must equal the collateral box's R8, whose value is at least the collateral value minus feeValue, whose tokens(0) is a rollup NFT with the collateral box's id and amount 1, whose tokens(1) is the pool LIT, and whose registers start as an empty tree, zero miners, zero score, R7 of height, height and zero, and the finder's miner hash in R8. The founder boxes, permit return, finder's LIT and proof-of-spend box are other outputs checked by existence rather than position.](/img/genesis-holding-output.png)
+
+*The holding box is the only output the collateral contract locates by index.*
+
+### The holding output's initial state
+
+The collateral contract checks the holding box field by field:
+
+```scala
+val holdingBox = OUTPUTS(0)
+
+val holdingValid = allOf(
+  Coll(
+    holdingBox.value >= SELF.value - feeValue,
+    blake2b256( holdingBox.propositionBytes ) == rollupHoldingHash,
+    tokensTransferred,
+    validAvlTree,
+    holdingBox.R5[Int].get    == 0,
+    holdingBox.R6[BigInt].get == 0.toBigInt,
+    rollupState.size == 3,
+    rollupState(0)   == HEIGHT,
+    rollupState(1)   == HEIGHT,
+    rollupState(2)   == 0L,
+    holdingBox.R8[Coll[Byte]].get.size == 32,
+    holdingNFT,
+    numNFT == 1L
+  )
+)
+```
+
+What each condition establishes:
+
+| Field | Required | Why |
+|---|---|---|
+| Value | At least the collateral box's value less `feeValue` | The miners' pot. `feeValue` funds the other outputs |
+| Script | Hash equal to the collateral box's R8 | R8 was stamped from the emission config at activation, so the holding script is replaceable for boxes activated later |
+| `tokens(1)` | Exactly the pool's LIT | This block's emission less the finder's 4% |
+| R4 | Empty tree, all operations allowed, 32-byte keys | See below |
+| R5, R6 | Zero | No miners and no score yet |
+| R7 | `[HEIGHT, HEIGHT, 0]` | The holding period and the rollup's block both start now, and no bonds are held |
+| R8 | Exactly 32 bytes | The finder's own miner hash |
+| `tokens(0)` | The rollup NFT | See [The rollup NFT](#the-rollup-nft) |
+
+The tree check pins the digest of an empty AVL tree, and leaves the value length open:
+
+```scala
+val validAvlTree = allOf(
+  Coll(
+    holdingBox.R4[AvlTree].get.digest == fromBase16("4ec61f485b98eb87153f7c57db4f5ecd75556fddbc403b41acf8441fde8e160900"),
+    holdingBox.R4[AvlTree].get.isInsertAllowed,
+    holdingBox.R4[AvlTree].get.isUpdateAllowed,
+    holdingBox.R4[AvlTree].get.isRemoveAllowed,
+    holdingBox.R4[AvlTree].get.keyLength == 32,
+    holdingBox.R4[AvlTree].get.valueLengthOpt.isEmpty
+  )
+)
+```
+
+Values are not length-pinned at the tree level. Every leaf is 40 bytes because `Holding_Logic` only ever
+inserts 40 bytes, and `Payout` and the fraud proofs refuse any entry that is not.
+
+**R8 is length-checked and nothing more, on purpose.** It holds the hash of the finder's own proposition,
+and it is what makes a NISP non-transferable: the genesis transaction sits inside every super share, so
+a thief who rewrites R8 to their own hash changes the transaction's hash and breaks the share's
+inclusion proof, while one who leaves it alone is slashed by `FP_MalformedGenesis`. The collateral
+contract cannot check the value itself, because it cannot know which miner will draw the box.
+
+### The rollup NFT
+
+Ergo lets a transaction mint a new token whose id is the id of its first input. The genesis
+transaction's first input is the collateral box, so the holding box can carry a token no other
+transaction could ever have produced:
+
+```scala
+val holdingNFT = holdingBox.tokens(0)._1 == SELF.id && holdingBox.tokens(0)._2 == 1L
+val numNFT = OUTPUTS.fold(0L, {
+  (a: Long, b: Box) =>
+    val totalTokens = b.tokens.fold(0L, {
+      (z: Long, t: (Coll[Byte], Long)) => if(t._1 == SELF.id) z + t._2 else z
+    })
+    a + totalTokens
+  })
+```
+
+Holding the NFT is what proves a box is the rollup a real collateral spend opened.
+
+**`numNFT` is load-bearing.** The mint rule does not limit quantity: a transaction spending the
+collateral box as `INPUTS(0)` may mint any amount of that id. Constraining only the holding box would let
+one genesis transaction scatter extra copies into other outputs. Folding over every output pins the
+total supply at exactly one.
+
+The token id being the collateral box's id is what makes the NFT useful beyond authentication. Anyone
+holding that box's bytes can hash them to its id, verify the bytes carry the collateral contract and
+the collateral token, and so bind any future box to one specific rollup with no shared state.
+
+### The other outputs
+
+The rest of the genesis transaction is located by existence rather than index, so their order is the
+client's choice:
+
+| Output | Condition |
+|---|---|
+| Founder boxes | One per founder allocation, at least 0.001 ERG, carrying exactly that founder's LIT |
+| Permit return | At the lender's exact proposition, at least 0.001 ERG, carrying the permit back |
+| Proof-of-spend box | Under the emission gate, carrying the collateral token, created at exactly this height |
+
+The finder's 4% of the LIT emission is whatever the holding box does not take, so it needs no output of
+its own in the contract. Two more conditions decide whether the block is a Lithos block at all:
+
+```scala
+val lenderIsBlockMiner = lenderPk.propBytes == proveDlog(CONTEXT.preHeader.minerPk).propBytes
+val onlyOne = INPUTS(0).id == SELF.id
+```
+
+The block's coinbase must pay the lender, which is how their principal returns. It is also what keeps a
+block to one rollup: two collateral boxes would demand two coinbase recipients.
+
+## The holding contract
+
+A holding box accepts NISP submissions for 360 blocks. It is split across two scripts, and the split is
+about NISP size.
+
+### The guard and the logic
+
+Only a box's **proposition bytes** ride in the genesis transaction, and the genesis transaction rides in
+all ten super shares of every NISP. So one byte of holding script becomes ten bytes of NISP ceiling and
+thirty bytes of worst-case fraud proof. `Holding_Guard` keeps the on-box script at 137 bytes and runs the
+real rules out of a context variable, where they are paid for by the submission transaction instead:
+
+```scala
+val CTX_OP    = getVar[Byte](3).getOrElse(-1.toByte)
+val CTX_LOGIC = getVar[Coll[Byte]](64).get
+
+val authenticLogic = blake2b256( CTX_LOGIC ) == CONST_HOLDING_LOGIC_HASH
+
+if(CTX_OP == 0.toByte){
+  val CTX_NISP_DATA = getVar[(Coll[Byte], Coll[Byte])](1).getOrElse((Coll(0.toByte), Coll(0.toByte)))
+  val signerProp = executeFromVar[SigmaProp](0)
+  val authenticMiner = blake2b256( signerProp.propBytes ) == CTX_NISP_DATA._1
+
+  sigmaProp(authenticLogic && authenticMiner) && signerProp && executeFromVar[SigmaProp](64)
+}else if(CTX_OP == 1.toByte){
+  sigmaProp(authenticLogic) && executeFromVar[SigmaProp](64)
+}else{
+  sigmaProp(false)
+}
+```
+
+**`executeFromVar` cannot nest**, and that decides the guard's shape. The logic runs from var 64, so it
+cannot itself execute the miner's signing script from var 0. The guard runs that script instead, and
+binds the tree key to it: `authenticMiner` is what stops one miner submitting under another's identity.
+The logic then takes the key as already authenticated.
+
+That is also why **the op byte exists**. The guard has to know, before executing anything, whether a
+signer is involved, so the spender declares the path in var 3 and both scripts branch on the same value.
+The declaration proves nothing on its own; the logic re-checks the height conditions on every path.
+
+The guard stays 137 bytes however far the logic grows, so a new holding rule costs nothing in NISP size.
+
+| Var | Name | Read by | Path |
+|---|---|---|---|
+| 0 | `CTX_SIGNER` | Guard | Submit |
+| 1 | `CTX_NISP_DATA` | Guard and logic | Submit |
+| 2 | `CTX_NISP_PROOF` | Logic | Submit |
+| 3 | `CTX_OP` | Guard and logic | All |
+| 64 | `CTX_LOGIC` | Guard | All |
+
+Two op values carry three paths. Op 1 covers both paths without a signer, and the logic tells them
+apart by height:
+
+| Op | Height | Path |
+|---|---|---|
+| 0 | Inside the period, not the genesis block | Submit a NISP and its bond |
+| 1 | `HEIGHT == currentBlock` | Top up the box's value |
+| 1 | Any other height | Transform into Evaluation |
+
+### The holding top-up
+
+In the block that opens a rollup, and only there, anyone may raise the holding box's value:
+
+```scala
+if(HEIGHT == currentBlock){
+  val valueAdded = allOf(
+    Coll(
+      nextUTXO.value  > SELF.value,
+      nextUTXO.tokens == SELF.tokens,
+      nextTree        == nispTree,
+      nextMiners      == currentMiners,
+      nextScore       == totalScore,
+      stateSized,
+      nextPeriod      == currentPeriod,
+      SELF.id         == INPUTS(0).id,
+      nextBlock       == currentBlock,
+      nextBond        == totalBond,
+      SELF.propositionBytes == nextUTXO.propositionBytes
+    )
+  )
+  sigmaProp(valueAdded)
+}
+```
+
+The top-up is how the block builder pushes extra value into the pot at candidate-assembly time: storage
+rent collection, batching revenue and anything else a candidate earns. Everything except the ERG value
+is conserved, including tokens, so a top-up adds ERG and nothing else. The value must strictly rise, or
+there is nothing to do.
+
+**Bounding it to one height is what makes it the builder's alone.** The holding box does not exist until
+the genesis transaction lands, and `HEIGHT == currentBlock` only holds inside that block, so only
+transactions in the same block can reach it. The added value later becomes miner reward, because
+Evaluation hands Payout the box value less the bonds.
+
+Submissions are excluded from that height for a related reason. With no submission possible at
+`currentBlock`, the bond ledger is provably zero while a top-up runs, so `nextBond == totalBond` is a
+statement about zero rather than about an arbitrary balance.
+
+### Submissions
+
+A miner submits their NISP to the holding box during the holding period. The full NISP travels in
+context var 1, and only a 40-byte commitment to it enters the tree:
+
+```scala
+if(CTX_NISP_DATA._2.size >= CONST_NISP_MIN){
+  val inSubmissionPhase = HEIGHT < currentPeriod + CONST_PERIOD_LENGTH && HEIGHT != currentBlock
+  val validUTXO       = nextUTXO.propositionBytes == SELF.propositionBytes
+
+  val scoreBytes =  CTX_NISP_DATA._2.slice(0,8)
+  val score: Long = byteArrayToLong(scoreBytes)
+
+  val validNISP = {
+    score > 0 && nextScore == totalScore + score.toBigInt && CTX_NISP_DATA._2.size < CONST_NISP_MAX
+  }
+
+  val entryBond = bondForScore(score)
+  val bondCollected = allOf(
+    Coll(
+      nextUTXO.value.toBigInt == SELF.value.toBigInt + entryBond.toBigInt,
+      nextBond.toBigInt       == totalBond.toBigInt + entryBond.toBigInt
+    )
+  )
+
+  val treeUpdated = {
+    val NISPHash  = blake2b256(CTX_NISP_DATA._2)
+    val NISPHashKV = (CTX_NISP_DATA._1, scoreBytes.append(NISPHash))
+    val insertTree = nispTree.insert(Coll(NISPHashKV), CTX_NISP_PROOF).get
+    insertTree == nextTree
+  }
+  ...
+```
+
+The submission path checks the following, and nothing else:
+
+| Check | Condition |
+|---|---|
+| Timing | Before the period ends, and not in the genesis block |
+| Size | `7,948 ≤ NISP size < 29,629` bytes |
+| Score | The first 8 bytes read as a score above zero |
+| Running total | R6 rises by exactly that score |
+| Bond | Box value and R7(2) both rise by exactly `bondForScore(score)` |
+| Tree | Inserting `key -> score ++ blake2b256(NISP)` reproduces the next digest |
+| Miner count | R5 rises by exactly one |
+| Conserved | Script, tokens, R7(0) and R7(1) |
+| One rollup | `SELF.id == INPUTS(0).id` |
+
+**This is the optimistic half of the design.** Nothing here checks the super shares, the window, the
+headers, or whether the score matches the miner's commitment. All of that is left to fraud proofs, and
+the bond is what makes being wrong expensive.
+
+**AVL insert fails on a duplicate key**, so one identity posts at most one NISP, and one bond, into any
+rollup. No counter is needed to enforce it.
+
+Consensus value conservation does the funding: the box value must rise by the bond, so the submitter's
+own inputs pay it. The contract only pins how much enters rollup custody.
+
+### The holding transform
+
+Once the holding period ends, anyone may move the box into the evaluation contract:
+
+```scala
+val conservedValues = allOf(
+  Coll(
+    nextUTXO.value  == SELF.value,
+    nextUTXO.tokens == SELF.tokens,
+    nextTree        == nispTree,
+    nextMiners      == currentMiners,
+    nextScore       == totalScore,
+    stateSized,
+    nextPeriod      <= HEIGHT,
+    nextPeriod      >= currentPeriod + CONST_PERIOD_LENGTH,
+    SELF.id         == INPUTS(0).id,
+    nextBlock       == currentBlock,
+    nextBond        == totalBond
+  )
+)
+
+val isEvaluationContract = blake2b256( nextUTXO.propositionBytes ) == CONST_EVAL_PROPBYTES
+sigmaProp(isEvaluationContract && conservedValues)
+```
+
+**There is no direct height check, and none is needed.** The two bounds on the new period start,
+`currentPeriod + 360 ≤ nextPeriod ≤ HEIGHT`, can only both hold once `HEIGHT ≥ currentPeriod + 360`. The
+transformer picks the evaluation period's start anywhere in that range, so evaluation is anchored no
+earlier than the end of holding and no later than the transform itself.
+
+Everything else carries across unchanged: value, tokens, tree, miner count, score, the rollup's block
+height and the bond total. Bonds enter evaluation untouched, to be slashed or refunded there.
+
+## The evaluation contract
+
+An evaluation box accepts fraud proofs for 360 blocks. It has two spending paths, chosen by height:
+
+```scala
+if(HEIGHT < currentPeriod + CONST_PERIOD_LENGTH){
+  // Spending path 1: apply a fraud proof
+}else{
+  // Spending path 2: transform into Payout
+}
+```
+
+**Every spend of an evaluation box during the period is a fraud proof.** There is no other reason to
+spend one, so the contract treats the spend itself as a claim that fraud was found and demands the proof.
+
+### How fraud proofs are applied
+
+A fraud proof is not a box. It is a script, carried in the evaluation box's own context var 0 and
+executed by the evaluation contract, after the contract has checked it is one of the scripts
+`FP_CONTROL` whitelists:
+
+![A fraud proof transaction. FP_CONTROL is a data input holding the whitelisted proof hashes and is read, not spent. INPUTS(0) is the evaluation box, carrying the fraud proof script in var 0. INPUTS(1) is the prover's box, carrying the miner key, lookup proof and removal proof in vars 0 to 2, proof-specific evidence in var 3 and the NISP payload in var 4. OUTPUTS(0) is the successor evaluation box with the miner removed and their bond slashed, and OUTPUTS(1) is the prover's reward, exactly the slashed bond, under the same script as INPUTS(1).](/img/fraud-proof-tx.png)
+
+*The evaluation box carries the proof. The prover's box carries the evidence the proof reads.*
+
+```scala
+val fpData     = CONTEXT.dataInputs(0)
+val authenticFPData = fpData.tokens(0)._1 == CONST_FP_ID
+val script = getVar[Coll[Byte]](0).getOrElse(Coll(0.toByte))
+
+val fpSet = fpData.R4[Coll[Coll[Byte]]].get
+val validFP = fpSet.exists{
+  (x: Coll[Byte]) =>
+   x == blake2b256( script )
+}
+...
+sigmaProp(validSlash) && executeFromVar[SigmaProp](0)
+```
+
+The proof reads its evidence from the prover's box with `getVarFromInput(1, ...)`. Some proofs also read
+further data inputs past `FP_CONTROL`; `FP_NonMatchingCommitment`, for instance, reads the Miner
+Dictionary and the miner's own data box.
+
+### Who enforces what
+
+A fraud proof transaction is checked by two scripts at once, and they split the state transition
+cleanly. **The fraud proof decides which miner is removed. The evaluation contract decides what that
+costs and where the money goes.**
+
+| Enforced by the fraud proof | Enforced by `Evaluation` |
+|---|---|
+| That fraud exists for the named miner | That the script is whitelisted by an authentic `FP_CONTROL` |
+| The AVL removal, `nextTree` | The box value falls by exactly the slashed bond |
+| `nextMiners == currentMiners - 1` | The bond total falls by exactly the slashed bond, and stays at or above zero |
+| `nextScore == totalScore - score` | The prover is paid exactly the slashed bond |
+| | Script, tokens, tree flags, period and block height are conserved |
+| | Exactly two inputs, and this is the only rollup being spent |
+
+The slash is derived from the register transition the proof has just been held to, rather than read
+from anywhere the proof supplies:
+
+```scala
+val removedScore = (totalScore - nextScore).toLong
+val slashedBond  = bondForScore(removedScore)
+
+val proverInput  = INPUTS(1)
+val rewardOutput = OUTPUTS(1)
+val proverPaid = allOf(
+  Coll(
+    rewardOutput.propositionBytes == proverInput.propositionBytes,
+    rewardOutput.value            == slashedBond
+  )
+)
+val valueSlashed = nextUTXO.value == SELF.value - slashedBond
+val bondSlashed  = nextBond       == totalBond - slashedBond
+val bondSolvent  = nextBond >= 0L
+```
+
+Three details carry weight.
+
+**The slash lives here, not in the nine proofs.** Each proof establishes only which miner and which
+score are removed, and pins `nextScore == totalScore - score` for the entry it removes. `Evaluation` turns
+that into ERG. One formula, one place to audit, and a newly whitelisted proof inherits the slash rather
+than reimplementing it.
+
+**The prover is paid by the fraudster.** The reward is the removed entry's own bond, so it does not come
+out of the pot and does not thin out as the pool grows. `INPUTS.size == 2` is what makes `INPUTS(1)` the
+prover's own box, and the reward lands back under that box's script. The bond floor of 0.002 ERG clears
+Ergo's minimum box value, so the reward output is always constructible.
+
+**`bondSolvent` guards against the whitelist.** A proof declaring a larger score delta than the entry it
+removed actually posted would price a bond bigger than the ledger holds, leaving Payout owing a refund it
+can never make. No shipped proof can do this, since each reads the score out of the entry it looks up,
+but `FP_CONTROL` is immutable after launch and this contract should not depend on its contents. An
+out-of-range delta also throws in `.toLong`, which fails only the prover's own transaction.
+
+:::note One fraud proof per transaction
+`INPUTS.size == 2` admits exactly the evaluation box and one prover box, so each transaction removes one
+miner. Every other input would need funding of its own, and the contract leaves the question of
+applying several proofs at once open for a later version.
+:::
+
+Every payload-reading proof authenticates the NISP before parsing it, by hashing the payload in the
+prover's var 4 against the tree leaf. The [NISPs](./NISPs.mdx#the-rollup-stores-a-hash-not-the-nisp)
+page covers that check.
+
+### The evaluation transform
+
+Once the evaluation period ends, anyone may move the box into the payout contract:
+
+```scala
+val passedEvalPeriod = HEIGHT >= currentPeriod + CONST_PERIOD_LENGTH
+val LITReward = SELF.tokens.getOrElse(1, (Coll(0.toByte), 0L))._2
+val baseReward = SELF.value - totalBond
+val conservedValues = allOf(
+    Coll(
+      nextUTXO.value  == SELF.value,
+      nextUTXO.tokens == SELF.tokens,
+      nextTree        == nispTree,
+      nextMiners      == currentMiners,
+      nextScore       == totalScore,
+      stateSized,
+      nextPeriod      == baseReward,
+      nextState(1)    == LITReward,
+      nextBond        == totalBond
+    )
+)
+
+val isPayoutContract = blake2b256( nextUTXO.propositionBytes ) == CONST_PAYOUT_PROPBYTES
+
+sigmaProp(isPayoutContract && conservedValues && passedEvalPeriod && onlyOne)
+```
+
+This is where R7 changes meaning:
+
+| Slot | Before | After |
+|---|---|---|
+| R7(0) | Period start | `SELF.value - totalBond`, the ERG reward |
+| R7(1) | The rollup's block height | The LIT on the box, the LIT reward |
+| R7(2) | Bond total | Bond total, unchanged |
+
+**Excluding the bonds from R7(0) is essential.** Payout divides R7(0) pro rata by score. Dividing the
+whole box value would pay each miner a share of everyone else's refundable deposits and run the box dry
+before the last miner was paid. Holding the bonds out keeps each miner's share off the other
+submitters' money, and each bond is refunded to its own miner separately.
+
+Everything a successful rollup contained survives the transform: every top-up, every surviving
+submission and every unslashed bond.
+
+## Payouts
+
+A payout box pays every miner left in the tree their share of the reward plus their own bond, removing
+each from the tree as it goes, until the box is consumed.
+
+### Looking up a batch of miners
+
+A payout transaction names the miners it is paying as a collection of keys, and looks all of them up in
+one proof:
+
+| Var | Name | Type |
+|---|---|---|
+| 0 | `CTX_KEY_DATA` | `Coll[Coll[Byte]]`, the miner hashes being paid |
+| 1 | `CTX_LOOKUP_PROOF` | Batch lookup proof |
+| 2 | `CTX_REMOVE_PROOF` | Batch removal proof |
+
+```scala
+val minersToPay: Coll[(Coll[Byte], Coll[Byte])] = {
+  CTX_KEY_DATA.zip(nispTree.getMany(CTX_KEY_DATA, CTX_LOOKUP_PROOF).map{ (x: Option[Coll[Byte]]) => x.get })
+}
+val indexedKeys =  CTX_KEY_DATA.zip(CTX_KEY_DATA.indices)
+val nonUniqueKeys = indexedKeys.exists{
+  (keyIdx: (Coll[Byte], Int)) =>
+    indexedKeys.exists{(x: (Coll[Byte], Int)) => x._1 == keyIdx._1 && x._2 != keyIdx._2}
+}
+```
+
+Every entry must be 40 bytes, and every key must be unique, or no path applies. For each miner the
+contract derives three amounts from the score in their leaf:
+
+```scala
+val ergShare   = (totalReward.toBigInt * x._2.toBigInt) / totalScore
+val bondRefund = bondForScore(x._2).toBigInt
+(x._1, ergShare + bondRefund)
+```
+
+| Amount | Formula |
+|---|---|
+| ERG owed | `R7(0) × score ÷ R6`, plus the miner's own bond |
+| LIT owed | `R7(1) × score ÷ R6` |
+| Bond refunded | `bondForScore(score)`, the same formula that collected it |
+
+**R5 and R6 never change during payout.** Every miner's share is computed against the totals as they
+stood when evaluation ended, so the order miners are paid in cannot change what any of them receives.
+
+### Three spending paths
+
+The path is not declared. It follows from the miner count and from the batch the spender chose:
+
+![The three payout paths. A partial payout recreates the payout box at OUTPUTS(0) with the rollup NFT carried forward, and pays each named miner at OUTPUTS(1) onward their reward share plus bond exactly. A final payout pays every remaining miner from OUTPUTS(0) onward at least their share plus bond, creates no successor and burns the rollup NFT. A drain, available only when no miners remain, allows any outputs except a miner fee output, burns the rollup NFT and requires the bond total to already be zero.](/img/payout-paths.png)
+
+*A partial payout carries the NFT forward. The other two paths end the rollup and burn it.*
+
+| | Drain | Partial | Final |
+|---|---|---|---|
+| Taken when | `currentMiners == 0` | The batch leaves more than 0.001 ERG | The batch pays out everything else |
+| Successor at `OUTPUTS(0)` | No | Yes, same contract | No |
+| Miner outputs start at | | `OUTPUTS(1)` | `OUTPUTS(0)` |
+| Miner value | | Exactly what is owed | At least what is owed |
+| Rollup NFT | Burned | Carried forward | Burned |
+| Bonds | Must already be zero | Liability falls by the batch's refunds | Batch must refund all of it |
+| Tree | Unconstrained | Batch removed | Consumed with the box |
+
+### The partial payout
+
+Taken when the named miners are paid and more than 0.001 ERG remains:
+
+```scala
+if(totalMinerRewards < SELF.value.toBigInt && remainder > 1000000L.toBigInt){
+  val minerOutputBoxes = OUTPUTS.slice(1, minersWithReward.size + 1)
+  val allMinersPaid = minerOutputBoxes.size == minersWithReward.size
+  val treeUpdated = {
+    val removeTree = nispTree.remove(CTX_KEY_DATA, CTX_REMOVE_PROOF).get
+    removeTree == nextTree
+  }
+  val minersRewarded = minerOutputBoxes.zip(minersWithReward).forall{
+      (x: (Box, (Coll[Byte], BigInt))) => blake2b256(x._1.propositionBytes) == x._2._1 && x._1.value.toBigInt == x._2._2
+  }
+  ...
+  val usedReward      = nextUTXO.value.toBigInt == remainder
+  val usedLIT         = nextLIT._1 == totalLIT._1 && nextLIT._2 == totalLIT._2 - totalLITRewards
+  val usedBond        = nextBond.toBigInt == totalBond.toBigInt - totalBondRefunds
+```
+
+The successor at `OUTPUTS(0)` holds exactly the remainder, the LIT not yet paid, and a bond liability
+reduced by exactly the refunds just paid. R5, R6, R7(0) and R7(1) are all carried unchanged, and so is
+the rollup NFT:
+
+```scala
+rollupNFT == nextRollupNFT
+```
+
+Each miner output must sit at their exact proposition and hold **exactly** what they are owed, with their
+LIT at `tokens(0)`. The named miners are removed from the tree, so no batch can pay them twice.
+
+**`allMinersPaid` closes a trap in `zip`.** `slice` clamps past the end of `OUTPUTS` rather than throwing,
+and `zip` truncates to the shorter side, so without the size check a transaction could name more miners
+than it produces outputs for and `forall` would pass for the ones left out.
+
+### The final payout
+
+Taken when the batch leaves 0.001 ERG or less:
+
+```scala
+val minerOutputBoxes = OUTPUTS.slice(0, minersWithReward.size)
+val allMinersPaid = minerOutputBoxes.size == minersWithReward.size
+val minersRewarded = minerOutputBoxes.zip(minersWithReward).forall{
+    (x: (Box, (Coll[Byte], BigInt))) => blake2b256(x._1.propositionBytes) == x._2._1 && x._1.value.toBigInt >= x._2._2
+}
+val nftBurned = numTokenInOutputs(rollupNFT._1) == 0L
+val allBondsRefunded = totalBondRefunds == totalBond.toBigInt
+```
+
+There is no successor, so miner outputs start at `OUTPUTS(0)`. Values are checked with `>=` rather than
+`==`, so the few nanoERG of truncation remainder can be added to one miner's output rather than needing
+a change box of its own.
+
+**`allBondsRefunded` is what forces the final payout to name every remaining miner.** R7(2) is the sum of
+the bonds owed to the entries still in the tree, so a batch whose refunds equal it is necessarily the
+whole tree. Without `allMinersPaid` beside it, a spend could name every remaining miner, satisfy this
+check, emit a single output and keep the rest as change, because nothing else pins where the box's value
+goes on this path.
+
+Any LIT left over from rounding is not constrained, and the transaction's builder may send it to change.
+
+### Why a partial payout can never strand the last miners
+
+The path is chosen by arithmetic, so it matters that the arithmetic can never pick the final path while
+miners are still unpaid. The bond floor guarantees it.
+
+While any miner remains unpaid, the box still holds at least their bond, which is at least 0.002 ERG.
+That is above the 0.001 ERG threshold, so any batch that leaves someone out stays on the partial path.
+Only a batch covering the whole tree can leave the truncation deficit alone, which is under one nanoERG
+per miner and so below the threshold for any realistic rollup, and that batch lands on the final path
+and consumes the box.
+
+The bond terms cancel exactly, because the same formula collects and refunds them:
+
+```text
+value     = baseReward + totalBond
+paid      = Σ floor(baseReward × sᵢ ÷ S) + Σ bondᵢ  =  (baseReward − deficit) + totalBond
+remainder = deficit
+```
+
+So the payout box only locks if the truncation deficit exceeds 0.001 ERG, which takes over a million
+submitters.
+
+### The drain
+
+Taken when no miners remain, which happens when a rollup received no submissions or every submitter was
+slashed:
+
+```scala
+if(currentMiners == 0){
+  val hasFeeOutput = OUTPUTS.exists{
+    (box: Box) =>
+      blake2b256(box.propositionBytes) == CONST_FEE_HASH
+  }
+  val onlyOne = SELF.id == INPUTS(0).id
+  val noFeeOutput = !hasFeeOutput
+  val nftBurned = numTokenInOutputs(rollupNFT._1) == 0L
+
+  val noBondLiability = totalBond == 0L
+  sigmaProp(noFeeOutput && onlyOne && nftBurned && noBondLiability)
+}
+```
+
+Without this path, a rollup with nobody to pay would recreate itself unchanged forever and lock its ERG
+and LIT.
+
+**The fee gate is an incentive barrier, not an authorization check.** A transaction with no miner fee
+output pays a block producer nothing through the normal channel, so nobody relays it and standard
+mempool policy drops it. The practical effect is that the value reaches whoever produces the block. It
+is not a miner check, since the same transaction could pay a producer through an ordinary output, but it
+was the alternative to a permanent lock.
+
+**R5 is what gates it, not the tree digest.** R5 counts submissions minus slashes and never changes
+during payout. A payout box drawn down by partial payouts empties its tree while R5 stays constant, so it
+sits outside the drain, which is safe because the final path always consumes it first.
+
+### Burning the rollup NFT
+
+Ergo burns any input token that no output carries, so burning the NFT means ensuring no output has it:
+
+```scala
+def numTokenInOutputs(tokenId: Coll[Byte]): Long = {
+  OUTPUTS.fold(0L, {
+    (a: Long, b: Box) =>
+      val totalTokens = b.tokens.fold(0L, {
+        (z: Long, t: (Coll[Byte], Long)) => if(t._1 == tokenId) z + t._2 else z
+      })
+      a + totalTokens
+  })
+}
+```
+
+Both paths that end a rollup require `numTokenInOutputs(rollupNFT._1) == 0L`. The partial path requires
+the opposite, carrying the NFT unchanged to its successor. So the NFT exists for exactly as long as the
+rollup does, and a box carrying it is always a live rollup.
+
+### Paying bonds back
+
+A bond moves through the rollup in step with its miner, and three contracts share the one formula:
+
+| Stage | Contract | What happens to the bond |
+|---|---|---|
+| Submission | `Holding_Logic` | Collected. Box value and R7(2) rise by `bondForScore(score)` |
+| Fraud proof | `Evaluation` | Slashed. Box value and R7(2) fall by the removed entry's bond, paid to the prover |
+| Evaluation transform | `Evaluation` | Excluded from R7(0), carried in R7(2) |
+| Payout | `Payout` | Refunded. Each miner's output carries their share plus their own bond, and R7(2) falls by the batch's refunds |
+| Final or drain | `Payout` | R7(2) must be fully refunded, or already zero |
+
+Because the refund is recomputed from the score in each leaf rather than stored, a miner is always
+refunded exactly what they posted, and the bond total always equals the sum of the bonds owed to the
+entries still in the tree.
+
+### Paying many miners in one transaction
+
+**The payout contract supports batches.** `CTX_KEY_DATA` is a collection, the lookup and removal are
+batch proofs, and every condition folds over the whole batch. Because the tree holds 40-byte commitments
+rather than NISPs, batch proofs stay small: batches of 1, 2, 8, 32, 128 and 256 keys all serialize
+inside the 65,535-byte context variable limit.
+
+:::info The client currently pays one miner per transaction
+The Lithos client builds a payout for its own miner only, naming a single key. The batch capacity is
+available in the contract and unused off-chain. A client that paid many miners at once, including other
+people's, would settle a rollup in far fewer transactions. This may be added in future client versions.
+:::
+
+## Next steps
+
+- [NISPs](./NISPs.mdx): what the submissions this page describes contain, and the commitment check.
+- [LFSM](./lfsm.mdx): the fraud proof set, its ordering, and how rollups fit the emission side.
+- [Mining on Lithos](./mining-on-lithos.mdx): what a miner needs to know about being paid.

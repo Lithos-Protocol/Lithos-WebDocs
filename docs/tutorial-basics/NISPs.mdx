@@ -1,0 +1,361 @@
+---
+sidebar_position: 7
+tags:
+  - mining
+description: What a Non-Interactive Share Proof is, how Lithos builds one, and why the difficulty you commit to is the only number that matters.
+---
+
+# NISPs
+
+<span className="badge badge--warning">Expert</span>
+
+*Assumes proof-of-work mining, binomial distributions and Ergo's serialization format. For choosing a difficulty in practice, read the [startup guide](../startup-intro.mdx#choosing-a-difficulty) instead.*
+
+A Non-Interactive Share Proof is how a miner proves to a contract how much work they did, in a few
+kilobytes, no matter how many shares they actually mined. It is the primitive the whole protocol rests
+on: without it a decentralized pool would have to store every share on chain, which no blockchain can
+afford.
+
+This page covers what a NISP proves, the parameters Lithos chose, how one is serialized, how the
+rollup stores it, and the game theory that makes an honest difficulty the profitable choice.
+
+## The problem NISPs solve
+
+A traditional pool measures your work by counting shares. Pay-Per-Share pays you `N / T_p`, where `N`
+is how many valid shares you sent and `T_p` is the pool's target. Pay-Per-Last-N-Shares does the same
+over a window.
+
+**None of that survives contact with a blockchain.** Counting shares means storing shares, and a miner
+working at a high target can produce hundreds of thousands of them. Lowering the count by raising the
+target does not help either: submit few enough shares to fit on chain and your payout becomes wildly
+variable, which defeats the point of pooling.
+
+NISPs take a different measurement. Instead of counting shares, a NISP demonstrates that your share set
+has the statistical shape it would have if you really had been mining at the rate you claim. That is
+borrowed from Non-Interactive Proofs of Proof-of-Work, which prove facts about a chain using rare
+low-target blocks as checkpoints rather than by presenting the whole chain.
+
+The property both rely on is **goodness**: on an honestly mined set, hashes land near their expected
+mean for their difficulty. An honest miner has an overwhelming probability of producing a good set. A
+miner who did less work than they claim does not.
+
+## What a NISP contains
+
+Every miner mines against a personal target **τ (tau)**, which they choose and commit to in advance. A
+hash below τ is a share. A hash at or below **τ / 10,000** is a **super share**.
+
+A NISP is then:
+
+```text
+NISP = [score: 8 bytes][10 super shares]
+```
+
+Ten super shares, always. Not nine, not eleven, and not "as many as you found". Producing ten of them
+inside the window is the evidence that you were hashing at the rate your committed τ implies.
+
+Each super share carries more than the hash. It carries the block header it came from and a Merkle
+proof that **your genesis transaction** was in the candidate that header belongs to. That is what ties
+the claim to your own work rather than to work anybody could copy: the genesis transaction is inserted
+before the proof-of-work, so changing it changes the hash of the block carrying it. The genesis transaction
+can also be used to encode extensions that future fraud proofs or external protocols can read.
+
+:::note Lithos fixes NISPs to a single level and proportion.
+The current Lithos implementation sets a NISP to be exactly 10 supershares at `τ / 10,000`.
+This provides the best security guarantees against spam while still ensuring consistency. Future
+upgrades could allow for partial NISPs, which receive a smaller payout than a full NISP. Research
+into this is still ongoing.
+:::
+
+## Score is difficulty
+
+Your **score** is your claimed difficulty. In Lithos, the amount you get paid per successful NISP **is directly proportional to the difficulty you claim**:
+
+```text
+score = (2^256 - 1) / τ
+τ     = (2^256 - 1) / score
+```
+
+The same division converts in both directions, which is why the client's helper takes one argument and
+names neither. `TARGET_MAX_LITHOS` is that `2^256 - 1` constant.
+
+A rollup pays you `total reward × your score ÷ total score`. So score is what you are paid on, and τ is
+just the same number expressed as a target.
+
+## The parameters Lithos chose
+
+| Parameter | Value | What it governs |
+|---|---|---|
+| Super shares per NISP | 10 | Fixed. The proof is exactly ten or it is invalid |
+| `NISP_COEFFICIENT` | 10,000 | Divides your τ to give the super-share threshold |
+| `NISP_WINDOW` | 60 blocks | How far before the rollup's block a super share may have been mined |
+| `NISP_MIN` | 7,948 bytes | Smallest legal NISP |
+| `NISP_MAX` | 29,629 bytes | Largest legal NISP |
+| `NUM_LVLS_MAX` | 16 | Maximum **Merkle** depth of a share's inclusion proof |
+| `TX_PROOF_MIN` | 502 bytes | Smallest legal transaction proof inside a share |
+| `TX_PROOF_MAX` | 2,174 bytes | Largest legal transaction proof inside a share |
+| `TX_SIZE_MIN` | 450 bytes | Smallest legal genesis transaction inside that proof |
+| `COLLAT_BOX_MIN` | 50 bytes | Smallest legal collateral box inside that transaction |
+
+:::note Lithos' scalability comes from constant-size NISPs
+Having `NISP_MAX` means that the largest transaction, a fraud proof on a maximum size NISP, is
+only ~31KiB in size. This ensures that transactions can fit into blocks easily.
+:::
+
+### The window is counted in blocks
+
+The construction measures the window in seconds. Lithos measures it in block height, because that is
+what a contract can read:
+
+```text
+currentBlock - NISP_WINDOW  ≤  share height  ≤  currentBlock
+```
+
+`currentBlock` is the rollup's own block height, carried in the rollup box. A share outside that range
+is fraud, provable by `FP_NotInWindow`.
+
+At 60 blocks the window is about **45 minutes on testnet** and about **2 hours on mainnet**, because
+testnet blocks arrive roughly every 45 seconds against mainnet's 2 minutes. **The block count is the
+same on both networks**, so testnet gives you less wall-clock time to reach ten super shares.
+
+## Serialization
+
+A NISP is a score followed by ten shares laid out end to end. Each share is:
+
+```text
+[N: 4][header: 220 or 221][txProofSize: 2][numLevels: 1][txProof][levels: 33 × numLevels][yCoord: 32]
+```
+
+| Field | Bytes | What it is |
+|---|---|---|
+| `N` | 4 | Autolykos 2's table size parameter, which depends on the block height |
+| `header` | 220 or 221 | The Ergo block header the share came from |
+| `txProofSize` | 2 | Length of the transaction proof that follows |
+| `numLevels` | 1 | Merkle depth of the inclusion proof, 1 to 16 |
+| `txProof` | 502 to 2,173 | The genesis transaction and the collateral box it spent |
+| `levels` | 33 each | The Merkle path, one 33-byte node per level |
+| `yCoord` | 32 | The y coordinate of the proof-of-work solution |
+
+The transaction proof has its own layout:
+
+```text
+txProof = [txSize: 2][genesis transaction][collateral box bytes]
+```
+
+The collateral box goes in **whole**, which is why its size is bounded by the collateral contract. A
+box a miner cannot choose is the one surface an attacker could use to bloat every NISP of every miner
+who drew it.
+
+### Why the header is 220 or 221 bytes
+
+An Ergo header is not fixed width. Two of its fields are variable-length integers, so the contract
+derives the size rather than assuming it:
+
+```text
+headerSize = 130 (invariant prefix) + timestamp VLQ + 36 (invariant mid) + height VLQ + 45 (invariant suffix)
+```
+
+The prefix covers the version, parent ID, and three roots. The middle covers the extension root and the
+serialized difficulty. The suffix covers the votes, the unparsed-bytes count, the 33-byte miner key and
+the 8-byte nonce.
+
+At a 6-byte timestamp and a 3-byte height that comes to **220**. The height widens to 4 bytes past
+block 2,097,151, giving **221**, which is why the maximum is derived at 221 and the minimum at 220.
+
+### The size envelope is derived, not chosen
+
+Both ends fall out of the layout with no hand-picked number in between:
+
+```text
+NISP_MIN = 8 + 10 × (4 + 220 + 3 + 502 + 33 + 32)       = 7,948
+NISP_MAX = 8 + 10 × (4 + 221 + 3 + 2174 + 528 + 32) + 1 = 29,629
+```
+
+The `+1` on the maximum is because the contract's bound is strict. An honest NISP at the full 16 Merkle
+levels measures **27,858 bytes**, comfortably inside the ceiling.
+
+**There is deliberately no maximum for the collateral box or for the transaction.** A collateral box's
+size is the proof size minus the transaction size, so `TX_PROOF_MAX` and `TX_SIZE_MIN` already bound it
+from both ends. A redundant cap can only tighten a sound bound, and one derived slightly too small
+would reject honest shares forever.
+
+### The block version is pinned
+
+A share's header is accepted only at **version 4 or above with its unparsed-bytes count at zero**.
+Everything else is fraud.
+
+That is not fussiness. Announced bytes sit between the votes and the miner key, so a nonzero count
+makes `headerSize` wrong and the share unparseable by every proof that reads a header. The count itself
+sits ahead of the divergence and is readable either way, so one byte closes it. A node builds headers
+with that field empty, so it costs an honest miner nothing.
+
+:::danger This is a standing hardfork trigger
+A change in the Ergo header version necessitates a hardfork on the Lithos Protocol, specifically a change to the
+rollup contracts, which reference the immutable fraud proof whitelist. This is intendended, changes to header version could
+mean differences in serialization. Additionally, Lithos is meant to only reward miners who can mine real blocks.
+:::
+
+## The rollup stores a hash, not the NISP
+
+A rollup's tree does not hold NISPs. Each leaf is 40 bytes:
+
+```text
+miner hash  ->  [score: 8 bytes][blake2b256(NISP): 32 bytes]
+```
+
+The submitting transaction still carries the whole NISP, since the contract has to hash the bytes it is
+committing to. Everything afterwards works from the NISP hash. When a fraud proof needs the real NISP,
+the prover supplies it in a context variable and the contract hashes it back against the leaf before
+parsing anything.
+
+Three things follow:
+
+| | If leaves held NISPs | With commitments |
+|---|---|---|
+| AVL proof size | Grew with the NISP | Independent of NISP size |
+| A fraud proof at the maximum NISP | About 90 KB | About 31 KB |
+| Miners settled per payout transaction | One | Batches of up to 256 keys |
+
+The commitment binds the **exact submitted bytes**, malformed serialization included. That is what lets
+a proof establish a NISP was malformed in the first place, rather than failing to parse it and proving
+nothing.
+
+## Choosing τ
+
+> **A score chosen after the shares are known measures luck, not hashrate.**
+
+Everything below assumes your τ is committed in advance and binding. It is: a commitment takes effect
+60 blocks after you set it and cannot be replaced for 780 blocks, and `FP_NonMatchingCommitment` slashes
+a NISP whose score is not the commitment that was in effect.
+
+Without that, none of the analysis holds. A miner would simply wait, look at the ten best super shares
+they happened to find, and pick whatever τ those shares justify. Payouts would start rewarding the lucky tail of a miner's 
+window rather than their hashrate, reintroducing the variance NISPs exist to remove.
+
+### Super shares as a function of τ
+
+Each hash is an independent trial that clears the super-share threshold with probability
+`τ / (10,000 × 2^256)`. Over the `h × W` hashes a miner produces in the window, where `h` is a stable
+hashrate and `W` is the window in seconds:
+
+```text
+average super shares = h × W × τ / (10,000 × 2^256)
+```
+
+Solving for the τ that averages a chosen number of super shares `k`, and its score:
+
+```text
+τ     = 10,000 × k × 2^256 / (h × W)
+score = h × W / (10,000 × k)
+```
+
+**A larger τ averages more super shares.** Increasing τ means that your NISP accepts a wider range of hashes. 
+For a miner mining at a constant hashrate, this means they produce more super-shares in the same amount of time.
+This comes at the cost of a smaller score (and therefore, a smaller payout).
+
+### The ideal τ
+
+The ideal τ is not a value the formula produces. It is where rational miners converge: **a τ that
+averages between 10 and 15 super shares per window**, which is the range where consistency and pay
+balance out.
+
+Because the number of super shares a window produces is a count of rare independent events, it follows
+a Poisson distribution. That makes the trade exact. The following shows the chance of reaching ten, and
+what each average does to score and to expected earnings, both relative to averaging ten:
+
+| Super shares averaged | Chance a window reaches 10 | Score | Expected earnings |
+|---|---|---|---|
+| 5 | 3.2% | 200% | 12% |
+| 7 | 17.0% | 143% | 45% |
+| 10 | 54.2% | 100% | 100% |
+| 11 | 65.9% | 91% | 111% |
+| 12 | 75.8% | 83% | 116% |
+| 13 | 83.4% | 77% | 118% |
+| 14 | 89.1% | 71% | 117% |
+| 15 | 93.0% | 67% | 114% |
+| 18 | 98.5% | 56% | 101% |
+| 20 | 99.5% | 50% | 92% |
+
+Expected earnings is score multiplied by the chance of being paid. It treats the miner's own score as a
+small part of each rollup's total, so changing it does not move the denominator.
+
+**Expected earnings peak at an average of 13 and stay within about 6% of that peak from 11 to 15.** That
+flat top is why convergence lands on a range rather than a point: inside it a miner gives up very little
+expected income wherever they sit, so they choose by how much variance they will tolerate. Ten is the
+floor of the range, where score is highest and a window is paid about half the time, at roughly 15%
+below the peak.
+
+The scores at the two ends of the range and at the peak between them, on both networks:
+
+| Hashrate | Testnet, k = 10 | Testnet, k = 13 | Testnet, k = 15 | Mainnet, k = 10 | Mainnet, k = 13 | Mainnet, k = 15 |
+|---|---|---|---|---|---|---|
+| 100 MH/s | 2.7M | 2.08M | 1.8M | 7.2M | 5.54M | 4.8M |
+| 500 MH/s | 13.5M | 10.4M | 9M | 36M | 27.7M | 24M |
+| 1 GH/s | 27M | 20.8M | 18M | 72M | 55.4M | 48M |
+| 4 GH/s | 108M | 83.1M | 72M | 288M | 222M | 192M |
+
+The windows are 2,700 seconds on testnet and 7,200 seconds on mainnet.
+
+:::note Your effective hashrate is lower than your nameplate
+Autolykos 2 rebuilds its lookup table every time the height changes, and a rig stops hashing while it
+does. Measured at about 4.6 seconds in the construction's own trial, that is a few percent of a
+2-minute mainnet block and roughly a tenth of a 45-second testnet block. Use the hashrate you actually
+sustain across block boundaries, not the peak your miner reports.
+:::
+
+### Inflating τ
+
+An **inflated** τ sits above the ideal range: it averages **more than 15** super shares per window.
+
+The proof is almost always valid, since reaching ten is nearly certain. **But score falls in direct
+proportion**, because score is `2^256 / τ`. A miner averaging 20 is paid 99.5% of the time and holds
+half the score of one averaging 10, doing the same work.
+
+Inflation fades rather than collapses. At an average of 18 expected earnings are still level with
+averaging 10, and at 20 they are 92% of it. It is the safe direction and the right place to start while
+measuring hardware. Slowly lowering it can increase expected payments while still maintaining good
+consistency. 
+
+### Deflating τ
+
+A **deflated** τ sits below the ideal range: it averages **fewer than 10** super shares per window.
+
+Score rises, so each paid window pays more. But lowering τ narrows the threshold, and the hashes a miner
+can produce in a window are fixed by their hardware, so **reaching ten becomes unlikely**. A window
+that does not reach ten earns nothing.
+
+Deflation collapses rather than fades. Averaging 7 buys 43% more score and pays under a fifth of the
+time, for less than half the expected earnings. Averaging 5 doubles the score and earns about an
+eighth. Far enough down, no window ever produces a valid proof and the score is worth nothing.
+
+### The shape of the trade
+
+| | Super shares averaged | Chance a window pays | Expected earnings |
+|---|---|---|---|
+| Deflated τ | Fewer than 10 | Falls steeply toward zero | Collapses |
+| Ideal τ | 10 to 15 | About 54% to 93% | Near its peak |
+| Inflated τ | More than 15 | Approaches certainty | Fades slowly |
+
+**Both directions lose in expectation**, and that is the property the design depends on. It is what
+makes an honest, well-chosen τ the profitable one rather than merely the fair one. Inflating gives away
+score for reliability past the point it is worth anything. Deflating buys score with variance, which is
+exactly what a miner joined a pool to escape, and it lowers expected income rather than raising it.
+
+**The two directions are not symmetric**, and a miner unsure of their hashrate should err toward
+inflation. Overshooting the range by five super shares costs a few percent of expected earnings.
+Undershooting it by three costs more than half.
+
+The construction's own empirical trials found the same direction: inflated values produced a valid
+proof in every window, and heavily deflated values produced none. Those trials ran with the multi-level
+parameters rather than Lithos's fixed ten, so read the direction rather than the numbers.
+
+**A choice inside the range barely affects anyone else.** Every miner's share is divided by the total
+score of the rollup, so one miner's score does move everyone else's payout, but only in proportion to
+that miner's part of the total. For a miner who is a small fraction of the pool the effect is
+negligible, which is why one miner favouring steady payouts and another favouring larger ones can
+coexist without either costing the other anything meaningful.
+
+## Next steps
+
+- [LFSM](./lfsm.mdx): the contract set that validates these proofs.
+- [Rollups](./rollups.mdx): the rollup phases a NISP is submitted into.
+- [Choosing a difficulty](../startup-intro.mdx#choosing-a-difficulty): the practical version of this page.

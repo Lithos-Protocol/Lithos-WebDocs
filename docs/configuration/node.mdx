@@ -1,0 +1,124 @@
+---
+sidebar_position: 2
+tags:
+  - configuration
+description: Connecting the client to your Ergo node, and the two secrets that guard its own API.
+---
+
+# Node connection and security
+
+<span className="badge badge--success">Standard</span>
+
+*For anyone running the Lithos client. No Ergo or smart contract experience needed.*
+
+The `node` block tells the client where your Ergo node is and how to authenticate with it. Two more
+settings guard the client's own HTTP API. This page covers both, and it is the only configuration page
+where every setting is required.
+
+It does not cover setting up the node itself. For that, read
+[Setting up an Ergo testnet node](../startup/testnet-node.mdx).
+
+## Node connection
+
+Every setting here is **required**. The client refuses to start if any is missing:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `node.url` | `http://127.0.0.1` | An `http` or `https` URL with a host | Your node's address. Include a port to use it, or leave it off and the client appends the default for the network |
+| `node.key` | empty | Any string | The node's REST API key, matching the `apiKeyHash` in your `ergo.conf` |
+| `node.storagePath` | empty | Any string | Full path to the node wallet's `keyfile.json`. The client signs transactions with it |
+| `node.pass` | empty | Any string | The node wallet password, used to unlock that keystore |
+| `node.networkType` | `MAINNET` | `MAINNET` or `TESTNET` | Decides the default node port, address prefixes and contract set. Case-insensitive |
+| `node.explorerURL` | `default` | A URL, or the literal `default` | The explorer the client falls back to. `default` picks the right one for the network |
+| `node.numAddresses` | 32 | 1 to 1000 | How many EIP-3 addresses the prover holds keys for |
+
+### The port is appended, not required
+
+The client parses `node.url` and appends a default port only when the URL does not already name one:
+`9052` on testnet, `9053` on mainnet. Both of these work and mean the same thing on testnet:
+
+```hocon
+node.url = "http://127.0.0.1"
+node.url = "http://127.0.0.1:9052"
+```
+
+A URL without a scheme does not work. `127.0.0.1` alone is rejected at startup, because the client
+cannot tell a host from a path without one.
+
+### Why `numAddresses` matters more than it looks
+
+The client builds its signing prover with one secret per address index, from zero to
+`numAddresses - 1`. Any box paid to an address past that last index is one the client cannot sign for.
+
+Lender keys are derived from these addresses, which is why `emission.maxLenderKeys` must not exceed
+`numAddresses`. Startup refuses the pair and names the value to raise.
+
+:::warning Raising it is safe. Lowering it strands funds
+Addresses are derived in order, so raising the count only adds new ones. Lowering it below a key that
+has already received a permit return or a coinbase leaves that ERG unspendable until you raise it
+back. Raising it costs a little startup time and nothing else.
+:::
+
+## Matching the node's mempool rule
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `node.mempoolSorting` | `bySize` | `bySize` or `byExecutionCost` | Which rule your node ranks mempool transactions by |
+
+Ergo nodes rank the mempool either by fee per serialized byte or by fee per unit of execution cost, and
+**the node does not report which it uses**. The client has to be told, so that the blocks it builds are
+packed against the rule your node actually applies.
+
+Set it to match `ergo.node.mempoolSorting` in your `ergo.conf`. The node's own default is `bySize`,
+which is also the client's.
+
+This setting is **not validated at startup**. Anything the client does not recognise reads as `bySize`,
+so a typo here fails silently rather than refusing to start. Check the spelling against your
+`ergo.conf` by eye.
+
+## Client API security
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `lithos.apiKeyHash` | hash of `hello` | Exactly 64 hexadecimal characters | BLAKE2b-256 hash of the key that guards the client's authenticated endpoints |
+| `play.http.secret.key` | `changethissecret` | Any string, not validated | Signs the client's own web session cookies |
+
+Both ship with published placeholder values and both should change before you run anything you care
+about.
+
+### Setting your own API key hash
+
+The value in the file is the **hash**, not the key. The key is what you send with a request. To
+generate a hash, use your node's own hashing endpoint:
+
+1. Open your node's Swagger panel at `http://127.0.0.1:9052/swagger` on testnet.
+2. Under `/utils`, call `POST /utils/hash/blake2b` with your chosen key as the request body.
+3. Copy the returned hash into `lithos.apiKeyHash`.
+4. Keep the original string. That is what you authenticate with.
+
+Startup checks that the value is 64 hexadecimal characters and nothing else, so pasting the key
+instead of the hash is caught immediately.
+
+:::danger Keep the client's API off the open internet
+The client holds your node API key and wallet password and can sign transactions with your keys. Do
+not forward its port, and do not expose it beyond your local network. The API key is a second line of
+defence, not the first.
+:::
+
+## Mainnet node settings
+
+Two settings belong in your **node's** configuration rather than the client's, and only for mainnet
+mining:
+
+```hocon title="ergo.conf"
+ergo.chain.reemission.checkReemissionRules = true
+ergo.wallet.checkEIP27 = true
+```
+
+The first validates consensus. The second handles payments made by the node wallet. Neither applies on
+testnet.
+
+## Next steps
+
+- [Stratum and difficulty](./stratum.mdx): connecting your mining software and choosing `diff`.
+- [Setting up an Ergo testnet node](../startup/testnet-node.mdx): the node side of this page.

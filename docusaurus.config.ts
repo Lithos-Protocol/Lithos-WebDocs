@@ -135,6 +135,8 @@ const config: Config = {
           "csharp",
           "php",
           "java",
+          // ErgoScript blocks are tagged scala. Prism's scala grammar extends java, which is above.
+          "scala",
           "powershell",
           "json",
           "bash",

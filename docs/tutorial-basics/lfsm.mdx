@@ -21,7 +21,7 @@ but every rule that decides whether a transaction is valid lives in a contract. 
 changes what its operator attempts, never what the protocol accepts.
 
 This page maps the contract set, its parameters and its trust boundaries. The rollup phases and their
-transformations are covered in detail in [LFSM Core](./lfsm-core.md). The LithosDex is a separate
+transformations are covered in detail in [Rollups](./rollups.mdx). The LithosDex is a separate
 product and is not part of the LFSM.
 
 :::info Values on this page are testnet values
@@ -36,9 +36,9 @@ The LFSM divides into four groups, each owning one part of the protocol:
 | Group | Contracts | Governs |
 |---|---|---|
 | `collateral/` | `Emission_Guard`, `LIT_Emissions`, `Collateral_Enforcer`, `Emission_Config`, `Emission_Gate`, `Collateral_Mainnet` | LIT emission, the collateral queue, and the boxes miners spend to make a block a Lithos block |
-| `rollups/` | `Holding`, `Evaluation`, `Payout`, `FP_Control` | The three-phase lifecycle of one block's payout |
-| `fraudproofs/` | Eight `FP_*` contracts | Removing NISPs that do not hold up |
-| `dictionaries/` | `MinerDictionary`, `MinerData` | Miner identity and difficulty commitments |
+| `rollups/` | `Holding_Guard`, `Holding_Logic`, `Evaluation`, `Payout`, `FP_Control` | The three-phase lifecycle of one block's payout |
+| `fraudproofs/` | Nine `FP_*` contracts | Removing NISPs that do not hold up |
+| `dictionaries/` | `MinerDictionary`, `MinerData_Guard`, `MinerData_Logic` | Miner identity and difficulty commitments |
 
 ## How the groups connect
 
@@ -152,61 +152,213 @@ Every Lithos block spawns one rollup. Three contracts run it, and each hands the
 
 | Phase | Contract | Length | Accepts |
 |---|---|---|---|
-| Holding | `Holding.ergo` | `HOLDING_PERIOD` blocks | NISP submissions |
+| Holding | `Holding_Guard` plus `Holding_Logic` | `HOLDING_PERIOD` blocks | NISP submissions and their bonds |
 | Evaluation | `Evaluation.ergo` | `EVAL_PERIOD` blocks | Fraud proofs |
-| Payout | `Payout.ergo` | Until drained | Payment batches |
+| Payout | `Payout.ergo` | Until drained | One miner per transaction |
 
-Holding and Evaluation share a register layout:
+### Holding is split in two, and the reason is NISP size
+
+A holding box carries only `Holding_Guard`, 137 bytes that check the logic's hash, dispatch on an op
+byte, and execute the real rules out of context variable 64. `Holding_Logic` holds every condition and
+never sits on a box at all.
+
+That split exists because **only the box's `propositionBytes` ride in the genesis transaction**, and
+the genesis transaction is embedded in all ten super shares of every NISP. One byte of script becomes
+ten bytes of NISP ceiling and thirty bytes of worst-case fraud proof. Moving 653 bytes of logic into a
+context variable takes them out of that multiplication entirely, and the submission transaction pays
+for them instead, where nothing multiplies.
+
+The guard stays 137 bytes however far the logic grows, so a new holding rule now costs the protocol
+nothing in NISP size.
+
+### Registers
+
+All three phases share one layout:
 
 | Register | Type | Meaning |
 |---|---|---|
-| R4 | `AvlTree` | The NISP tree, keyed `hashedPropBytes -> NISP`. Starts empty |
+| R4 | `AvlTree` | The NISP tree, keyed by miner hash. Each value is a 40-byte commitment, not a NISP. Starts empty |
 | R5 | `Int` | Miner count. Incremented per insert in Holding, decremented per removal in Evaluation |
 | R6 | `BigInt` | Sum of submitted scores. This is a sum of `Long` scores held in a `BigInt`, not a tau value |
-| R7 | `Long` | Period start height |
-| R8 | `Long` | The rollup's own block height, read by fraud proofs as `currentBlock` |
+| R7 | `Coll[Long]` | Exactly three slots of `Long` state. See below |
+| R8, R9 | any | Free for extensions |
 
-Payout reuses R4 through R6 unchanged and redefines the rest: R7 holds the total block reward, and R8
-holds the token reward.
+**R7 carries three `Long`s rather than spending a register on each**, which is what leaves R8 and R9
+open. Its length is pinned everywhere because every rollup contract and every fraud proof reads these
+by index, and `Coll` is the one register type carrying no length of its own. Slots 0 and 1 change
+meaning at the payout boundary:
 
-Two structural properties follow from the tree:
+| Slot | Holding | Evaluation | Payout |
+|---|---|---|---|
+| 0 | Period start | Period start | Total block reward |
+| 1 | Block height | Block height | Total LIT reward |
+| 2 | Bond total | Bond total | Bond total |
+
+Every rollup box also carries the **rollup NFT at token index 0**, with LIT behind it at index 1. The
+NFT is minted from the collateral box's own ID, since that box is input 0 of the genesis transaction,
+so holding it proves a box is the rollup a real collateral spend opened. LIT sits at index 1 because
+the NFT is always present and its index must never shift. Payout burns the NFT when it consumes the
+box.
+
+Two structural properties follow:
 
 - **AVL insert fails on a duplicate key**, so one identity submits at most one NISP per rollup. No
   counter is needed to enforce it.
 - **Payout removes each miner from the tree as it pays them**, so a batch cannot pay the same miner
   twice.
 
-Rollup lifetime is `HOLDING_PERIOD + EVAL_PERIOD + NISP_WINDOW`, which is 880 blocks. The extra
-`NISP_WINDOW` term covers the worst-case height a super share in a valid NISP can carry.
+A rollup stays challengeable for `HOLDING_PERIOD + EVAL_PERIOD`, which is 720 blocks. A super share may
+be up to `NISP_WINDOW` blocks older than the block that opened the rollup, so the full span any
+commitment must survive is 780 blocks.
 
-For the transformations, their guards and the payout paths, read [LFSM Core](./lfsm-core.md).
+### The tree stores a commitment, not the NISP
+
+A NISP runs up to 29,629 bytes. Putting one in every tree leaf would make every AVL proof carry NISPs
+around, so the tree holds a **40-byte commitment** instead:
+
+```text
+miner hash  ->  [score: 8 bytes][blake2b256(NISP): 32 bytes]
+```
+
+The score sits in the clear because Holding needs it to price the bond and add to the running total,
+and because a proof that only reads a score never has to supply a NISP at all.
+
+The submitting transaction still carries the whole NISP, since the contract has to hash the bytes it is
+committing to. Everything after the insert works from the commitment. When a fraud proof needs the real
+NISP, the prover supplies it in a context variable and the contract hashes it back against the leaf:
+
+```scala
+val nispEntry = nispTree.get(CTX_MINER_BYTES, CTX_LOOKUP_PROOF).getOrElse(Coll[Byte]())
+val minerNISP = getVarFromInput[Coll[Byte]](1, 4).getOrElse(Coll[Byte]())
+if (nispEntry.size == 40 && minerNISP.size >= 8 &&
+    minerNISP.slice(0, 8) == nispEntry.slice(0, 8) &&
+    blake2b256(minerNISP) == nispEntry.slice(8, 40)) { ... }
+```
+
+**That check runs before any parsing**, which matters because the bytes come from the accused. An
+unauthenticated preimage is rejected rather than parsed, so nobody can steer a proof into throwing on a
+payload the tree never committed to. The commitment binds the exact submitted bytes including malformed
+ones, which is what lets a proof establish that a NISP was malformed in the first place.
+
+Three consequences, all of which used to be limits:
+
+| | If the tree held NISPs | With commitments |
+|---|---|---|
+| AVL proof size | Grew with the NISP, because the leaf was the NISP | Independent of NISP size entirely |
+| A fraud proof at the maximum NISP | About 90 KB, carrying the removed leaf and its neighbour | About 31 KB, carrying the NISP once |
+| Miners settled per payout transaction | One, because two keys exceeded Ergo's collection limit | Batches of up to 256 keys serialize |
+
+A fraud proof now grows one byte per byte of NISP rather than two, and at 31 KB it sits well inside
+Ergo's 98,304-byte transaction limit rather than near it.
+
+For the transformations, their guards and the payout paths, read [Rollups](./rollups.mdx).
+
+## The submission bond
+
+A submission posts a refundable bond alongside its NISP:
+
+```text
+bond = max(0.002 ERG, score / 25)
+```
+
+Three contracts touch it, and each does exactly one thing:
+
+| Contract | Does |
+|---|---|
+| `Holding_Logic` | Collects it. The box value and R7 slot 2 both rise by exactly `bondForScore(score)` |
+| `Evaluation` | Slashes it. Value and ledger both fall by the removed entry's bond, paid to the fraud proof's submitter |
+| `Payout` | Refunds it. Each miner receives their reward share plus their own bond |
+
+The same formula is injected into all three from `MIN_ENTRY_BOND` and `BOND_DIVISOR`, so changing
+either moves all three contract addresses together.
+
+Two problems share this one mechanism. Writing to the NISP tree used to cost a single minimum fee,
+which put dictionary-cache saturation within a block reward of free. And a miner proven fraudulent had
+nothing to forfeit, so whoever proved it was paid only by the dilution of everyone else's share, which
+thins out as the pool grows. Pricing the bond from the miner's own claimed score fixes both: a large
+claim is not cheap to post, and the prover is paid by the fraudster.
+
+**The slash lives in `Evaluation`, not in the nine fraud proofs.** Each proof establishes which miner
+and which score are removed and nothing else. One formula, one place to audit, and a newly whitelisted
+proof inherits the slash rather than reimplementing it.
 
 ## Miner identity and commitments
 
 A miner's payout identity is `blake2b256(propBytes)`. The stratum address and worker name are
 cosmetic and carry no weight anywhere in the protocol.
 
-**`MinerDictionary.ergo`** is a singleton authenticated by its own NFT, holding one AVL tree in R4 that
-maps `hashedPropBytes -> minerDataTokenId`. It has two byte-dispatched operations:
+**`MinerDictionary.ergo`** is a singleton authenticated by its own NFT, holding one AVL tree in R4. Each
+entry is 40 bytes:
 
-| Op | Effect |
-|---|---|
-| 0 Add | Mints one token into a new `MinerData` box and inserts the miner into the tree |
-| 1 Remove | Destroys the miner's data box and removes the key |
+```text
+blake2b256(miner propBytes)  ->  [credentialId: 32][validUntil: 8]
+```
 
-The minted token takes the dictionary box's ID at the moment of registration, so every miner's token is
-distinct, and the dictionary is the only record of which token belongs to whom.
+It has three byte-dispatched operations:
 
-**`MinerData.ergo`** is one box per miner, floored at `CONST_MIN_DATA_BOX_AMNT`, carrying that token:
+| Op | Effect | Who may spend it |
+|---|---|---|
+| 0 register | Mints one credential into a new MinerData box and inserts the entry | The miner |
+| 1 evict | Removes an entry long past its expiry, touching no data box | Anyone |
+| 2 remove | Co-spends the miner's data box, burns the credential, removes the entry | The miner |
+
+The credential takes the dictionary box's ID at the moment of registration, so every miner's credential
+is distinct, and the dictionary is the only record of which one belongs to whom.
+
+**There is no renewal.** A registration expires after `DATA_LIFETIME`, and an expiring miner removes
+themselves and registers again. A renewal would either leave the commitments untouched, which protects
+nothing, or move them mid-evaluation, which is exactly what a fraud proof is comparing against.
+
+**MinerData is also two contracts**, split for the same reason Holding is but toward the opposite goal.
+This is the one box in the protocol designed to sit untouched for years, and Ergo prices storage rent
+by box length, so bytes moved into a context variable are bytes the box does not pay rent on.
+
+| File | Bytes | Where it lives |
+|---|---|---|
+| `MinerData_Guard.ergo` | 73 | On the box |
+| `MinerData_Logic.ergo` | 330 | In context variable 64 |
+
+The guard binds the signer and runs the logic, and nothing else. Its registers:
 
 | Register | Type | Meaning |
 |---|---|---|
 | R4 | `Coll[(Int, Long)]` | One or two commitments as `(commitHeight, score)`, **index 0 newest** |
-| R5 | `Coll[Byte]` | First 32 bytes are `blake2b256(miner propBytes)`. The remainder is extensible |
+| R5 | `Coll[Byte]` | Exactly 32 bytes: `blake2b256(miner propBytes)`. Never changes |
+| R6 | | Refused on every path that produces a successor |
 
 Every `changeDiff` must produce exactly two commitments, with the previous newest preserved at index 1.
 The box therefore always carries the commitment currently in effect and the one before it, and never
 more history than that.
+
+**The box holds no value beyond its floor.** It is pinned at `MIN_DATA_BOX_AMNT`, 0.001 ERG, with no
+draw-down path. Bonds are posted per NISP on the rollup instead, so nothing here holds value on a
+miner's behalf.
+
+### Registrations expire, and the timing is what makes a cheap box safe
+
+A MinerData box at 0.001 ERG is under water from its first storage period: at Ergo's rent rate its
+structural maximum of 233 bytes costs about 0.29 ERG per period. Ergo's rent path preserves a
+collected box's script, tokens and registers only while its value covers the fee, and here it never
+does, so the box becomes spendable **with no constraint at all** and whoever spends it keeps the
+credential.
+
+Flooring the box above the rent would cost about 0.29 ERG per registered miner, permanently locked, at
+exactly the scale where registration should be free. Ordering buys the same guarantee for nothing:
+
+| Constant | Blocks | Meaning |
+|---|---|---|
+| `DATA_LIFETIME` | 919,800 | How long a registration is honoured. About 3.5 years at 2-minute blocks |
+| `STORAGE_PERIOD` | 1,051,200 | Ergo's own, after which a box is collectible |
+| `EVICT_DELAY` | 131,400 | The gap between the two, about six months |
+
+`DATA_LIFETIME + EVICT_DELAY` equals `STORAGE_PERIOD` exactly, so a credential can only reach a storage
+collector 131,400 blocks **after** the entry naming it stopped being honoured. A leaked credential
+buys nothing, because `FP_NonMatchingCommitment` refuses an expired entry.
+
+**Eviction exists because the collector breaks the removal path.** A miner whose box has been collected
+cannot spend `remove`, since there is no data box to co-spend, and therefore cannot register again,
+because the tree key is their identity and inserting on a key already present throws. Eviction is
+permissionless and takes no data box for exactly that reason.
 
 ### Why the commitment exists
 
@@ -224,13 +376,17 @@ that very NISP, not the score the miner committed to. Only `FP_NonMatchingCommit
 
 Two timing rules live in `changeDiff` and they do different jobs:
 
-1. A new commitment takes effect `NISP_WINDOW` blocks in the future. This is the notice period that
-   makes a commitment binding.
-2. A commitment cannot be replaced too soon after the last one. This keeps the commitment governing an
-   older rollup present in one of the two slots for as long as that rollup can still be challenged.
+1. A new commitment takes effect `NISP_WINDOW` = 60 blocks in the future. This is the notice period
+   that makes a commitment binding.
+2. A commitment cannot be replaced sooner than `NISP_WINDOW + ROLLUP_LIFETIME` = 780 blocks after the
+   last one took effect. This keeps the commitment governing an older rollup present in one of the two
+   slots for as long as that rollup can still be challenged.
 
-`FP_NonMatchingCommitment` anchors on `currentBlock`, taken from the evaluation box's R8, rather than on
-submission height. Submission height is not recorded on-chain and is miner-controlled, so anchoring
+Rule 2 is load-bearing. Loosen the spacing and a miner evicts the governing commitment by churning,
+which turns the proof into one that either declines to fire or compares against the wrong score.
+
+`FP_NonMatchingCommitment` anchors on `currentBlock`, the rollup's own block height from R7 slot 1,
+rather than on submission height. Submission height is not recorded on-chain and is miner-controlled, so anchoring
 there would let a miner sit on a NISP until a different commitment took effect. The rule it applies:
 
 ```scala
@@ -244,30 +400,63 @@ so any submission in that state is fraudulent by construction.
 
 ## Fraud proofs
 
-Nine proof types are defined and eight are live. Each spends the evaluation box, removes one NISP from
-the tree, and decrements R5 and R6 accordingly:
+Nine proof types are live. Each spends the evaluation box, removes one NISP from the tree, decrements
+R5 and R6, and pays the removed entry's bond to whoever submitted the proof.
 
-| Proof | Proves that the miner |
-|---|---|
-| `FP_InvalidDiff` | Submitted a share that does not reach the super-share threshold of the score claimed |
-| `FP_IncorrectN` | Submitted a super share whose `N` value does not match its height |
-| `FP_InvalidFormat` | Submitted a NISP whose byte layout is malformed or out of bounds |
-| `FP_NotInWindow` | Submitted at least one share outside the NISP window |
-| `FP_NonUniqueHeaders` | Submitted two or more shares with identical header IDs |
-| `FP_MalformedGE` | Submitted a header carrying an invalid group element for the miner public key |
-| `FP_TransactionNotIncluded` | Submitted a collateral transaction and proof that do not match the header's Merkle root |
-| `FP_NonMatchingCommitment` | Submitted a score that is not the commitment in effect at the rollup's block height |
+**They run in a fixed order, and the order is a dependency graph rather than a convention:**
 
-`FP_MalformedTransaction_old` is the ninth. It is suffixed `_old` and does not ship.
+| # | Proof | Proves that the miner | Depends on |
+|---|---|---|---|
+| 0 | `FP_NonMatchingCommitment` | Submitted a score that is not the commitment in effect at the rollup's block height | Nothing |
+| 1 | `FP_InvalidFormat` | Submitted a NISP whose byte layout is malformed or out of bounds | Nothing |
+| 2 | `FP_MalformedGE` | Submitted a header carrying an invalid group element for the miner public key | 1 |
+| 3 | `FP_NotInWindow` | Submitted at least one share outside the NISP window | 1, 2 |
+| 4 | `FP_NonUniqueHeaders` | Submitted two or more shares with identical header IDs | 1, 2 |
+| 5 | `FP_IncorrectN` | Submitted a super share whose `N` value does not match its height | 1, 2 |
+| 6 | `FP_InvalidDiff` | Submitted a share that does not reach the super-share threshold of the score claimed | 1, 2, 5 |
+| 7 | `FP_TransactionNotIncluded` | Submitted a collateral transaction and proof that do not match the header's Merkle root | 1, 2 |
+| 8 | `FP_MalformedGenesis` | Submitted super shares built from someone else's genesis transaction | 1 |
 
-Two properties govern how the set is designed:
+### Why the order matters
+
+A proof has two acceptable answers, fires or declines. A third thing can happen: it **throws** while
+evaluating, and that is not an answer. Nothing can distinguish a proof that threw from one that was
+never reached, so a NISP that throws in every proof belongs to a miner nobody can slash. The accused
+writes the NISP, so that is a fraud that pays.
+
+The set closes it by ordering rather than by defending each proof separately. Each proof reads bytes on
+the assumption that the ones before it declined. Three edges carry the weight:
+
+1. **`FP_InvalidFormat` cannot throw on anything Holding admitted.** Its slices clamp and a failed
+   predicate poisons the accumulator, so later iterations index nothing.
+2. **`FP_MalformedGE` declining implies the miner key decompresses**, which means the header parses.
+   It works on raw bytes for exactly that reason, and it is the last proof that may not parse a header.
+3. **`FP_IncorrectN` must precede `FP_InvalidDiff`.** `N` is the one field of a super share the header
+   does not carry, and it feeds straight into the proof-of-work hit, so an unpinned `N` answers a
+   different puzzle.
+
+### `FP_MalformedGenesis` is what makes a NISP non-transferable
+
+Every other proof asks whether the ten super shares are good work. None asks **whose**. The header's
+miner key belongs to the *lender*, shared by every miner drawing that collateral box, so without this
+proof a NISP is ten shares anyone could copy out of the public tree and be paid for.
+
+What separates two miners is that each builds their own genesis transaction, whose holding output
+carries their own hash. This proof walks the serialized transaction inside the share down to that
+register and compares it against the accused.
+
+> **`FP_MalformedGenesis` and `FP_TransactionNotIncluded` are jointly necessary and individually
+> insufficient.** A thief who rewrites the register to their own hash changes the transaction's hash
+> and fails inclusion. One who leaves it alone fails this proof. Neither closes the theft alone.
+
+### Two properties govern the whole set
 
 - **A false negative is fatal and a false positive is not.** A proof that declines to fire lets theft
   through permanently. A proof that fires wrongly removes one honest NISP from one rollup. Proofs must
   therefore err toward firing.
-- **`FP_CONTROL` is immutable at launch.** There is no key and no DAO. Changing the accepted proof set
-  requires a hardfork to a new NFT, so the audit has to be complete before launch and there is no
-  recovery from an incomplete one.
+- **`FP_CONTROL` is immutable at launch.** There is no key and no DAO. It whitelists nine proof
+  hashes, and changing the set requires a hardfork to a new NFT, so the audit has to be complete before
+  launch and there is no recovery from an incomplete one.
 
 ## Parameters
 
@@ -279,19 +468,29 @@ The following parameters are compiled into contracts or injected at compile time
 | `TARGET_MAX_LITHOS` | `2^256 - 1` | The numerator in every score and tau conversion |
 | `HOLDING_PERIOD` | 360 blocks | Length of the Holding phase. About 12 hours at mainnet's 2-minute blocks, 4.5 hours at testnet's 45-second blocks |
 | `EVAL_PERIOD` | 360 blocks | Length of the Evaluation phase, same durations |
-| `NISP_WINDOW` | 160 blocks | How far before a block a super share may have been mined and still count. About 2 hours at testnet's 45-second blocks. The mainnet equivalent is 60 blocks |
-| `NISP_COEFFICIENT` | 10000 | Divides a miner's tau to give the super-share threshold |
-| `NISP_MAX` | 26000 bytes | Maximum NISP size, enforced by `Holding.ergo` |
-| `NISP_MIN` | 7948 bytes | Minimum NISP size, enforced by `Holding.ergo`. Stops a short NISP from causing an index error when a fraud proof iterates its 10 shares |
-| `TX_PROOF_MIN` | 502 bytes | Minimum size of a super share's transaction proof |
-| `TX_PROOF_MAX` | 4000 bytes | Maximum size of a super share's transaction proof |
+| `NISP_WINDOW` | 60 blocks | How far before a block a super share may have been mined and still count. The same 60 blocks on both networks, which is about 45 minutes on testnet and 2 hours on mainnet |
+| `ROLLUP_LIFETIME` | 720 blocks | `HOLDING_PERIOD + EVAL_PERIOD`. How long a rollup stays challengeable |
+| `NISP_COEFFICIENT` | 10,000 | Divides a miner's tau to give the super-share threshold |
+| `NISP_MAX` | 29,629 bytes | Maximum NISP size, enforced by `Holding_Logic`. Derived, not chosen: `8 + 10 × (4 + 221 + 3 + 2174 + 528 + 32) + 1` |
+| `NISP_MIN` | 7,948 bytes | Minimum NISP size. Derived as `8 + 10 × (4 + 220 + 3 + 502 + 33 + 32)`. Stops a short NISP from causing an index error when a fraud proof iterates its 10 shares |
+| `TX_PROOF_MIN` | 502 bytes | Minimum size of a super share's transaction proof, as `2 + TX_SIZE_MIN + COLLAT_BOX_MIN` |
+| `TX_PROOF_MAX` | 2,174 bytes | Maximum size of a super share's transaction proof. The worst honest proof plus a margin reserved for a larger replacement holding contract |
 | `TX_SIZE_MIN` | 450 bytes | Minimum size of the collateral transaction inside a transaction proof |
 | `COLLAT_BOX_MIN` | 50 bytes | Minimum size of the collateral box inside that transaction |
 | `NUM_LVLS_MAX` | 16 | Maximum Merkle proof depth for a transaction proof |
-| `MIN_DATA_BOX_AMNT` | 1000000 nanoERG | Value floor for a `MinerData` box |
-| `PERMIT_FLOOR` | 1,000 LIT | Permit at an empty queue |
-| `PERMIT_CEIL` | 30,000 LIT | Permit ceiling, whatever the backlog |
-| `PERMIT_SLOPE` | 10 LIT per queued box | Slope of the thermostat between the two |
+| `MIN_ENTRY_BOND` | 2,000,000 nanoERG | Floor on a submission's refundable bond, 0.002 ERG |
+| `BOND_DIVISOR` | 25 | Score units per nanoERG of proportional bond |
+| `MIN_DATA_BOX_AMNT` | 1,000,000 nanoERG | Value of a MinerData box, pinned rather than floored |
+| `DATA_LIFETIME` | 919,800 blocks | How long a registration is honoured |
+| `EVICT_DELAY` | 131,400 blocks | How long after expiry an entry may be evicted |
+| `PERMIT_FLOOR` | 2,000 LIT | Permit at an empty queue |
+| `PERMIT_CEIL` | 40,000 LIT | Permit ceiling, whatever the backlog |
+| `PERMIT_SLOPE` | 20 LIT per queued box | Slope of the thermostat between the two. The thermostat saturates at a backlog of 1,900 |
+
+There is no separate maximum for the collateral box or the transaction inside a proof, and that is
+deliberate. A collateral box's size is the proof size minus the transaction size, so `TX_PROOF_MAX` and
+`TX_SIZE_MIN` already bound it from both ends. A redundant cap can only tighten a sound bound, and one
+derived slightly too small would reject honest shares forever.
 
 ## Score and tau
 
@@ -334,8 +533,27 @@ decides whether it is a design decision or a deployment one:
 Replacing the enforcer is not a hot swap. The queue has to drain first, because boxes joined under one
 policy and activated under another can disagree about what the old boxes promised.
 
+### Three changes in the right-hand column are hardforks anyway
+
+`FP_CONTROL` whitelists nine proof hashes and cannot be amended, so anything that moves one of those
+hashes needs a new NFT rather than a contract swap. Three changes that look routine do exactly that:
+
+| Change | Why it moves a hash | What happens if it ships anyway |
+|---|---|---|
+| Enabling collateral extensions | The extension branch needs a context variable and a data input on the genesis spend, and `FP_MalformedGenesis` requires both absent | Every miner drawing an extension-bearing box becomes slashable by anyone |
+| Rotating the rollup holding hash through config `R7` | `FP_MalformedGenesis` injects the holding contract's whole tree, not its hash | Every miner on the new generation becomes slashable |
+| An Ergo header version bump that populates the header's unparsed-bytes field | `FP_InvalidFormat` accepts only version 4 or above with that count at zero | Every honest miner at once |
+
+All three fail toward slashing honest miners, and that direction is deliberate. A header a proof cannot
+size is one the header-reading proofs cannot read either, and a proof that throws is indistinguishable
+from one that never ran, which would leave the miner unslashable instead. Firing is the safe half of a
+bad choice. It does not make the trigger less real.
+
+The practical consequence is that the collateral box's rollup-hash register exists so the rollup chain
+can be replaced without reissuing the emission box, and that independence is now nominal.
+
 ## Next steps
 
-- [LFSM Core](./lfsm-core.md): the rollup contracts, their transformations and the payout paths.
-- [NISPs](./NISPs.md): the proof format, super shares and how a NISP is built.
+- [Rollups](./rollups.mdx): the rollup contracts, their transformations and the payout paths.
+- [NISPs](./NISPs.mdx): the proof format, super shares and how a NISP is built.
 - [Lithos Protocol](../intro.mdx): the same system without the contracts.

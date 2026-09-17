@@ -36,7 +36,7 @@ You need the following:
 | Java 11 | Required by both the Ergo node and the Lithos client. Later Java versions are not supported |
 | An Ergo node | Version 6.0.4 or later, on testnet, with indexing and mining enabled, fully synced |
 | Mining software | Any miner supporting Ergo's Autolykos 2 algorithm |
-| Testnet ERG | A small balance in the node wallet. Lithos pays transaction fees of about 0.001 ERG per submission |
+| Testnet ERG | A balance in the node wallet, to cover transaction fees and submission bonds. See [What submitting costs](#what-submitting-costs) |
 | GPU memory | See the warning below |
 
 **The node must be version 6.0.4 or later.** Lithos sets a specific coinbase recipient on every block
@@ -99,6 +99,7 @@ pulls in the shipped defaults through the `include` on the first line.
     networkType = "TESTNET"
     explorerURL = "https://api-testnet.ergoplatform.com"
     numAddresses = 32
+    mempoolSorting = "bySize"
   }
 
   # Change this to any long random string of your own
@@ -123,13 +124,14 @@ Every setting in that file:
 
 | Setting | What it does |
 |---|---|
-| `node.url` | Your node's address, **including the scheme and no port**. Lithos appends the port itself: `9052` on testnet, `9053` on mainnet |
+| `node.url` | Your node's address, **including the scheme**. Give a port to use it, or leave it off and Lithos appends the default: `9052` on testnet, `9053` on mainnet |
 | `node.key` | The node's REST API key, matching the `apiKeyHash` in your `ergo.conf` |
 | `node.storagePath` | Full path to the node wallet's `keyfile.json`. Lithos signs transactions with it |
 | `node.pass` | The node wallet password, used to unlock that keystore |
 | `node.networkType` | `TESTNET` or `MAINNET`. Decides the node port, address prefixes and contract set |
 | `node.explorerURL` | The explorer the client falls back to. `default` picks the right one for the network |
 | `node.numAddresses` | How many wallet addresses Lithos derives keys for. Leave it at 32. Raising it later is safe; lowering it strands any ERG already paid to the addresses above the new limit |
+| `node.mempoolSorting` | Must match your node's `ergo.node.mempoolSorting`, either `bySize` or `byExecutionCost`. Lithos packs blocks against the rule your node actually applies |
 | `play.http.secret.key` | Signs the client's own web session cookies. Set it to any long random string |
 | `lithos.apiKeyHash` | Blake2b256 hash of the key required by the client's authenticated endpoints |
 | `stratum.diff` | Your difficulty commitment. This is the number that decides your payout. See [Choosing a difficulty](#choosing-a-difficulty) |
@@ -220,11 +222,27 @@ Two waits stand between starting the client and earning:
    override in your own file with `sync.startHeight = NEW_HEIGHT`. Syncing the miner registry takes
    about 30 minutes on the current testnet.
 2. **The commitment taking effect.** With `state.autoCommit = true`, the client submits your commitment
-   as soon as the registry is synced. A new commitment only becomes active 160 blocks later, which is
-   about 2 hours on testnet. Work you do before then is not payable.
+   as soon as the registry is synced. A new commitment becomes active 60 blocks later, which is about
+   45 minutes on testnet. Work you do before then is not payable.
 
-The same 2-hour wait applies every time you change `diff`. Plan difficulty changes ahead rather than
-during a run.
+### Changing your difficulty later costs a day, not an hour
+
+Two separate rules govern a change, and the second one is the expensive one:
+
+| Rule | Blocks | On testnet | On mainnet |
+|---|---|---|---|
+| How long before a new commitment takes effect | 60 | 45 minutes | 2 hours |
+| How long you must wait after the last commitment before setting another | 780 | about 9 hours 45 minutes | about 26 hours |
+
+The second rule exists because a rollup stays open to fraud proofs for 720 blocks after the block that
+opened it, and a super share may be 60 blocks older than that block. Your commitment has to survive
+that whole span so the contracts can check old work against the difficulty you actually promised.
+
+:::warning Pick a difficulty you can leave alone
+Once you commit, you are held to that difficulty for 780 blocks before you may change it, and the
+change then takes a further 60 blocks to bind. On testnet that is most of a day from one difficulty to
+the next. Use the offline method below to find your value before you commit to it.
+:::
 
 ## Choosing a difficulty
 
@@ -237,9 +255,13 @@ While mining, you will see log messages about **super shares**. A super share is
 one ten-thousandth of your difficulty target. That makes it rare enough to be evidence of sustained
 work, and common enough to accumulate.
 
-To be paid for a block, you must have produced **10 super shares within the 2-hour window before that
-block was found**. Those 10 super shares plus your score become one Non-Interactive Share Proof (NISP),
-which the client submits for you.
+To be paid for a block, you must have produced **10 super shares within the 60 blocks before that block
+was found**. Those 10 super shares plus your score become one Non-Interactive Share Proof (NISP), which
+the client submits for you.
+
+Sixty blocks is about **45 minutes on testnet** and about **2 hours on mainnet**, because testnet
+blocks arrive roughly every 45 seconds against mainnet's 2 minutes. The window is the same 60 blocks on
+both networks, so testnet gives you less wall-clock time to reach 10 super shares than mainnet will.
 
 How many super shares you produce depends on your hashrate and your `diff`:
 
@@ -249,12 +271,59 @@ How many super shares you produce depends on your hashrate and your `diff`:
 :::warning More super shares does not mean a bigger payout
 Your payout is set entirely by your committed difficulty. Super shares only determine whether you
 qualify. Ten is enough; a thousand pays exactly the same as ten.
-
-Your job is to pick the highest `diff` that still reliably produces 10 super shares in a 2-hour window
-on your hardware. Set it too high and you produce fewer than 10, and earn nothing for that block.
 :::
 
-On testnet, try several values and watch how many super shares your hardware produces.
+**Aim for a `diff` that averages between 10 and 15 super shares per window.** That range is where
+expected earnings peak. Averaging 10 pays you about half the time at the highest score in the range;
+averaging 15 pays you about 93% of the time at a lower one. Below 10 your earnings collapse, because
+most windows fall short.
+
+To find a starting value for your hardware:
+
+```text
+diff = (hashrate in H/s × window in seconds) ÷ (10,000 × super shares you want to average)
+```
+
+The window is 2,700 seconds on testnet and 7,200 seconds on mainnet. So a 1 GH/s rig on testnet
+averages 15 super shares at a `diff` of 18M, and 10 at 27M.
+
+[Mining on Lithos](./tutorial-basics/mining-on-lithos.mdx) has the full table of payout chances at
+each average, and starting values for common hashrates. On testnet, try several values and watch how
+many super shares your hardware actually produces.
+
+### What submitting costs
+
+Every NISP you submit carries a **bond**, which the client posts from your node wallet alongside the
+proof. You get it back in full when the rollup pays out. You lose it only if someone proves your
+submission fraudulent, in which case it goes to whoever proved it.
+
+The bond is priced from the difficulty you claimed:
+
+```text
+bond = max(0.002 ERG, your score / 25)
+```
+
+Your score is your committed difficulty, and dividing it by 25 gives the bond in nanoERG. So a higher
+`diff` raises both what you earn per block and what you must have on hand to claim it. The floor of
+0.002 ERG applies below a difficulty of 50M, and above that the bond rises with your difficulty:
+
+| Committed difficulty | Bond per submission |
+|---|---|
+| 50M or below | 0.002 ERG, the floor |
+| 140M | 0.0056 ERG |
+| 1.0G | 0.04 ERG |
+| 4.0G | 0.16 ERG |
+| 25G | 1.0 ERG |
+
+Keep enough testnet ERG in the node wallet to cover a bond for every rollup you are submitting to at
+once, plus about 0.001 ERG of transaction fee each. Rollups open on every Lithos block and stay open
+for 360 blocks, so several can be in flight together.
+
+:::info The bond is a deposit, not a fee
+An honest miner gets every bond back. It exists so that a miner who submits a fraudulent proof has
+something to lose, and so that whoever catches them is paid by the fraudster rather than out of
+everyone else's share.
+:::
 
 ### Testing values without committing
 
@@ -296,7 +365,8 @@ The following table lists the failures reported most often, and what to do about
 | Box lookups fail, or the collateral list is empty | The node was started without `extraIndex = true` | Add it to `ergo.conf` and restart the node |
 | Your hashrate is far below normal | The Autolykos 2 table does not fit in VRAM | See the memory warning above |
 | Duplicate or old share errors | `diff` is low enough to flood the stratum | Set `reduceShareMessages = true` |
-| Mining works, but you are never paid | Your commitment has not taken effect, or you are producing fewer than 10 super shares per 2-hour window | Wait 160 blocks after committing. Then lower `diff` |
+| Mining works, but you are never paid | Your commitment has not taken effect, or you are producing fewer than 10 super shares per 60 blocks | Wait 60 blocks after committing. If that was not it, lower `diff` |
+| Submissions fail to build | The node wallet cannot cover a bond | Fund the wallet. See [What submitting costs](#what-submitting-costs) |
 | Transactions fail to broadcast | The node wallet has no ERG for fees | Fund the node wallet with testnet ERG |
 
 ## Security
@@ -318,5 +388,5 @@ original string as your key.
 
 - [Setting up an Ergo testnet node](./startup/testnet-node.mdx): the full node walkthrough.
 - [Lithos Protocol](./intro.mdx): how payouts and collateral work.
-- [Mining on Lithos](./tutorial-basics/mining-on-lithos.md): scores, super shares and NISPs in detail.
+- [Mining on Lithos](./tutorial-basics/mining-on-lithos.mdx): scores, super shares and NISPs in detail.
 - [Lithos API](category/lithos-api): the client's REST endpoints, callable from these docs.

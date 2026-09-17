@@ -1,0 +1,196 @@
+---
+sidebar_position: 6
+tags:
+  - mining
+description: How Lithos measures your work, and how the difficulty you choose trades payout size against how often you are paid.
+---
+
+# Mining on Lithos
+
+<span className="badge badge--success">Standard</span>
+
+*For anyone mining on Lithos. Assumes you know what hashrate, shares and difficulty are.*
+
+Lithos is a decentralized mining pool, so it works differently from a pool you connect to over the
+internet. The stratum server runs locally from your own client, and your payout is decided by one
+number you choose yourself: `diff`.
+
+This page explains how Lithos measures your work and how to choose that number. It stays at the level a
+miner needs. For the proof format, the statistics and the contracts behind them, read
+[NISPs](./NISPs.mdx).
+
+## How Lithos measures your work
+
+A normal pool counts your shares. Pay-Per-Share and Pay-Per-Last-N-Shares both work out what you are
+owed from how many shares you sent.
+
+**Counting shares does not work on a blockchain.** Storing hundreds of thousands of shares on chain
+costs far more space than a block reward is worth, and cutting the count by raising the target just
+makes payouts wildly uneven.
+
+Lithos measures work a different way. Instead of counting shares, it asks you to prove that your
+mining had the shape it would have if you really were hashing at the rate you claim. You do that by
+submitting a **Non-Interactive Share Proof (NISP)**: exactly **10 super shares**, which are rare,
+high-difficulty shares found while mining normally.
+
+Ten super shares is enough evidence. You do not send the rest, and the rest do not count for anything.
+
+## What `diff` decides
+
+The `diff` in your config becomes your **score** on chain, and score is the only input to your payout:
+
+```text
+your payout = the block's reward × your score ÷ the total score of everyone who submitted
+```
+
+So a higher `diff` is a larger slice of every block you get paid for. That sounds like it should be
+maximized, but in reality this is a trap. This is because of what else `diff` controls.
+
+**Your `diff` also sets how rare a super share is.** Raising it makes each one harder to find. Since
+you need ten of them inside a fixed window, and your hardware can only produce so many hashes in that
+window, raising `diff` eventually means you do not reach ten.
+
+:::danger Fewer than 10 super shares pays nothing at all
+There is no partial credit. A window where you produce nine super shares pays exactly the same as one
+where you produced none. Your `diff` is not a target to maximize; it is a bet you have to win.
+:::
+
+## The window
+
+You have **60 blocks** to find your ten super shares, counted back from the block you are being paid
+for. That is about **45 minutes on testnet** and about **2 hours on mainnet**, because testnet blocks
+arrive roughly every 45 seconds against mainnet's 2 minutes.
+
+The block count is the same on both networks, so **testnet gives you less real time** than mainnet
+will. A `diff` that works on testnet is conservative for mainnet at the same hardware.
+
+## The trade
+
+Everything about choosing `diff` is one trade: **how much you are paid, against how often you are paid
+at all**.
+
+The clearest way to see it is in terms of how many super shares your `diff` makes you average per
+window. You need ten to be paid, so the question is how far above ten you want your average to sit.
+The following shows the trade at a range of averages, so you can find the row that matches your own
+appetite for risk:
+
+| Super shares you average | Chance a window pays you | Your score | Expected earnings |
+|---|---|---|---|
+| 5 | 3.2% | 200% | 12% |
+| 7 | 17.0% | 143% | 45% |
+| 10 | 54.2% | 100% | 100% |
+| 11 | 65.9% | 91% | 111% |
+| 12 | 75.8% | 83% | 116% |
+| 13 | 83.4% | 77% | 118% |
+| 14 | 89.1% | 71% | 117% |
+| 15 | 93.0% | 67% | 114% |
+| 18 | 98.5% | 56% | 101% |
+| 20 | 99.5% | 50% | 92% |
+
+Score and expected earnings are both relative to averaging 10. Expected earnings is your score
+multiplied by the chance of being paid, and assumes your score is a small part of each block's total.
+
+### The ideal `diff`
+
+**Your ideal `diff` is one that averages between 10 and 15 super shares per window.** It is not a single
+number a formula hands you. It is the range where miners converge, because it is where consistency and
+pay balance out.
+
+The expected earnings column shows why. It peaks at an average of 13 and stays within about 6% of that
+peak from 11 to 15, so across most of the range you give up very little expected income whichever point
+you choose. The choice comes down to how steady you want your payouts:
+
+- **Toward 10**: a higher score, paid about half the time. Larger payouts with more gaps between them,
+  at roughly 15% below the peak in expected earnings.
+- **Toward 15**: a lower score, paid about 93% of the time. Smaller payouts, almost never a gap.
+
+Ten is the floor of the range, not a target to push past.
+
+### Outside the range
+
+Leaving the range costs you in both directions, and the two directions are not equally forgiving.
+
+**Below 10, your earnings collapse.** Averaging 7 gives you 43% more score, and you are paid less than a
+fifth of the time, so you earn less than half as much. At 5 you double your score and earn about an
+eighth. This is the direction that looks tempting and is not.
+
+**Above 15, your earnings fade slowly.** Averaging 20 halves your score and pays you almost every
+window, and you still earn over 90% of what you would at 10. It is a safe place to start while you
+measure your hardware, but you may want to slowly move down if you want slightly more returns over
+time. 
+
+:::note Steady payouts are the reason to pool at all
+You joined a pool so your income would be predictable. Pushing `diff` up until most of your windows
+fail reintroduces exactly the variance you were trying to escape, and it lowers what you earn on
+average rather than raising it.
+:::
+
+## Choosing a starting point
+
+To find the `diff` that averages a given number of super shares:
+
+```text
+diff = (hashrate in H/s × window in seconds) ÷ (10,000 × super shares you want to average)
+```
+
+The window is 60 blocks: **2,700 seconds on testnet** and **7,200 seconds on mainnet**. The following
+gives the two ends of the ideal range, averaging 10 and averaging 15, and the peak between them at
+averaging 13:
+
+| Hashrate | Testnet, 10 | Testnet, 13 | Testnet, 15 | Mainnet, 10 | Mainnet, 13 | Mainnet, 15 |
+|---|---|---|---|---|---|---|
+| 100 MH/s | 2.7M | 2.08M | 1.8M | 7.2M | 5.54M | 4.8M |
+| 250 MH/s | 6.75M | 5.19M | 4.5M | 18M | 13.8M | 12M |
+| 500 MH/s | 13.5M | 10.4M | 9M | 36M | 27.7M | 24M |
+| 1 GH/s | 27M | 20.8M | 18M | 72M | 55.4M | 48M |
+| 4 GH/s | 108M | 83.1M | 72M | 288M | 222M | 192M |
+
+**A lower `diff` averages more super shares**, so the averaging-15 column is always the smaller number.
+If you are unsure of your hashrate, start at the averaging-15 value or below it, watch how many super
+shares you actually produce per window, and move toward 10 only once you have seen your hardware hold
+up.
+
+:::warning Use the hashrate you sustain, not the one your miner reports
+Autolykos 2 rebuilds its lookup table every time the block height changes, and your rig stops hashing
+while it does. That costs a few percent of a mainnet block and closer to a tenth of a testnet block, so
+your effective hashrate is lower than your peak. If your card is short on memory the gap is far worse,
+and the [startup guide](../startup-intro.mdx) explains why.
+:::
+
+## Changing `diff` later is slow
+
+Your difficulty is a commitment made in advance, on chain. That is what stops anyone waiting to see
+which shares they found and then claiming whatever difficulty those shares happen to justify.
+
+It also means you cannot tune it freely:
+
+| Rule | Blocks | On testnet | On mainnet |
+|---|---|---|---|
+| Before a new commitment takes effect | 60 | 45 minutes | 2 hours |
+| Before you may replace a commitment | 780 | about 9 hours 45 minutes | about 26 hours |
+
+**Test before you commit.** Setting `stratum.forceConfigDiff = true` and `state.autoCommit = false`
+lets you measure super share rates at several values without writing any of them on chain. The
+[startup guide](../startup-intro.mdx#testing-values-without-committing) covers how.
+
+## What each submission costs
+
+Submitting a NISP posts a refundable **bond** from your node wallet, priced from the difficulty you
+claimed:
+
+```text
+bond = max(0.002 ERG, your diff ÷ 25)
+```
+
+You get it back in full when the rollup pays out. You lose it only if someone proves your submission
+fraudulent.
+
+This is the one way a higher `diff` costs you something up front rather than only in risk: at 1.0G you
+post 0.04 ERG per submission, and rollups open on every Lithos block, so several can be in flight at
+once. Keep enough ERG in the node wallet to cover them.
+
+## Next steps
+
+- [NISPs](./NISPs.mdx): the proof format, the statistics, and the full analysis of difficulty choice.
+- [Startup guide](../startup-intro.mdx#choosing-a-difficulty): setting `diff` in your config.
+- [Lithos Protocol](../intro.mdx): where the reward you are dividing comes from.

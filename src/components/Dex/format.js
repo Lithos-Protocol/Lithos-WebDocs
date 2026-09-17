@@ -223,8 +223,13 @@ export function shortId(id, head = 8, tail = 8) {
 }
 
 /** Ratio of two BigInts as a Number, safe for display-scale magnitudes. */
-export function ratio(a, b) {
+export function ratio(a, b, dp = 6) {
   const bb = big(b);
   if (bb === 0n) return 0;
-  return Number((big(a) * 1_000_000n) / bb) / 1_000_000;
+  // `dp` decimal places survive the integer division. Six is plenty for a price
+  // around 20, but leaves one around 0.05 with four significant digits — callers
+  // showing a small ratio ask for more. Capped at 15 so the scale itself stays
+  // exact as a Number.
+  const scale = 10n ** BigInt(Math.min(15, Math.max(0, dp)));
+  return Number((big(a) * scale) / bb) / Number(scale);
 }

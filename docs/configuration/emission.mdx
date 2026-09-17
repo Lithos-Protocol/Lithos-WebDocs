@@ -1,0 +1,112 @@
+---
+sidebar_position: 6
+tags:
+  - configuration
+description: Driving the collateral queue, and putting your own ERG and LIT into it.
+---
+
+# Collateral and emission
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you have read how collateral and the permit work in [Lithos Protocol](../intro.mdx).*
+
+The `emission` block covers two different jobs that share a timer. The first is **driving the queue**,
+which every client does and which costs only transaction fees. The second is **joining the queue with
+your own funds**, which locks ERG and LIT until a miner spends the box, and which ships off.
+
+This is maintenance that runs whether or not you ever mine a block.
+
+:::danger A queued position cannot be withdrawn
+Once your ERG and permit are in the queue, neither returns until a block spends the box. There is no
+cancel path, by design. Everything under [Lending your own funds](#lending-your-own-funds) is a
+commitment rather than a setting you can back out of.
+:::
+
+## Driving the queue
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `emission.enabled` | `true` | `true` or `false` | Drive the collateral queue at all |
+| `emission.queueInterval` | 240000 | 1000 to 3600000 ms | How often to look at the head of the queue |
+| `emission.maxQueueSpends` | 4 | 1 to 128 | Emission spends chained in one pass, which is how deep into the queue a pass reaches |
+| `emission.queueScanLimit` | 500 | 1 to 100000 | Queue boxes paged through when looking for the head |
+| `emission.txFee` | 1000000 | The network minimum fee to 1000000000 nanoERG | Fee on emission transactions |
+
+Activating the head of the queue turns a waiting position into a live collateral box, which is what
+keeps collateral boxes available for everyone to mine against. Clearing removes a box whose lender key
+is already active and which would otherwise hold the whole queue still.
+
+**Both are permissionless, and clients are encouraged to keep this on so that pool liveness is mainained.** 
+
+`txFee` is floored at the network minimum because a transaction below it will not relay.
+
+## Chaining off the mempool
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `emission.mempoolChaining` | `true` | `true` or `false` | Chain off unconfirmed spends of the emission box rather than waiting for confirmation |
+| `emission.maxChainDepth` | 16 | 0 to 4096 | Unconfirmed spends followed before falling back to confirmed state |
+
+During a join burst the confirmed emission box is several spends behind the real tip, so without
+chaining the queue can barely be driven at all.
+
+**The unconfirmed spends being chained onto belong to other lenders.** They are chained onto to ensure maximum
+effectiveness and queue slot availability.
+
+## Lending your own funds
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `emission.autoCollateralize` | `false` | `true` or `false` | Put your own ERG and LIT into the queue |
+| `emission.collateralizeInterval` | 900000 | 1000 to 86400000 ms | How often to check whether more collateral is wanted |
+| `emission.maxJoinsPerRun` | 5 | 1 to 128 | Queue boxes created in one pass |
+| `emission.maxOwnCollateral` | 10 | 0 to 2000 | Your boxes live at once, across the queue, live collateral and the active set |
+| `emission.maxLenderKeys` | 32 | 1 to 1000, and at most `node.numAddresses` | Wallet addresses dedicated to lending |
+| `emission.maxPermitPerJoin` | 40000000000000 | Any positive value, in LIT base units | The most LIT to post as a permit on one box |
+
+### What a position costs
+
+Each live box locks **2.915 ERG plus its permit** until a miner spends it. So `maxOwnCollateral` is
+your total exposure ceiling, not a throughput setting: at the default of 10 you can have about 29 ERG
+plus ten permits committed at once.
+
+`maxPermitPerJoin` is a **price you are willing to pay, not a fee**. The permit rises with the queue
+backlog, from a floor of 2,000 LIT toward a ceiling of 40,000. When the thermostat passes your cap, the
+run stops rather than paying it. The default is the protocol ceiling itself, so out of the box price
+never blocks a join.
+
+The value is in base units at 9 decimals, so 40,000 LIT is `40000000000000`.
+
+:::note Collateral boxes may contain extra rewards
+Collateral boxes support **fee futures**, where lenders may add additional ERG to their collateral box,
+in hopes of being selected out of the live set quicker. Since transaction fees go to lenders, this can break
+down into a sort of fee futures market, where lenders may add more ERG to their collateral box in hopes of
+getting selected when they expect transaction fees to be higher. Fee futures are supported by the client,
+but no config or API options allows them to be set yet.
+:::
+
+### One key per box, and why it matters
+
+The active set holds distinct **keys**. One live box needs one address, and a key already in the set
+produces a box nobody can activate.
+
+:::danger A reused lender key forfeits the whole box
+A queue box whose key is already active can only be cleared, and clearing forfeits both the principal
+and the permit to whoever builds the clearing transaction. This is why `maxLenderKeys` may not exceed
+`node.numAddresses`, and why the client refuses a manual join while `autoCollateralize` is on: the
+automated pass owns key selection and a manual join could take a key it is already using.
+:::
+
+Startup checks the pair and names the value to raise:
+
+```text
+emission.maxLenderKeys
+    64 exceeds node.numAddresses (32). Addresses past index 31 would receive funds this
+    client cannot sign for. Raise node.numAddresses to at least 64
+```
+
+## Next steps
+
+- [Wallet and consolidation](./wallet.mdx): where the ERG for these transactions comes from.
+- [Node connection and security](./node.mdx): `node.numAddresses`, which caps your lender keys.

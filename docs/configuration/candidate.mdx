@@ -1,0 +1,181 @@
+---
+sidebar_position: 4
+tags:
+  - configuration
+description: How the client assembles the blocks it mines, and what each transaction source may contribute.
+---
+
+# Block packages
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you know how Ergo blocks are assembled and what a mempool is. Start with [Stratum and difficulty](./stratum.mdx) if not.*
+
+Everything under `stratum.candidate` controls the blocks this client builds: which collateral box it
+draws, how long it waits for the genesis transaction, and what other transactions it inserts. This page
+covers that block and the five transaction sources beneath it.
+
+Inserting transactions is just one way a Lithos miner earns beyond the block reward, and it is **off by
+default**. The settings that turn it on are in [Transaction sources](#transaction-sources).
+
+## Collateral selection
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stratum.candidate.collateralPoolSize` | 100 | 1 to 100 | Collateral boxes kept pre-loaded in memory |
+| `stratum.candidate.collateralRefreshInterval` | 60000 | 100 to 3600000 ms | How often the collateral set is refreshed. It also refreshes on every new block |
+
+The active set never holds more than 100 boxes protocol-wide, which is why the pool size stops there.
+Fetching a box at mining time would put an indexer round trip on the critical path of every block, so
+the whole set is held in memory instead.
+
+The refresh interval is a floor rather than a schedule. Every new block triggers one anyway, since that
+is the only moment a collateral box can be spent.
+
+## Building the genesis transaction
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stratum.candidate.genesisWaitMs` | 1500 | 0 to 60000 ms | How long to wait for candidate sources before a normal genesis transaction is sent |
+| `stratum.candidate.waitForBlockPackage` | `true` | `true` or `false` | Wait for other sources to contribute before sending the genesis transaction, up to `genesisWaitMs` |
+
+The genesis transaction is what makes a block a Lithos block. The candidate builder will wait for the genesis and other sources to arrive,
+but on a new height build, it will wait at-most `genesisWaitMs` before it sends a solo-candidate. If `waitForBlockPackage` is off, the client
+will first create the genesis transaction and send it out as a new job, before sending a following job containing package sources.
+This can potentially slow down mining, especially if the two jobs are sent in quick succession.
+
+## Refreshing mid-block
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stratum.candidate.mempoolRefreshMs` | 20000 | 0 to 3600000 ms | Milliseconds between mid-block package rebuilds. `0` mines the block's initial transaction set and never rebuilds |
+| `stratum.candidate.minCandidateChangeRevenue` | 1000000 | 0 to 9223372036854775807 nanoERG | Extra package revenue required before a mid-block job change is worth making |
+| `stratum.candidate.blockTxTimeout` | 20000 | 0 to 600000 ms | How long to wait for sources to build. Not validated separately from its range |
+
+A rebuild picks up transactions that arrived since the last one, which can raise what the block earns.
+Rebuilding too often can slow down your rig's hashrate, so feel free to adjust `mempoolRefreshMs` in order
+to control how often rebuilds happen.
+
+`minCandidateChangeRevenue` is what stops a trivial gain from being worth that window. The client
+compares a rebuilt package against the published one and keeps the old job unless the difference clears
+this threshold. **Tokens are not valued**, so a package whose only gain is tokens never clears it.
+Initial packages and required fallbacks bypass the threshold entirely.
+
+`blockTxTimeout` tells you how long the client will wait before sending its best effort candidate to the stratum.
+In some cases, transaction sources can take a while, so before `blockTxTimeout` is hit, the candidate builder will
+collect transactions from the sources that *did* respond in time, and send just those. Later sources will still show up
+in refreshes once they respond.
+
+## The package budget
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stratum.candidate.blockShare` | 0.5 | 0.0 to 1.0 | Fraction of the node's block byte and cost limits this client's whole package may claim |
+
+**The default is well under 1 on purpose.** The node adds transactions this client never sees and picks
+a remainder you have no visibility into, and an unconfirmed ancestor carried into the package reports
+no execution cost at all. Claiming the whole block would mean the node dropping part of what you built.
+
+Keeping this below 0.8 is recommended. The genesis transaction is charged against the budget first, so
+it is never the thing that gets dropped.
+
+:::note The share is measured against the node's live limits
+A chain sitting at Ergo's floor block cost of 1,000,000 leaves far less room than mainnet's, which is
+roughly eight times higher. The same `blockShare` therefore admits very different amounts of work on
+different chains.
+:::
+
+## Transaction sources
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stratum.candidate.blockTransactions` | `false` | `true` or `false`. Not validated | The master switch. With it off, no source contributes anything |
+
+Each source is bounded on its own **before** the package is bounded as a whole, so a busy source cannot
+crowd out a quieter one that matters more. A source that is off is never asked, so it costs no build
+and no node read.
+
+Every source takes the same four keys under `stratum.candidate.sources.<name>`:
+
+| Key | Range | What it does |
+|---|---|---|
+| `enabled` | `true` or `false` | Whether this source is asked to contribute |
+| `maxTxs` | 0 to 100 | Transactions it may place in one block |
+| `maxBytes` | 0 to 8388608 | Serialized bytes it may claim, counting unconfirmed ancestors it carries |
+| `maxCost` | 0 to 100000000 | Execution cost it may claim |
+
+The five sources and what they ship as:
+
+| Source | Ships | `maxTxs` | What it inserts |
+|---|---|---|---|
+| `rollups` | on | 5 | NISP submissions, phase transforms, fraud proofs and payouts |
+| `emissions` | on | 5 | Join, Activate and Clear on the collateral queue |
+| `lithosdex` | on | 20 | LithosDex order executions, their placements and the closing flush |
+| `ergodex` | **off** | 20 | Native ErgoDEX swaps, deposits and redemptions, including ancestors |
+| `rent` | **off** | 1 | Storage rent collection |
+
+`maxBytes` and `maxCost` ship at 262144 and 1000000 for all five.
+
+:::warning Every slot is block space not earning a fee
+Transactions you insert pay no transaction fee, because they are yours. That is the point for rollups
+and emissions, which are protocol work you want in the block regardless. It also means each slot is
+space that could have held a fee-paying transaction, so keep the counts small. Although fees do not directly
+pay Lithos miners, failing to include fee paying transactions can reflect in lower fee priority values on
+collateral boxes, which may reduce your total reward over time.
+:::
+
+### Storage rent
+
+Storage rent collects boxes nobody has touched for four years, which Ergo permits anyone to spend. It
+ships off, and it has three settings of its own:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stratum.candidate.sources.rent.startHeight` | 800000 | 0 to 100000000 | Inclusion height the walk begins at |
+| `stratum.candidate.sources.rent.scanIntervalMs` | 30000 | 1000 to 3600000 ms | Gap between scan passes |
+| `stratum.candidate.sources.rent.blocksPerScan` | 200 | 1 to 10000 | Blocks one pass reads. Two node calls each |
+
+Discovery walks the chain by inclusion height rather than reading the whole UTXO set. A box created at
+height `h` becomes collectable at `h + 1051200`, so the walk trails four years behind the tip and every
+box it meets there is old enough by construction.
+
+**Set `startHeight` to roughly where collection has already caught up**, not to zero. The early chain
+was swept long ago and walking it costs node reads for nothing.
+
+:::note Storage rent cannot be tested on testnet
+Testnet tops out well under a storage period, so no box on it is ever collectable. Exercising this
+source at all needs a private devnet with a shortened storage period.
+:::
+
+## Intermediate outputs
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stratum.candidate.useTruePropCollection` | `false` | `true` or `false` | Guard the intermediate outputs a candidate creates for its own later transactions with `TrueProp` instead of your own key |
+
+A package often creates an output that a later transaction in the same package spends. Guarding those
+with `TrueProp` rather than your P2PK is cheaper in both validation cost and byte size, which lets more
+transactions fit in the block.
+
+:::danger An exposed intermediate output can be taken by anyone
+`TrueProp` means exactly what it says: anything can spend it. That is safe only while every
+intermediate is consumed inside the same block by a transaction that definitely lands. If a package
+fails part way, an intermediate output guarded this way is free for anyone to take.
+:::
+
+## Logging
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stratum.candidate.logTimings` | `false` | `true` or `false` | Append how long each stage took to the candidate log lines |
+| `stratum.candidate.logBudgets` | `false` | `true` or `false` | Log package and source bytes and cost against their budgets |
+
+Both are diagnostic and ship off. `logTimings` breaks a candidate down into building the genesis
+transaction, collecting the extra transactions, and the wait before miners are given the job, which is
+what to turn on when a block seems slow to reach your rigs. `logBudgets` shows which source is using
+the package budget, and what was refused for want of room.
+
+## Next steps
+
+- [Batching and orders](./batching.mdx): the two sources that fill other people's orders.
+- [Collateral and emission](./emission.mdx): what the `emissions` source is doing.

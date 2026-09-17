@@ -878,6 +878,19 @@ article li {
   color: var(--cur-dim);
 }
 
+/* A top-level doc that reads as a group head but has no children to expand. Docusaurus turns a
+   category with no items back into a plain link, so a sidebar item carrying `sidebar-section-head`
+   borrows the category label's type treatment. The font-weight is inherited by a real category from
+   `.theme-doc-sidebar-item-category > .menu__list-item-collapsible`, so it is set here to match. */
+.sidebar-section-head > .menu__link {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
 /* ----- Table of contents ----- */
 .table-of-contents {
   font-size: 13px;
@@ -1059,6 +1072,14 @@ table thead tr {
   background: rgba(10, 15, 30, 0.7);
 }
 
+/* Headers start at the same edge as their values. Nothing set an alignment, so a
+   header took the browser's default for <th>, which is centred, while its cells
+   took the default for <td>, which is start — every column looked misaligned.
+   Start, not centre, because these tables mostly hold sentences, and a wrapped
+   sentence is easiest to read with every line starting at the same edge.
+   A column given an explicit alignment in markdown (`:---:` or `---:`) still
+   gets it on both header and cells: that renders as an inline style, which wins
+   over this rule. */
 table th {
   font-family: var(--cur-font-mono);
   font-size: 10.5px;
@@ -1066,12 +1087,16 @@ table th {
   text-transform: uppercase;
   color: var(--cur-cyan);
   border: none;
+  text-align: start;
 }
 
 table td {
   border: none;
   border-top: 1px solid rgba(125, 211, 252, 0.07);
   color: var(--cur-muted);
+  /* When one cell wraps onto several lines, the short ones beside it sit at the
+     top of the row, level with its first line, instead of floating in the middle. */
+  vertical-align: top;
 }
 
 table tbody tr:nth-child(even) {

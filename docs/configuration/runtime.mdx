@@ -1,0 +1,126 @@
+---
+sidebar_position: 9
+tags:
+  - configuration
+description: Background tasks, thread pools, and the two switches that disable protocol work.
+---
+
+# Tasks and dispatchers
+
+<span className="badge badge--warning">Expert</span>
+
+*Assumes you know what an Akka dispatcher is and why thread pool isolation matters. Most miners never change anything on this page.*
+
+Three blocks are left. `state` holds two switches that turn protocol work off, `lithos-tasks`
+configures the three background timers, and `lithos-contexts` defines the thread pools everything runs
+on.
+
+The dispatcher pools in particular encode a design decision rather than a preference, and the page says
+which ones you must not merge.
+
+## Protocol switches
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `state.disableTransforms` | `false` | `true` or `false` | Disable every transaction and interaction with LFSM rollups |
+| `state.autoCommit` | `true` | `true` or `false` | Commit `stratum.diff` on chain whenever it differs from your current commitment |
+
+`disableTransforms` is a blunt instrument. With it on the client follows the chain but submits nothing:
+no NISPs, no phase transforms, no fraud proofs, no payouts. **You mine and are not paid.** This can be useful for testing.
+
+`autoCommit` only runs while `disableTransforms` is false. Pair `autoCommit = false` with
+`stratum.forceConfigDiff = true` to measure difficulties without writing any of them on chain, as in
+[Stratum and difficulty](./stratum.mdx#testing-without-committing).
+
+## Background tasks
+
+Three tasks run on timers. Each takes the same three keys, and **all three are required** for each
+task:
+
+| Key | Range | What it does |
+|---|---|---|
+| `enabled` | `true` or `false` | Whether the task runs |
+| `startup` | 1 to 604800000 ms | Delay before its first run |
+| `interval` | 1 to 604800000 ms | Gap between runs |
+
+The three tasks and what they ship as:
+
+| Task | Enabled | Startup | Interval | What it does |
+|---|---|---|---|---|
+| `lithos-tasks.stratum-server` | `true` | 30 seconds | 30 seconds | Runs the stratum server that your mining software connects to |
+| `lithos-tasks.rollup-sync-task` | `true` | 10 seconds | 500 millis | Drives rollup phase work against current state |
+| `lithos-tasks.dictionary-sync-task` | `true` | 5 seconds | 500 millis | Keeps the Miner Dictionary in step, and warns before your registration expires |
+
+Durations take any form the config library parses, such as `500 millis`, `30 seconds` or `5 minutes`.
+
+**A missing task block stops the client** rather than defaulting, because a task silently not running
+is worse than a refusal to start. The one exception is a lookup that only picks a log message, which
+reads an absent block as disabled.
+
+:::warning The dictionary task is what warns you about expiry
+A registration lasts 919,800 blocks and then stops being honoured. This task reads your own entry and
+warns from 720 blocks before expiry onward, naming the height after which removal is safe. Disabling it
+removes that warning, and removing a live registration at the wrong moment slashes your own honest
+submissions.
+:::
+
+## Dispatchers
+
+`lithos-contexts` defines every thread pool the client uses. **Startup checks that each named block
+exists** and leaves the contents to Akka, so a missing block is caught and a bad pool size is not.
+
+The client requires all nineteen of these blocks:
+
+| Dispatcher | Pool | Serves |
+|---|---|---|
+| `wallet-io-dispatcher` | 1 thread, queue 4 | Candidate requests, which change the node's cached work |
+| `wallet-maintenance-dispatcher` | 2 threads, queue 8 | Inventory scans and reward sweeps |
+| `critical-wallet-dispatcher` | 1 thread, queue 4 | Wallet work that must not queue behind optional work |
+| `critical-tx-dispatcher` | 2 threads, queue 4 | Transactions that must not be delayed |
+| `engine-candidate-dispatcher` | 2 threads, queue 4 | Engine work for candidate assembly |
+| `engine-io-dispatcher` | 1 thread, queue 4 | General engine node I/O |
+| `mempool-io-dispatcher` | 1 thread, queue 4 | Mempool reads |
+| `candidate-io-dispatcher` | 1 thread, queue 4 | Candidate node I/O |
+| `mining-control-io-dispatcher` | 2 threads, queue 4 | One chain observation and one solved-block submission, concurrently |
+| `genesis-dispatcher` | 1 thread, queue 4 | Collateral genesis signing |
+| `batching-io-dispatcher` | 2 threads, queue 4 | ErgoDEX order discovery, broadcasts and builds |
+| `lithosdex-batching-io-dispatcher` | 2 threads, queue 4 | The same for LithosDex |
+| `snapshot-io-dispatcher` | 4 threads, queue 4 | Snapshot save, restore and dictionary reconstruction |
+| `stratum-dispatcher` | fork-join, 4 to 16 | The stratum server |
+| `polling-dispatcher` | 32 threads | Node polling |
+| `sync-dispatcher` | fork-join, 2 to 10 | Synchronization |
+| `tx-dispatcher` | fork-join, 2 to 10 | General transaction work |
+| `dex-dispatcher` | 16 threads | The local LithosDex HTTP endpoints |
+| `database-dispatcher` | 2 threads | Local database work |
+
+### Why they are separate
+
+The separation is the point, and three of these exist because merging them cost blocks.
+
+**A found block must never queue behind node I/O.** `mining-control-io-dispatcher` has two threads so
+that one chain observation and one solved-block submission can run at once, and neither waits for
+candidate HTTP, wallet work or transaction preparation. An early version ran a rollup batch inside the
+same mailbox that answers block assembly, and every block in flight silently lost its inserted
+transactions with nothing in the log connecting the two.
+
+**Candidate requests are serialised on purpose.** `wallet-io-dispatcher` has exactly one thread because
+asking the node for a candidate *replaces* the node's cached work. Two concurrent requests would each
+mutate a cache the other depends on. Optional transaction workers cannot occupy that thread.
+
+**Genesis signing has its own worker** so that background collateral refresh and ordinary transaction
+work cannot occupy it while cached inputs are ready for a new block.
+
+**Snapshot work blocks in LevelDB**, sometimes for a long time. Four threads cover the one save, one
+restore and two dictionary reconstructions the actor may own, and the bounded queue contains work left
+behind by an unexpected restart when a backend call cannot be interrupted.
+
+:::danger Do not merge these pools
+The thread counts are small enough to look wasteful and are not. Every one-thread pool here is a
+serialisation guarantee, and every separate pool is an isolation guarantee for work that must not wait
+behind something slower. Raising a count is usually safe; merging two blocks is not.
+:::
+
+## Next steps
+
+- [Configuration overview](./overview.mdx): how a missing block is reported at startup.
+- [Synchronization and storage](./sync.mdx): what `snapshot-io-dispatcher` is doing.

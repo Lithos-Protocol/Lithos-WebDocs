@@ -1185,6 +1185,38 @@
   flex-wrap: wrap;
 }
 
+/* The pair in the price card's label, doubling as the switch that flips it.
+   Takes the label's own type so it reads as part of the heading, with just
+   enough outline to show it can be pressed. */
+.pairToggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -3px 0;
+  padding: 2px 8px;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.05);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--cur-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.pairToggle:hover {
+  color: var(--cur-cyan-light);
+  border-color: var(--cur-border-cyan);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.pairToggle:focus-visible {
+  outline: 2px solid var(--cur-cyan);
+  outline-offset: 2px;
+}
+
 .priceValue {
   font-family: var(--cur-font-num);
   font-variant-numeric: tabular-nums lining-nums;

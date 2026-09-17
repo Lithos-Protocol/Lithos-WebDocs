@@ -34,7 +34,7 @@ The following table compares a Lithos pool against a conventional Ergo pool:
 | Who decides what you are paid | The operator's software | A contract, from proofs you submit |
 | Who builds the blocks | The operator's node | Your node, from your own mempool |
 | What you trust | That the operator pays honestly and stays online | Nothing. The rules are on-chain |
-| Fee | Whatever the operator sets | Capped at 3% of the block subsidy |
+| Fee | Whatever the operator sets | A maximum of 3% of the block subsidy. You receive Lithos tokens, MEV, storage rent, and more in return. |
 | If the pool disappears | Your unpaid balance goes with it | Nothing to disappear. Payouts are contract-driven |
 
 Two of those rows matter more than the rest.
@@ -118,7 +118,8 @@ Lithos against a pool's advertised fee:
 - **3% is a hard ceiling, enforced by contract.** The contract refuses any collateral box below the
   principal floor, so no miner can ever be charged more than 0.09 ERG of a 3 ERG block.
 - **Transaction fees in a Lithos block go to the lender, not to the miners.** Lithos pools the block
-  subsidy and nothing else.
+  subsidy and nothing else. Fee futures markets enable transaction fee revenue to flow back to block miners
+  indirectly through the genesis transaction.
 
 ## Two ways to take part
 

@@ -1,0 +1,242 @@
+---
+tags:
+  - emissions
+  - lit
+  - tokenomics
+description: How LIT enters circulation, how the activation-based emission schedule works, and where each activation's LIT goes.
+---
+
+# Emissions
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you know Ergo's UTXO model, block rewards and mining pools. For the contract layout behind
+emission, read [LFSM](./lfsm.mdx).*
+
+Lithos emits LIT when a queued collateral position becomes active. The schedule advances by
+**activations**, not by wall-clock time and not directly by Ergo block height. Each activation removes
+the scheduled LIT from the emission box and places that allocation into the new collateral box.
+
+This page covers the LIT supply, the activation-based schedule, the split between public and private
+emission, the finder's LIT share, and what happens after emission ends. It only introduces Join,
+Activate and Clear where they affect emission. The queue rules themselves are covered in
+[LFSM](./lfsm.mdx).
+
+:::info Genesis identifiers are not final
+The current mainnet token IDs, contract addresses and genesis constants are placeholders until the
+mainnet mint. The supply and emission quantities on this page are protocol parameters, not deployment
+identifiers.
+:::
+
+## Emission allocations
+
+LIT has a fixed supply of **1,000,000,000 LIT** with 9 decimal places. The supply is divided into one
+genesis allocation and four allocations that leave the emission box over time:
+
+| Allocation | Share | LIT | Release path |
+|---|---:|---:|---|
+| Public mining allocation | 68.5% | 685,000,000 | Emitted across collateral activations |
+| Community | 17.5% | 175,000,000 | Minted separately at genesis to the community multisig |
+| Team | 10% | 100,000,000 | Emitted during the first 1,000,000 activations |
+| Investors | 2.5% | 25,000,000 | Emitted during the first 1,000,000 activations |
+| Auditors | 1.5% | 15,000,000 | Emitted during the first 1,000,000 activations |
+
+The emission box starts with **825,000,000 LIT**, or `825000000000000000` base units. That balance is
+the 685,000,000 LIT public mining allocation plus the 140,000,000 LIT team, investor and advisor
+allocations. The 175,000,000 LIT community allocation never sits in the emission box.
+
+The public and private allocations leave the emission box at activation time, but they do not all reach
+their final recipients at that moment. The new collateral box carries the exact split until a finder
+spends that collateral box in a Lithos block.
+
+### By activation
+
+An **Activate** transaction turns one queue box into one live collateral box. That transition is the
+event that advances the LIT schedule.
+
+At a high level, one activation does the following:
+
+1. Spends the current emission box and the queue box selected by the queue policy.
+2. Creates the successor emission box with one fewer scheduled LIT allocation.
+3. Creates a collateral box carrying the public LIT amount and, while private emission is active, the
+   team, investor and advisor amounts.
+4. Records the public and private split in collateral `R6`.
+5. Increments the emission box's activation counter.
+
+The collateral box then waits in the active set until a finder uses it. A later **genesis transaction**
+spends that collateral box to make a block a Lithos block.
+
+The collateral spend releases the LIT that activation reserved. The private allocations go to their
+fixed recipients during the first 1,000,000 activations. The public allocation is split between the
+finder and the holding box. The holding box starts the rollup that later pays miners according to their
+proven work.
+
+## Public emission schedule
+
+One emission epoch is **125,000 activations**. The public rate starts at 500 LIT per activation and
+falls over the life of the schedule.
+
+The public rate and its immediate split are:
+
+| Activation epochs | Public LIT per activation | Finder share | LIT entering the holding box | Private LIT per activation |
+|---|---:|---:|---:|---:|
+| 0 through 1 | 500 | 20 | 480 | 140 |
+| 2 through 3 | 450 | 18 | 432 | 140 |
+| 4 through 5 | 400 | 16 | 384 | 140 |
+| 6 through 7 | 350 | 14 | 336 | 140 |
+| 8 through 9 | 300 | 12 | 288 | 0 |
+| 10 through 11 | 250 | 10 | 240 | 0 |
+| 12 through 13 | 200 | 8 | 192 | 0 |
+| 14 | 150 | 6 | 144 | 0 |
+| 15 | 100 | 4 | 96 | 0 |
+| 16 onward, until the emission boundary | 50 | 2 | 48 | 0 |
+
+Epoch 22 is truncated. Only its first **75,000 activations** emit LIT. The schedule reaches its
+rate-zero phase when the activation counter reaches **2,825,000**.
+
+The public schedule emits exactly **685,000,000 LIT**. The private schedule emits another
+**140,000,000 LIT**, so the emission box releases its full 825,000,000 LIT balance over the emitting
+region.
+
+## Founder emission schedule
+
+Private/founder emission runs only for the first **8 epochs**, which is the first **1,000,000 activations**.
+Its rate is constant at 140 LIT per activation.
+
+Each private allocation uses the following split:
+
+| Recipient group | LIT per activation | Total after 1,000,000 activations |
+|---|---:|---:|
+| Team | 100 | 100,000,000 |
+| Investors | 25 | 25,000,000 |
+| Advisors | 15 | 15,000,000 |
+
+These amounts are recorded when the collateral box activates and paid when that collateral box is
+spent. The collateral contract requires the private allocation to be paid in full. A transaction
+cannot pay only part of the scheduled private split.
+
+After the first 1,000,000 activations, collateral boxes carry no private allocation. Public emission
+continues until the final emission boundary.
+
+## Understand the block finder's LIT share
+
+The finder of a Lithos block receives **4% of the public LIT rate** for the collateral box they spend:
+
+```text
+finder LIT = public LIT rate / 25
+```
+
+The remaining 96% enters the holding box and becomes part of the rollup payout for miners. The finder
+share is part of the 685,000,000 LIT public mining allocation. It is not an extra emission on top of
+the schedule.
+
+The collateral contract implements this share as transaction slack rather than as a recipient-specific
+reward rule. Whatever public LIT the holding box is not required to take remains available to the
+finder's transaction. Because the share is proportional, it falls automatically as the public rate
+falls and reaches zero when emission reaches its rate-zero phase.
+
+The rollup distributes the holding box's LIT according to miner scores. For how miners prove those
+scores, read [NISPs](./NISPs.mdx). Block finders can also earn additional ERG from additional collateral fees,
+along with MEV and batching.
+
+## Understanding why emission is usage-indexed
+
+The emission schedule is indexed by activations, not by every Ergo block. This ties most LIT emission
+to actual Lithos use.
+
+The active set holds at most **100 collateral boxes**. During bootstrap, Lithos can fill those slots
+without first retiring old collateral boxes. Those initial activations are the only part of the
+schedule that can advance without prior Lithos block production.
+
+Once the active set is full, a new activation needs a proof-of-spend box from a collateral box that was
+already consumed. A finder creates that proof-of-spend when they use collateral in a Lithos block.
+After bootstrap, continued activation therefore depends on collateral turnover.
+
+If Lithos produces no blocks, the full active set does not turn over and the emission counter stops
+advancing. The schedule does not continue merely because Ergo height increases. **This usage-based approach
+also encourages long term development from the foundation**, as founder rewards are only released when the protocol
+is doing its job properly and finding blocks.
+
+## The emission box layout
+
+The emission box is a singleton authenticated by the emission NFT. It carries both the remaining LIT
+supply and the minimum state needed to manage activations:
+
+| Register or token | Meaning |
+|---|---|
+| `R4` | Activation counter used by the emission schedule |
+| `R5` | Active lender set |
+| `R6` | Queue head counter |
+| `R7` | Queue tail counter |
+| Token index 0 | Emission NFT |
+| Token index 1 | Queue tokens |
+| Token index 2 | Collateral tokens |
+| Token index 3 | Remaining LIT |
+
+LIT sits last in the token list deliberately. When the emission balance reaches zero, the LIT entry can
+disappear without shifting the indexes of the emission NFT, queue tokens or collateral tokens.
+
+The emission box also serves as the source of queue and collateral proposition tokens. Those tokens
+authenticate queue and collateral positions. Their supply is separate from the LIT schedule.
+
+### Separate policies
+
+The emission box runs two pieces of logic together:
+
+| Component | Controls | Upgrade boundary |
+|---|---|---|
+| `LIT_Emissions.ergo` | LIT schedule, activation accounting and the three operation paths | Pinned by `Emission_Guard`; fixed at genesis |
+| `Collateral_Enforcer.ergo` | Queue selection, permit pricing and Join-side queue policy | Named by the emission config; replaceable |
+
+This split means changing queue policy does not change the LIT supply schedule. A replacement enforcer
+can change which valid queue box becomes eligible or how much LIT a permit requires, but the immutable
+emission logic still decides how much LIT an activation can release.
+
+The emission logic recognizes exactly three operations:
+
+| Operation | Effect on emission |
+|---|---|
+| Join | Does not advance the emission counter or release scheduled LIT |
+| Activate | Advances the counter and moves the scheduled LIT into a new collateral box |
+| Clear | Does not advance the emission counter or release scheduled LIT |
+
+A fourth operation cannot be added after genesis.
+
+## Know what protects the supply
+
+Several rules keep the contract and client on the same schedule.
+
+First, the emission arithmetic is pinned inside `Emission_Guard`. A config update can replace queue
+policy, but it cannot replace the schedule itself.
+
+Second, the Lithos client mirrors the contract arithmetic in `EmissionSchedule`. Any client building an
+Activate transaction has to calculate the same public and private amounts as `LIT_Emissions.ergo`.
+If the values differ, the contract rejects the transaction.
+
+Third, an activation cannot take more LIT than the emission box actually holds. The final emitting
+activation is capped by the remaining balance rather than trusting a nominal rate that would overdraw
+the box.
+
+Finally, private allocations are all-or-nothing. During the private-emission region, a collateral spend
+must satisfy the complete recorded split.
+
+## The end of LIT emissions
+
+Emission ending does **not** stop Lithos.
+
+At the boundary, the public and private rates become zero. Join, Activate and Clear remain valid
+operations. The collateral queue can continue rotating positions, and lenders can continue using LIT
+permits that already exist in circulation.
+
+This rate-zero phase is explicit in the protocol. The queue does not depend on a positive emission
+amount, and the LIT token ID remains the same even after the emission box no longer carries a LIT
+entry.
+
+The result is a fixed supply: after the emission box releases its 825,000,000 LIT, no later activation
+creates additional LIT.
+
+## Next steps
+
+- [LFSM](./lfsm.mdx): the contracts that enforce emission, the collateral queue and the rest of the
+  protocol state machine.
+- [NISPs](./NISPs.mdx): how miners prove work and how the rollup divides the public LIT reward.

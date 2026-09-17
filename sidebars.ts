@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
       items: [
         { type: "doc", id: "tutorial-basics/rollups" },
         { type: "doc", id: "tutorial-basics/NISPs" },
+        { type: "doc", id: "tutorial-basics/emissions" },
       ],
     },
     // No link: there is no mining overview page for this category to open.

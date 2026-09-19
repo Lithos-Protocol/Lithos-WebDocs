@@ -1,0 +1,79 @@
+---
+sidebar_position: 1
+tags:
+  - operations
+description: Diagnose selected startup, wallet, consolidation, mining, and reward-claim log messages.
+---
+
+# Failure modes
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes a running client and familiarity with the [configuration pages](../configuration/overview.mdx).*
+
+Start with the first relevant log line. Similar symptoms can have different causes, and timing,
+status endpoints and effective settings all help separate them.
+
+:::info Verified against
+Client 5.4.0 (testnet) and 1.0.0 pre-release (mainnet), September 2026. Exact log text is
+version-sensitive.
+:::
+
+## Startup
+
+| Log text | Meaning | Operator action |
+|---|---|---|
+| `InaccessibleObjectException: module java.base does not "opens java.lang"` | Running on a JDK newer than 11; Guice performs reflection later JDKs refuse | Set `JAVA_HOME` to Java 11 in the launcher and put its `bin` first on `PATH`. Invoking the start script directly inherits the system default |
+
+For validation errors, see [Configuration overview](../configuration/overview.mdx); it explains how
+startup reports invalid and contradictory settings.
+
+:::tip Compare effective settings with your overrides
+The client prints a summary of effective settings at startup, for example
+`Wallet limits: maxInputs=75 pageSize=500 …`. Compare the relevant values with your intended
+overrides in `lithos.conf`. A mismatch means the running process did not load the file or value you
+expected.
+:::
+
+## Wallet and funding
+
+| Log text | Meaning | Operator action |
+|---|---|---|
+| `WalletManager could not cover <n> nanoERG` | The wallet could not fund a transaction | Query the **Ergo node's** `/wallet/status` endpoint, not the Lithos API. If the wallet is unlocked, inspect the preceding wallet-refresh line for the available, reserved, reward and partial counts, and report those with the requested amount |
+| `N wallet box(es) are at addresses this client cannot sign for and are unspendable` | At least one box belongs to an address index outside the keys derived by this client | Increase `node.numAddresses` far enough to cover that index; its accepted maximum is 1000. For lending, keep `emission.maxLenderKeys` at or below `node.numAddresses` |
+
+Do not compare a consolidation target with the raw UTXO total. Check the reward-box count
+separately, using the **Lithos client's** `/collateral/rewards` endpoint, because reward boxes are
+not eligible consolidation inputs.
+
+## Consolidation
+
+| Log text | Meaning | Operator action |
+|---|---|---|
+| `transport failure calling /wallet/boxes/unspent: timeout`, with `okhttp3.RealCall.timeoutExit` | The engine's node request timed out | Record the elapsed time and compare it with `wallet.node-call-timeout-ms` and `wallet.node-read-timeout-ms`. See [Wallet and consolidation](../configuration/wallet.mdx) before changing a timeout or the page size |
+| `Wallet refreshed - … PARTIAL` | The selection cache did not hold the whole wallet | Check both `wallet.max-descriptors` and `wallet.max-descriptor-bytes`; a wallet of large boxes reaches the byte bound first. Where excluded boxes fill the cache, consolidation finds nothing eligible and the pass ends without work |
+| `consolidation attempt expired` | The end-to-end consolidation budget expired | Confirm `wallet.consolidation.attempt-timeout-ms` exceeds `wallet.inventory-walk-timeout-ms`, as the wallet configuration page requires |
+| `Consolidation capped at N of M transaction(s): optional work may hold X inputs` | The pass requested `M` transactions; the optional-input budget allowed `N` | The effective count is bounded by both `wallet.consolidation.num-transactions` and available `wallet.max-optional-inputs` capacity. Raising `num-transactions` cannot exceed that capacity |
+| `target unreachable from eligible boxes alone` | Excluded boxes already exceed `wallet.consolidation.target-utxos` | Informational. The client consolidates eligible boxes but cannot reduce the wallet below the excluded-box count. A pass reporting `no-work` has finished, not failed |
+
+## Mining
+
+| Log text | Meaning | Operator action |
+|---|---|---|
+| `No usable difficulty commitment ... may be considered fraudulent` | No active commitment is currently usable | Expected at first startup until dictionary synchronization and commitment activation complete. Work submitted before the commitment is active is not payable. If it persists after synchronization, check `state.autoCommit`, the configured difficulty, and the on-chain commitment |
+| `Cannot submit NISPs until commit (height,diff) is in effect` | The commitment exists and is waiting to activate | No action; this is progress rather than a fault |
+
+:::danger A fallback that is logged but not fatal
+**`Collateral retrieval failed ... falling back to solo-mining`** means the client could not obtain
+collateral and is mining solo. Mining continues and the hardware stays busy, so nothing looks wrong,
+but pooled rewards are not being earned.
+
+Confirm pooled mining from the stratum-job log line by checking `usesCollateral=true`. Do not infer
+pooled operation from the absence of an error.
+:::
+
+## Reward claims
+
+| Log text | Meaning | Operator action |
+|---|---|---|
+| `400 Nothing to claim - another claim is already sweeping these boxes - try again shortly` | Another claim currently owns the unlocked reward boxes | Do not retry until the previously broadcast claim transaction confirms or fails. The response does not mean that no rewards are claimable |

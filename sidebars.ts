@@ -80,6 +80,14 @@ const sidebars: SidebarsConfig = {
         { type: "doc", id: "configuration/runtime" },
       ],
     },
+    {
+      type: "category",
+      label: "Operations",
+      items: [
+        { type: "doc", id: "operations/failure-modes" },
+        { type: "doc", id: "operations/reporting-issues" },
+      ],
+    },
   ],
 };
 

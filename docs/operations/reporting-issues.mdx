@@ -1,0 +1,64 @@
+---
+sidebar_position: 2
+tags:
+  - operations
+description: What to include in a problem report so it can be diagnosed without a second round of questions.
+---
+
+# Reporting issues
+
+<span className="badge badge--success">Standard</span>
+
+*For anyone running the client. No Ergo or smart contract experience needed.*
+
+An actionable report lets maintainers distinguish failures in the client, the node, the
+configuration, and wallet state. Substantial work should begin with an issue — see the repository's
+contribution guidelines.
+
+## What to include
+
+| Field | Detail |
+|---|---|
+| Versions | Client version, node version, operating system, Java version |
+| Network | Testnet or mainnet |
+| Timings | Start time, end time, elapsed time, and the relevant configured timeouts |
+| Log excerpt | The complete exception message and the first relevant application or HTTP-client stack frames |
+| Evidence window | A continuous range, for example startup through the first failure, rather than isolated search matches |
+| Effective settings | The relevant startup summary line and the corresponding override from `lithos.conf` |
+| Expected vs actual | What you expected the operation to do, and what it did |
+| Reproduction | Minimal steps, and whether the failure is once, intermittent, or every run |
+| History | Last known working client version, and whether the failure began after an upgrade |
+| Node state | Synchronization height and whether the wallet is unlocked |
+| Wallet shape | Total UTXOs, eligible count, reward-box count — large-wallet failures often do not reproduce at smaller sizes |
+
+Also note the log file location and the time zone of its timestamps, since these are frequently
+compared against on-chain events.
+
+## Timings over adjectives
+
+"The pass starts at T and fails at T+28s" can be diagnosed. "Consolidation is slow" cannot. Record
+the start time, end time, elapsed time and the configured timeouts. A mismatch may reveal another
+deadline, or time spent before the timed request began.
+
+## Separate client from node
+
+If the node serves a call in a fraction of a second when queried directly, while the client reports
+a timeout on the same call, give both numbers. That comparison helps distinguish node response time
+from client-side queuing or timeout handling.
+
+## Report negative results
+
+If a suggested change has no effect, report the exact change, the test conditions, and
+before-and-after timings. A negative result eliminates one possible cause and prevents the same test
+being repeated.
+
+Change one variable per test. Two changes in one restart produce a result that explains neither.
+
+:::warning Redact before posting
+Replace API keys, wallet passwords, mnemonics, private keys, authentication headers, keystore paths
+and Play secrets with `<redacted>`. Placeholders preserve the structure of a config or log; deleting
+the lines can make a report uninterpretable.
+
+Review machine names, IP addresses, wallet addresses, balances, transaction IDs and box IDs before
+posting publicly.
+:::

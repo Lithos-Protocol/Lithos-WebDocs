@@ -1,12 +1,12 @@
 ---
 id: collateraljoincheckrequest
 title: "CollateralJoinCheckRequest"
-description: "How many positions to price. Omitted fields default."
+description: "How many positions to price, and what each bids for priority. Omitted fields default."
 sidebar_label: "CollateralJoinCheckRequest"
 hide_title: true
 hide_table_of_contents: true
 schema: true
-sample: {"count":3}
+sample: {"count":3,"priorityFeeEachNanoErgs":"10000000"}
 custom_edit_url: null
 ---
 
@@ -22,10 +22,10 @@ import Heading from "@theme/Heading";
 
 
 
-How many positions to price. Omitted fields default.
+How many positions to price, and what each bids for priority. Omitted fields default.
 
 <Schema
-  schema={{"description":"How many positions to price. Omitted fields default.","type":"object","x-tags":"collateral-market","properties":{"count":{"type":"integer","format":"int32","description":"Positions to create, each under its own key","default":1,"minimum":1,"maximum":25,"example":3}},"title":"CollateralJoinCheckRequest"}}
+  schema={{"description":"How many positions to price, and what each bids for priority. Omitted fields default.","type":"object","x-tags":"collateral-market","properties":{"count":{"type":"integer","format":"int32","description":"Positions to create, each under its own key","default":1,"minimum":1,"maximum":25,"example":3},"priorityFeeEachNanoErgs":{"type":"string","pattern":"^[0-9]+$","description":"nanoERG each position adds above the 2.915 ERG floor. Part of it goes to whichever miner spends the collateral box, which is what buys the position priority. Omitted or '0' posts at the floor; anything else is at least minPriorityFeeNanoErgs.","default":"0","example":"10000000"}},"title":"CollateralJoinCheckRequest"}}
   schemaType={"response"}
 >
   

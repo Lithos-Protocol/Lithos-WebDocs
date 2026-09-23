@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import s from './styles.module.css';
 import * as api from './api';
 import { useDex } from './DexLayout';
+import { tipLeftFor, toViewX } from '../chartPointer';
 import {
   fmtErg,
   fmtToken,
@@ -52,6 +53,7 @@ const AXIS_CHAR_W = 5.6;
 /** Smoothed area chart: cyan stroke over a fading fill, with a rippling end dot. */
 function PriceChart({ points, range, pairLabel }) {
   const wrapRef = useRef(null);
+  const svgRef = useRef(null);
   const [hoverIdx, setHoverIdx] = useState(null);
 
   const model = useMemo(() => {
@@ -144,13 +146,12 @@ function PriceChart({ points, range, pairLabel }) {
   }, [points, range]);
 
   const onMove = (e) => {
-    if (!wrapRef.current || !model) {
+    if (!model) {
       setHoverIdx(null);
       return;
     }
-    const rect = wrapRef.current.getBoundingClientRect();
-    const mx = ((e.clientX - rect.left) / rect.width) * W;
-    if (mx < model.padL - 6 || mx > W - PAD.r + 6) {
+    const mx = toViewX(svgRef.current, e.clientX);
+    if (mx == null || mx < model.padL - 6 || mx > W - PAD.r + 6) {
       setHoverIdx(null);
       return;
     }
@@ -173,6 +174,7 @@ function PriceChart({ points, range, pairLabel }) {
       onMouseLeave={() => setHoverIdx(null)}
     >
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         className={s.chart}
         style={{ height: H }}
@@ -256,12 +258,7 @@ function PriceChart({ points, range, pairLabel }) {
 
       {hovered &&
         (() => {
-          const rect = wrapRef.current?.getBoundingClientRect();
-          const scale = rect ? rect.width / W : 1;
-          const left = Math.min(
-            Math.max(model.xAt(hoverIdx) * scale + 14, 8),
-            Math.max(8, (rect?.width ?? 400) - 170),
-          );
+          const left = tipLeftFor(svgRef.current, wrapRef.current, model.xAt(hoverIdx), 170);
           return (
             <div className={s.hoverTip} style={{ left: `${left}px` }}>
               <div>

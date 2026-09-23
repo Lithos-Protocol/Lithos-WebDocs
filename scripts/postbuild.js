@@ -8,12 +8,11 @@
  *   1. Docusaurus emits assets under `build/assets/{js,css}`, so served through
  *      Play they land at /assets/assets/... — one level too deep. Move them up
  *      and rewrite the references.
- *   2. Play's `Assets.versioned` resolves a URL to a LITERAL file. Docusaurus
- *      emits directory-index routes (`dex/liquidity/index.html`), so a hard load
- *      of /assets/dex/liquidity finds no file and 404s. Emitting a sibling
- *      `dex/liquidity.html` makes the `.html` URL work directly.
- *      NOTE: this does not by itself fix /assets/dex/liquidity — see README
- *      notes; the routes file needs a directory fallback for that.
+ *   2. Play's `Assets` resolves a URL to a LITERAL file, and Docusaurus emits
+ *      directory-index routes (`dex/liquidity/index.html`). The client's
+ *      WebPanelController resolves /assets/dex/liquidity to that index.html, so
+ *      a refresh works; the sibling `dex/liquidity.html` written here keeps the
+ *      `.html` form of each URL working too.
  *
  * Runs automatically as `postbuild`, so `yarn build` leaves a deployable tree.
  * Idempotent: safe to run twice.

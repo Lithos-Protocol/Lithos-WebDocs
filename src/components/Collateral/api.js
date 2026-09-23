@@ -196,6 +196,30 @@ export const getPermitHistory = ({ limit } = {}) =>
   req('/collateral/permits/history', { query: { limit } });
 
 /* ============================================================
+   Fee market — statistics, no key required
+   ============================================================ */
+
+/**
+ * GET /stats/collateral — the inventory and the bid book it carries.
+ *
+ * `fees` is the distribution: at-floor vs bidding counts, total, best, median,
+ * p90 and six bands. `fees.unreadable` is normally 0; when it is not, the
+ * inventory counts more boxes than the distribution does and the shortfall has
+ * to be said out loud rather than folded into the floor.
+ */
+export const getCollateralStats = () => req('/stats/collateral');
+
+/**
+ * GET /stats/mining/buckets — the accounting map per UTC hour or day.
+ *
+ * `from` is inclusive, `until` exclusive, both aligned to the interval, at most
+ * 500 buckets. Missing buckets are omitted rather than zero-filled — read
+ * `partial` and `retainedFrom` before treating a gap as a quiet period.
+ */
+export const getMiningBuckets = ({ from, until, interval = 'day' }) =>
+  req('/stats/mining/buckets', { query: { from, until, interval } });
+
+/* ============================================================
    Wallet-scoped state
    ============================================================ */
 
@@ -269,17 +293,35 @@ export const claimRewards = () => req('/collateral/rewards/claim', { method: 'PO
  * POST /collateral/join/check — quote joining `count` positions (1–25).
  * `permitsLit[]` escalates per position: each join lengthens the queue, which
  * raises the permit every later position pays. Show each line.
+ *
+ * `priorityFeeEachNanoErgs` is the priority bid. The quote prices it: the returned
+ * `principalEachNanoErgs` already includes the bid AND the 4x premium the
+ * contract charges into the pool, so it moves by five times whatever is sent.
  */
-export const checkJoin = ({ count }) =>
-  req('/collateral/join/check', { method: 'POST', auth: true, body: { count } });
+export const checkJoin = ({ count, priorityFeeEachNanoErgs }) =>
+  req('/collateral/join/check', {
+    method: 'POST',
+    auth: true,
+    body: omitEmpty({ count, priorityFeeEachNanoErgs: str(priorityFeeEachNanoErgs) }),
+  });
 
 /**
  * POST /collateral/join — execute.
  * Always send the quote's `emissionTipBoxId` as `expectedEmissionBoxId`, so a
  * queue that moved turns into a 409 instead of a silent join at a worse price.
  * `maxPermitEachLit` caps what each position pays if permits rise mid-flight.
+ *
+ * `priorityFeeEachNanoErgs` must be what the quote was taken at — it decides what
+ * each position locks up. The endpoint enforces only a minimum, not a cap, so the
+ * caller is responsible for having shown the reader the break-even first.
  */
-export const join = ({ count, maxPermitEachLit, expectedEmissionBoxId, acknowledgeNoWithdrawal }) =>
+export const join = ({
+  count,
+  maxPermitEachLit,
+  expectedEmissionBoxId,
+  acknowledgeNoWithdrawal,
+  priorityFeeEachNanoErgs,
+}) =>
   req('/collateral/join', {
     method: 'POST',
     auth: true,
@@ -287,6 +329,7 @@ export const join = ({ count, maxPermitEachLit, expectedEmissionBoxId, acknowled
       count,
       maxPermitEachLit: str(maxPermitEachLit),
       expectedEmissionBoxId,
+      priorityFeeEachNanoErgs: str(priorityFeeEachNanoErgs),
       // Required by the endpoint. Passed through explicitly rather than
       // defaulted here — the acknowledgement has to come from the reader
       // ticking the box, not from this function assuming it.
@@ -294,15 +337,14 @@ export const join = ({ count, maxPermitEachLit, expectedEmissionBoxId, acknowled
     }),
   });
 
-/* ============================================================
-   Blocks-found cadence — no new endpoint
-   ============================================================ */
-
 /**
  * GET /blocks/byHeight?fromHeight&toHeight — UTXO ids of tracked rollups mined
- * in the range. Served from the client's sync cache: recent windows are
- * complete, older ones thin out as rollups pay out. Count the array length per
- * range to chart blocks-found cadence.
+ * in the range, from the client's sync cache.
+ *
+ * NOT a way to count blocks per day: a rollup leaves tracking once it pays out,
+ * so older ranges undercount and a week-long series slopes downwards on its own.
+ * `getMiningBuckets` counts canonical genesis transactions instead and is what
+ * the blocks-found chart uses.
  */
 export const getBlocksByHeight = ({ fromHeight, toHeight }) =>
   req('/blocks/byHeight', { query: { fromHeight, toHeight } });

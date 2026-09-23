@@ -1544,9 +1544,17 @@
   font-size: 11px;
   line-height: 1.6;
   color: #e2e8f0;
-  white-space: nowrap;
   z-index: 5;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  /* Never wider than the plot it sits in. On a phone the meta lines wrap rather
+     than push the wrapper into a horizontal scroll. */
+  max-width: calc(100% - 8px);
+}
+
+/* The figure stays on one line whatever the card does around it. */
+.cmTipBid,
+.cmTipFee {
+  white-space: nowrap;
 }
 
 .cmHoverTipLabel {
@@ -2660,5 +2668,556 @@
 @media screen and (max-width: 900px) {
   .cmExplainers {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================
+   Fee market
+   ------------------------------------------------------------
+   The one page that leans on chart chrome rather than cards, so
+   it carries its own tooltip and axis furniture instead of
+   borrowing the Dex module's.
+   ============================================================ */
+
+.hoverTip {
+  position: absolute;
+  top: 10px;
+  pointer-events: none;
+  background: rgba(6, 9, 19, 0.94);
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-family: var(--cur-font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: nowrap;
+  z-index: 5;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.cmTipBid {
+  color: var(--cur-cyan-pale);
+  font-weight: 600;
+}
+
+.cmTipMeta {
+  color: var(--cur-dim);
+}
+
+/* Threshold annotations sit on the plot, so they are smaller and dimmer than
+   axis text — they label a line, they are not a scale. */
+.cmThresholdText {
+  fill: var(--cur-amber);
+  font-family: var(--cur-font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+
+/* ---- the book: two sides, one scale ---- */
+
+.cmBook {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 4px;
+}
+
+.cmBookSide {
+  min-width: 0;
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.08);
+  border-radius: 16px;
+  padding: 12px 14px 6px;
+}
+
+.cmBookHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.cmBookTitle {
+  font-family: var(--cur-font-display);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cur-cyan-light);
+}
+
+.cmBookCount {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  color: var(--cur-dim);
+}
+
+/* The launch state, and the one this page spends most of its life in: every box
+   at the floor. A flat row of zero-height bars would read as broken, so the
+   empty case gets words instead of an axis. */
+.cmBookEmpty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--cur-muted);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.cmChartFoot {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(125, 211, 252, 0.08);
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--cur-dim);
+}
+
+/* ---- bid bands: the table view the charts owe their readers ---- */
+
+.cmBandTable {
+  margin-top: 16px;
+  border-top: 1px solid rgba(125, 211, 252, 0.08);
+  padding-top: 12px;
+}
+
+.cmBandRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 58px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 12px;
+}
+
+.cmBandHead {
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cur-faint);
+  padding-bottom: 6px;
+}
+
+.cmBandLabel {
+  color: var(--cur-body);
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cmBandNote {
+  color: var(--cur-amber);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.cmBandCount {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--cur-text);
+  text-align: right;
+}
+
+.cmBandBarCell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+/* The bar scales inside this track rather than inside the cell. Sizing the bar
+   itself to a percentage of the cell let a 100% bar consume the whole row and push
+   its own label out of the card. */
+.cmBandTrack {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(125, 211, 252, 0.07);
+  overflow: hidden;
+}
+
+.cmBandBar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.85), rgba(125, 211, 252, 0.55));
+  transition: width 0.35s ease;
+}
+
+/* Fixed width, so the longest label ("100%") always has room reserved for it. */
+.cmBandPct {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  color: var(--cur-dim);
+  flex: 0 0 38px;
+  text-align: right;
+}
+
+/* ---- revenue split: one bar, four labelled parts ---- */
+
+.cmStackBar {
+  display: flex;
+  width: 100%;
+  height: 34px;
+  border-radius: 8px;
+  overflow: hidden;
+  /* The gap between segments IS this background showing through, rather than a
+     stroke drawn around each one. */
+  background: var(--cur-bg-base);
+  gap: 2px;
+  margin: 6px 0 16px;
+}
+
+.cmStackSeg {
+  height: 100%;
+  min-width: 2px;
+  transition: opacity 0.2s ease;
+}
+
+.cmStackSeg:hover {
+  opacity: 0.82;
+}
+
+.cmStackLegend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+.cmStackItem {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.cmStackSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
+.cmStackText {
+  min-width: 0;
+}
+
+.cmStackLabel {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--cur-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.cmStackPct {
+  font-family: var(--cur-font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--cur-cyan-light);
+}
+
+.cmStackValue {
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  color: var(--cur-muted);
+  margin-top: 1px;
+}
+
+.cmStackNote {
+  font-size: 11px;
+  color: var(--cur-dim);
+  line-height: 1.5;
+  margin-top: 3px;
+}
+
+@media screen and (max-width: 900px) {
+  .cmBook,
+  .cmStackLegend {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cmBandRow {
+    grid-template-columns: minmax(0, 1fr) 46px 72px;
+  }
+}
+
+/* ---- lender ledger: four legs and a net ---- */
+
+.cmLedger {
+  margin: 10px 0 18px;
+}
+
+.cmLedgerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 112px;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0;
+}
+
+.cmLedgerLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cur-body);
+  font-size: 12.5px;
+  min-width: 0;
+}
+
+.cmLedgerTrack {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(125, 211, 252, 0.06);
+  overflow: hidden;
+  min-width: 0;
+  transition: background-color 0.35s ease;
+}
+
+/* A row with nothing to show keeps its track in the DOM but hides it, so toggling
+   the scale grows a bar into an existing box instead of inserting one. */
+.cmLedgerTrackGhost {
+  background: transparent;
+}
+
+.cmLedgerFill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+
+.cmLedgerValue {
+  font-family: var(--cur-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  text-align: right;
+}
+
+.cmLedgerIn {
+  color: var(--cur-cyan-pale);
+}
+
+.cmLedgerOut {
+  color: var(--cur-muted);
+}
+
+/* The net is the row the page exists to produce, so it gets a rule above it and
+   a size the other rows do not. */
+.cmLedgerNet {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(125, 211, 252, 0.14);
+}
+
+.cmLedgerNet .cmLedgerLabel {
+  color: var(--cur-text);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.cmLedgerNet .cmLedgerValue {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.cmLedgerPos {
+  color: var(--cur-green);
+}
+
+.cmLedgerNeg {
+  color: var(--cur-amber-light);
+}
+
+@media screen and (max-width: 700px) {
+  .cmLedgerRow {
+    grid-template-columns: minmax(0, 1fr) 96px;
+  }
+
+  .cmLedgerTrack {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
+/* The fixed legs are context, not comparison — recessive ink, no bar. */
+.cmLedgerFixed {
+  color: var(--cur-faint);
+}
+
+.cmLedgerHint {
+  margin-left: 8px;
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  color: var(--cur-faint);
+  letter-spacing: 0.03em;
+}
+
+/* The variable pair, set apart so the bars read as one comparison. */
+.cmLedgerGroup {
+  margin-top: 10px;
+  padding: 4px 0 2px;
+}
+
+.cmLedgerNetStrong {
+  border-top-color: rgba(125, 211, 252, 0.28);
+}
+
+.cmLedgerNetStrong .cmLedgerValue {
+  font-size: 19px;
+}
+
+/* ---- fee readout: the numbers derived from the fee series ---- */
+
+.cmTipFee {
+  color: var(--cur-amber-light);
+  font-weight: 600;
+}
+
+.cmFeeReadout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.cmFeeReadoutItem {
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.08);
+  border-radius: 12px;
+  padding: 10px 13px;
+  min-width: 0;
+}
+
+/* The one a lender acts on, so it carries the accent border and the brighter ink. */
+.cmFeeReadoutKey {
+  border-color: rgba(245, 158, 11, 0.32);
+  background: rgba(217, 119, 6, 0.07);
+}
+
+.cmFeeReadoutLabel {
+  display: block;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cur-faint);
+  margin-bottom: 5px;
+}
+
+.cmFeeReadoutValue {
+  display: block;
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--cur-text);
+  letter-spacing: -0.02em;
+}
+
+.cmFeeReadoutValue em {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--cur-dim);
+  margin-left: 4px;
+}
+
+.cmFeeReadoutKey .cmFeeReadoutValue {
+  color: var(--cur-amber-light);
+}
+
+@media screen and (max-width: 700px) {
+  .cmFeeReadout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Heading for the right-aligned count column. Its own class rather than reusing
+   the body cell's, which carries the value font and ink. */
+.cmBandHeadCount {
+  text-align: right;
+}
+
+/* A leg with nothing in it. Sits inside the track so the row keeps its rhythm. */
+.cmLedgerNil {
+  display: block;
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  line-height: 10px;
+  color: var(--cur-fainter);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Said over a plot that is correctly empty, so an axis with no marks under it is
+   never mistaken for a chart that failed to draw. */
+.cmPlotNote {
+  fill: var(--cur-faint);
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* ---- card head with a control beside the title ---- */
+
+.cmCardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cmCardHead .cardTitle {
+  margin-bottom: 0;
+}
+
+.cmScaleToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+  padding: 4px 10px 4px 8px;
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 999px;
+  background: var(--cur-bg-well);
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.cmScaleToggle:hover {
+  color: var(--cur-cyan-light);
+  border-color: rgba(125, 211, 252, 0.28);
+}
+
+.cmScaleToggle input {
+  accent-color: var(--cur-cyan);
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  cursor: pointer;
+}
+
+@media screen and (max-width: 640px) {
+  .cmCardHead {
+    gap: 8px;
   }
 }

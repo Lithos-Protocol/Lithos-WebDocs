@@ -19,6 +19,8 @@ const BAND_LINES = [46, 89, 130, 169, 206, 243, 280];
 const NAV = [
   { to: '/collateral', label: 'Overview', exact: true },
   { to: '/collateral/queue', label: 'Queue status' },
+  // Statistics are open reads, so this tab never needs a key.
+  { to: '/collateral/fees', label: 'Fee market' },
   // Nothing on this page exists without a key — it is entirely the reader's own
   // balances, keys and positions.
   { to: '/collateral/portfolio', label: 'Your position', needsKey: true },

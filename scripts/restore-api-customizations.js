@@ -33,6 +33,7 @@ const CATEGORY_DESCRIPTIONS = {
   Blocks: 'Blocks currently being processed by Lithos contracts',
   Payments: 'Payments made to you from Lithos contracts',
   Mining: 'Information about the local stratum and mining process',
+  Statistics: 'Mining, payment, collateral and client activity numbers for dashboards and graphs',
   // The legacy /collateral/* UTXO endpoints were removed from the client; their
   // tag went with them. Only the collateral-market tag remains.
   'Collateral Market':

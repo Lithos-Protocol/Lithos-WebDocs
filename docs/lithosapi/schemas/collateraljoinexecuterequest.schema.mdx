@@ -6,7 +6,7 @@ sidebar_label: "CollateralJoinExecuteRequest"
 hide_title: true
 hide_table_of_contents: true
 schema: true
-sample: {"count":3,"acknowledgeNoWithdrawal":true,"maxPermitEachLit":"20000000000","expectedEmissionBoxId":"88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6"}
+sample: {"count":3,"acknowledgeNoWithdrawal":true,"maxPermitEachLit":"20000000000","expectedEmissionBoxId":"88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6","priorityFeeEachNanoErgs":"10000000"}
 custom_edit_url: null
 ---
 
@@ -25,7 +25,7 @@ import Heading from "@theme/Heading";
 Join the queue. Send the quote's ids back so stale state becomes a 409, not a surprise price.
 
 <Schema
-  schema={{"description":"Join the queue. Send the quote's ids back so stale state becomes a 409, not a surprise price.","type":"object","x-tags":"collateral-market","required":["count","acknowledgeNoWithdrawal"],"properties":{"count":{"type":"integer","format":"int32","minimum":1,"maximum":25,"description":"Positions to create","example":3},"acknowledgeNoWithdrawal":{"type":"boolean","description":"Must be true, or the request is rejected with 400. A queued position cannot be withdrawn or cancelled; its principal and permit return only when a block spends the box.\n","example":true},"maxPermitEachLit":{"type":"string","description":"Permit cap. If any single permit would exceed this, nothing is sent. Omit for no cap. Decimal string.\n","example":"20000000000"},"expectedEmissionBoxId":{"type":"string","description":"Emission box the quote was made against","example":"88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6"}},"title":"CollateralJoinExecuteRequest"}}
+  schema={{"description":"Join the queue. Send the quote's ids back so stale state becomes a 409, not a surprise price.","type":"object","x-tags":"collateral-market","required":["count","acknowledgeNoWithdrawal"],"properties":{"count":{"type":"integer","format":"int32","minimum":1,"maximum":25,"description":"Positions to create","example":3},"acknowledgeNoWithdrawal":{"type":"boolean","description":"Must be true, or the request is rejected with 400. A queued position cannot be withdrawn or cancelled; its principal and permit return only when a block spends the box.\n","example":true},"maxPermitEachLit":{"type":"string","description":"Permit cap. If any single permit would exceed this, nothing is sent. Omit for no cap. Decimal string.\n","example":"20000000000"},"expectedEmissionBoxId":{"type":"string","description":"Emission box the quote was made against","example":"88c297f99da7172f6aa20efbead69aa40e2b7734a1873d66ca1db6b19d214db6"},"priorityFeeEachNanoErgs":{"type":"string","pattern":"^[0-9]+$","description":"The fee, as the quote was taken at. Omitted or '0' posts at the floor; anything else is at least minPriorityFeeNanoErgs. Not capped at the quote's break-even — a higher fee is accepted and can still be repaid by the mined block's transaction fees. Decimal string.","default":"0","example":"10000000"}},"title":"CollateralJoinExecuteRequest"}}
   schemaType={"response"}
 >
   

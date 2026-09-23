@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import s from './styles.module.css';
 import * as api from './api';
 import { useCollateral } from './CollarLayout';
-import { big, fmtErgAmount, fmtTokenAmount, fmtInt, shortId } from './format';
+import { big, fmtErgAmount, fmtTokenAmount, fmtInt, shortId, parseErg } from './format';
 import { Alert, Row, Spinner } from './ui';
+import { MIN_FEE_NANO } from './feeMarket';
 
 const MIN_COUNT = 1;
 const MAX_COUNT = 25;
@@ -12,10 +13,20 @@ const QUICK_COUNTS = [1, 5, 10, 25];
 // slow enough not to hammer the client while someone clicks.
 const QUOTE_DEBOUNCE_MS = 320;
 
+/*
+ * Priority-fee presets, in ERG. The first non-zero one is the minimum the client
+ * accepts and the last is the break-even it reports (0.085 ERG) — past that a
+ * position costs more than the block reward returns, so it is the top of the
+ * useful range rather than a limit.
+ */
+const QUICK_FEES = ['0', '0.001', '0.01', '0.085'];
+
 export default function JoinPanel() {
   const { market, refresh, refreshWallet } = useCollateral();
 
   const [count, setCount] = useState(1);
+  /** Priority fee as typed, in ERG. Empty means none. */
+  const [feeErg, setFeeErg] = useState('0');
   const [quote, setQuote] = useState(null);
   const [quoting, setQuoting] = useState(true);
   const [quoteErr, setQuoteErr] = useState(null);
@@ -30,11 +41,11 @@ export default function JoinPanel() {
   /** One automatic re-quote per send attempt on 409 — never an infinite loop. */
   const requotedRef = useRef(false);
 
-  const runQuote = useCallback(async (n) => {
+  const runQuote = useCallback(async (n, fee) => {
     const id = ++seq.current;
     setQuoting(true);
     try {
-      const q = await api.checkJoin({ count: n });
+      const q = await api.checkJoin({ count: n, priorityFeeEachNanoErgs: fee });
       if (seq.current === id) {
         setQuote(q);
         setQuoteErr(null);
@@ -62,12 +73,30 @@ export default function JoinPanel() {
    */
   const hasKey = api.hasApiKey();
 
+  /*
+   * The typed fee as nanoERG, or null while it is unparseable. A half-typed
+   * "0." must not be quoted as though it were a number, so the effect below
+   * holds the last good quote rather than firing on it.
+   *
+   * The minimum is checked here as well as on the client, so a fee too small to
+   * be worth the finder's output is caught while it is still being typed rather
+   * than as a rejected send.
+   */
+  const feeNano = feeErg.trim() === '' ? 0n : parseErg(feeErg);
+  const feeParses = feeNano !== null && feeNano >= 0n;
+  const feeTooSmall = feeParses && feeNano > 0n && feeNano < MIN_FEE_NANO;
+  const feeValid = feeParses && !feeTooSmall;
+
   useEffect(() => {
     setError(null);
     setNotice(null);
-    const t = setTimeout(() => runQuote(count), QUOTE_DEBOUNCE_MS);
+    if (!feeValid) return undefined;
+    const t = setTimeout(() => runQuote(count, feeNano.toString()), QUOTE_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [count, runQuote, hasKey]);
+    // feeNano is a BigInt derived from feeErg; depending on its string keeps the
+    // effect stable across re-renders that reparse the same text.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count, String(feeNano), feeValid, runQuote, hasKey]);
 
   const submit = async () => {
     const q = quote;
@@ -89,6 +118,9 @@ export default function JoinPanel() {
         maxPermitEachLit: ((maxPermit * 101n) / 100n).toString(),
         expectedEmissionBoxId: q.emissionTipBoxId,
         acknowledgeNoWithdrawal: acknowledged,
+        // From the quote, never from the input: those agree only when the
+        // debounce has settled, and this decides what each position locks up.
+        priorityFeeEachNanoErgs: q.priorityFeeEachNanoErgs,
       });
       setResult(r);
       setQuote(null);
@@ -97,7 +129,8 @@ export default function JoinPanel() {
       // Reset to the floor and pull a fresh quote immediately — setting state
       // alone isn't enough when count was already MIN_COUNT (no dep change).
       setCount(MIN_COUNT);
-      runQuote(MIN_COUNT);
+      setFeeErg('0');
+      runQuote(MIN_COUNT, '0');
       refresh();
       refreshWallet();
     } catch (e) {
@@ -110,7 +143,7 @@ export default function JoinPanel() {
           setNotice(
             'The queue moved while you were confirming so nothing was sent. Costs below are refreshed; read them and confirm again.',
           );
-          runQuote(count);
+          runQuote(count, feeValid ? feeNano.toString() : '0');
         } else {
           setError(
             'The queue moved again before the join could land, and nothing was sent. Wait a moment, then confirm once more.',
@@ -174,7 +207,8 @@ export default function JoinPanel() {
         <p className={s.cardDesc}>
           Post {market ? fmtErgAmount(market.principalNanoErgs, 3) : '2.915'} ERG of principal plus
           a LIT permit per position and take a place in the queue. When a block consumes your box,
-          the coinbase pays you 3 ERG plus that block&rsquo;s fees.
+          the coinbase pays you 3 ERG plus that block&rsquo;s fees. Add a priority fee to be
+          consumed sooner.
         </p>
 
         {/* ---- COUNT ---- */}
@@ -224,6 +258,59 @@ export default function JoinPanel() {
           </div>
         </div>
 
+        {/* ---- PRIORITY FEE ---- */}
+        <div className={s.field}>
+          <div className={s.fieldHead}>
+            <span className={s.fieldLabel}>Priority fee, per position</span>
+            <span className={s.fieldBalance}>added to your collateral box</span>
+          </div>
+          <div className={s.fieldRow}>
+            <input
+              className={s.input}
+              type="text"
+              inputMode="decimal"
+              value={feeErg}
+              placeholder="0"
+              onChange={(e) => setFeeErg(e.target.value)}
+              disabled={submitting}
+              aria-label="Priority fee in ERG"
+            />
+            <span className={s.inputText}>ERG</span>
+          </div>
+          <div className={s.chips}>
+            {QUICK_FEES.map((f) => (
+              <button
+                key={f}
+                className={`${s.chip} ${feeErg === f ? s.chipActive : ''}`}
+                onClick={() => setFeeErg(f)}
+                disabled={submitting}
+                type="button"
+              >
+                {f === '0' ? 'None' : `${f} ERG`}
+              </button>
+            ))}
+          </div>
+          <div className={s.cmPermitNote}>
+            Added to your collateral box on top of the principal, so it raises what the position
+            locks up one for one. Miners spend whichever box pays them most, which is what moves
+            you ahead of the boxes offering nothing. The minimum is 0.001 ERG.
+          </div>
+        </div>
+
+        {!feeParses && (
+          <Alert kind="error" title="That priority fee isn't a number">
+            Enter an amount in ERG, or 0 to post at the floor and offer nothing.
+          </Alert>
+        )}
+
+        {feeTooSmall && (
+          <Alert kind="error" title="That priority fee is too small">
+            The smallest fee is {fmtErgAmount(MIN_FEE_NANO, 3)} ERG. Below that the block&rsquo;s
+            finder is left less than the output it is paid in costs. Raise it, or set 0 to post at
+            the floor.
+          </Alert>
+        )}
+
         {/* ---- COST BREAKDOWN ---- */}
         {quoting && (
           <div className={s.summary}>
@@ -237,6 +324,14 @@ export default function JoinPanel() {
               label={`Principal × ${fmtInt(quote.count)}`}
               value={`${fmtErgAmount(big(quote.principalEachNanoErgs) * BigInt(quote.count), 4)} ERG`}
             />
+            {/* Already inside the principal above; broken out so the fee is
+                visible as its own line rather than folded into one number. */}
+            {big(quote.priorityFeeEachNanoErgs) > 0n && (
+              <Row
+                label={`└ priority fee × ${fmtInt(quote.count)}`}
+                value={`${fmtErgAmount(big(quote.priorityFeeEachNanoErgs) * BigInt(quote.count), 6)} ERG`}
+              />
+            )}
             <Row
               label={`Network fee × ${fmtInt(quote.count)}`}
               value={`${fmtErgAmount(big(quote.txFeeEachNanoErgs) * BigInt(quote.count), 6)} ERG`}
@@ -303,6 +398,20 @@ export default function JoinPanel() {
         )}
 
         {/* ---- PRE-SEND WARNINGS ---- */}
+        {/* The client accepts a bid above break-even on purpose: the fees of the
+            block you are mined against can still cover it. Say what the shortfall
+            is and leave the judgement to the reader. */}
+        {quote && !quoting && big(quote.netAtCoinbaseEachNanoErgs) < 0n && (
+          <Alert kind="warn" title="This bid costs more than the block reward returns">
+            Each position locks {fmtErgAmount(quote.principalEachNanoErgs, 4)} ERG and the coinbase
+            pays back 3 ERG, leaving you{' '}
+            {fmtErgAmount(-big(quote.netAtCoinbaseEachNanoErgs), 6)} ERG short per position. You
+            recover that only if the block your box is mined against carries at least that much in
+            transaction fees. Bidding at or under{' '}
+            {fmtErgAmount(quote.breakEvenPriorityFeeNanoErgs, 4)} ERG stays inside the reward.
+          </Alert>
+        )}
+
         {quote && quote.affordNow === false && (
           <Alert kind="error" title="The wallet can't cover this right now">
             Short by {fmtErgAmount(quote.shortfallNanoErgs, 4)} ERG including fees. Lower the count
@@ -343,6 +452,7 @@ export default function JoinPanel() {
             !hasKey ||
             blocked ||
             !acknowledged ||
+            !feeValid ||
             count < MIN_COUNT
           }
           onClick={submit}
@@ -409,6 +519,9 @@ export default function JoinPanel() {
                     <span className={s.rowLabel}>
                       Position #{fmtInt(j.position)} · {fmtTokenAmount(j.permitLit, 9, 2)} LIT
                       permit
+                      {big(j.priorityFeeNanoErgs ?? '0') > 0n && (
+                        <> · {fmtErgAmount(j.priorityFeeNanoErgs, 6)} ERG fee</>
+                      )}
                       {j.lenderAddress && (
                         <>
                           {' · '}

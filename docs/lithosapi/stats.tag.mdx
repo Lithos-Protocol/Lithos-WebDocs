@@ -1,0 +1,30 @@
+---
+id: stats
+title: "Statistics"
+description: "Statistics"
+custom_edit_url: null
+---
+
+
+
+Mining, payment, collateral and client activity numbers for dashboards and graphs.
+Collection runs in the background, so a request never makes the client scan the node.
+Only `/stats/local` needs an `api_key`; the rest are open reads. Nothing here is cached.
+
+Every response carries a `status`. Only `ready` means the numbers have caught up to the
+chain tip — show anything else as loading or stale.
+
+
+**All amounts and work totals are exact decimal strings, not JSON numbers.** ERG amounts
+are nanoERG (1 ERG = 1,000,000,000); LIT amounts are base units (9 decimals); timestamps
+are Unix milliseconds. History is kept for a configured number of days, not forever.
+
+
+
+
+```mdx-code-block
+import ApiCategoryPage from '@site/src/components/ApiCategoryPage';
+
+<ApiCategoryPage />
+```
+      

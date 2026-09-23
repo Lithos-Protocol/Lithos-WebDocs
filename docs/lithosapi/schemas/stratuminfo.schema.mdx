@@ -25,7 +25,7 @@ import Heading from "@theme/Heading";
 Information about the Stratum server
 
 <Schema
-  schema={{"description":"Information about the Stratum server","type":"object","x-tags":"mining","required":["diff","tau","reducedMessaging","superSharesPerHour"],"properties":{"diff":{"type":"string","description":"Difficulty used for Lithos calculations","example":"4.0G"},"tau":{"type":"integer","description":"Tau representation of the mining diff","example":1.157920892373162e+76},"reducedMessaging":{"type":"boolean","description":"Whether the stratum server has the `reduceShareMessages` setting enabled","example":false},"superSharesPerHour":{"type":"double","description":"Number of super shares produced by the mining client within the last hour","example":2.5}},"title":"StratumInfo"}}
+  schema={{"description":"Information about the Stratum server","type":"object","x-tags":"mining","required":["diff","tau","reducedMessaging","superSharesPerHour"],"properties":{"diff":{"type":"string","description":"Difficulty used for Lithos calculations","example":"4.0G"},"tau":{"type":"integer","description":"Tau representation of the mining diff","example":1.157920892373162e+76},"reducedMessaging":{"type":"boolean","description":"Whether the stratum server has the `reduceShareMessages` setting enabled","example":false},"superSharesPerHour":{"type":"number","format":"double","description":"Number of super shares produced by the mining client within the last hour","example":2.5}},"title":"StratumInfo"}}
   schemaType={"response"}
 >
   

@@ -75,6 +75,11 @@ const config: Config = {
             to: "/api",
           },
           {
+            label: "Mining",
+            position: "left",
+            to: "/mining",
+          },
+          {
             label: "LithosDex",
             position: "left",
             to: "/dex",

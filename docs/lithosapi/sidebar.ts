@@ -148,6 +148,77 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "Statistics",
+      description: "Mining, payment, collateral and client activity numbers for dashboards and graphs",
+      link: {
+        type: "doc",
+        id: "lithosapi/stats",
+      },
+      items: [
+        {
+          type: "doc",
+          id: "lithosapi/get-stats",
+          label: "Statistics overview",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-mining-totals",
+          label: "Mining and payment totals",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-mining-buckets",
+          label: "Mining statistics by hour or day",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-mining-hashrate",
+          label: "Estimate Lithos hashrate",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-difficulty-epochs",
+          label: "Network difficulty by epoch",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-local-mining-summary",
+          label: "This client's own hashrate",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-local-mining-history",
+          label: "This client's hashrate over time",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-mining-payments",
+          label: "This client's payouts and claims",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-collateral-stats",
+          label: "Collateral inventory",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-local-mining-stats",
+          label: "Local mining activity",
+          className: "api-method get",
+        },
+      ],
+    },
+    {
+      type: "category",
       label: "Collateral Market",
       description: "Stats and participation for the collateral market: the queue, the active set, emission state, and joining",
       link: {

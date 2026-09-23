@@ -514,46 +514,66 @@ function PermitCurveCard({ market }) {
    Blocks-found cadence
    ============================================================ */
 
-const BLOCKS_PER_DAY = 720;
+const DAY_MS = 86_400_000;
 const DAYS_SHOWN = 7;
 
-function BlocksFoundCard({ market }) {
+/**
+ * Lithos blocks per day, from collected statistics rather than the sync cache.
+ *
+ * `/blocks/byHeight` answers from tracked rollups, which leave tracking once they
+ * pay out — so an older day quietly undercounts and the week reads as a downward
+ * trend that never happened. `/stats/mining/buckets` counts canonical genesis
+ * transactions and keeps them for the whole retention window, so every day in the
+ * chart is measured the same way.
+ */
+function BlocksFoundCard() {
   const { tick } = useCollateral();
-  const [counts, setCounts] = useState(null);
+  const [days, setDays] = useState(null);
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const sync = market?.syncHeight;
-
   useEffect(() => {
-    if (sync == null) return undefined;
     let alive = true;
     setLoading(true);
 
-    // One call per bucket: /blocks/byHeight answers with bare UTXO ids, so a
-    // bucket's count IS its response length. Seven cheap reads beat one huge one.
-    const from = sync - DAYS_SHOWN * BLOCKS_PER_DAY;
-    const buckets = Array.from({ length: DAYS_SHOWN }, (_, i) =>
-      api
-        .getBlocksByHeight({
-          fromHeight: from + i * BLOCKS_PER_DAY,
-          toHeight: from + (i + 1) * BLOCKS_PER_DAY,
-        })
-        .then((r) => (Array.isArray(r) ? r.length : (r?.ids ?? r?.blockIds ?? []).length))
-        .catch(() => 0),
-    );
+    // Buckets are UTC days and `until` is exclusive, so this asks for the last
+    // six complete days plus today.
+    const until = Math.floor(Date.now() / DAY_MS) * DAY_MS + DAY_MS;
+    const from = until - DAYS_SHOWN * DAY_MS;
 
-    Promise.all(buckets).then((vals) => {
-      if (!alive) return;
-      setCounts(vals);
-      setLoading(false);
-    });
+    api
+      .getMiningBuckets({ from, until, interval: 'day' })
+      .then((h) => {
+        if (!alive) return;
+        // Buckets with nothing retained are omitted entirely, so the series is
+        // rebuilt across every day in the range — a missing bucket is a day with
+        // no Lithos block, which is a real zero and belongs on the chart.
+        const byStart = new Map(
+          (h?.buckets ?? []).map((b) => [Number(b.start), Number(b.totals?.['lithos.blocks'] ?? 0)]),
+        );
+        setDays(
+          Array.from({ length: DAYS_SHOWN }, (_, i) => {
+            const start = from + i * DAY_MS;
+            return { start, blocks: byStart.get(start) ?? 0 };
+          }),
+        );
+        setError(h?.partial ? 'partial' : null);
+        setLoading(false);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setDays(null);
+        setError(e?.status === 503 ? 'loading' : (e.message ?? 'unavailable'));
+        setLoading(false);
+      });
+
     return () => {
       alive = false;
     };
-  }, [sync, tick]);
+  }, [tick]);
 
-  const max = counts ? Math.max(1, ...counts) : 1;
-  const total = counts ? counts.reduce((a, b) => a + b, 0) : 0;
+  const max = days ? Math.max(1, ...days.map((d) => d.blocks)) : 1;
+  const total = days ? days.reduce((a, d) => a + d.blocks, 0) : 0;
 
   return (
     <div className={`${s.card} ${s.cmCardFill}`}>
@@ -563,23 +583,32 @@ function BlocksFoundCard({ market }) {
         starts a lender&rsquo;s clock.
       </p>
 
-      {loading || !counts ? (
+      {loading ? (
         <div className={s.empty}>
           <Spinner /> Counting blocks…
+        </div>
+      ) : !days ? (
+        <div className={s.empty}>
+          {error === 'loading'
+            ? 'Statistics are still catching up on the client. The week appears once collection is ready.'
+            : `Could not read block history: ${error}`}
         </div>
       ) : (
         <>
           <div className={`${s.cmBars} ${s.cmBarsFill}`}>
-            {counts.map((c, i) => {
-              const date = new Date(Date.now() - (DAYS_SHOWN - 1 - i) * 86_400_000);
-              const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            {days.map((d, i) => {
+              const label = new Date(d.start).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                timeZone: 'UTC',
+              });
               return (
-                <div key={i} className={s.cmBarCol}>
-                  <span className={s.cmBarValue}>{c}</span>
+                <div key={d.start} className={s.cmBarCol}>
+                  <span className={s.cmBarValue}>{d.blocks}</span>
                   <div
                     className={s.cmBar}
-                    style={{ height: `${Math.max(2, (c / max) * 100)}%` }}
-                    title={`${c} blocks · ${label}`}
+                    style={{ height: `${Math.max(2, (d.blocks / max) * 100)}%` }}
+                    title={`${d.blocks} blocks · ${label}`}
                   />
                   <span className={s.cmBarLabel}>{i === DAYS_SHOWN - 1 ? 'today' : label}</span>
                 </div>
@@ -587,8 +616,9 @@ function BlocksFoundCard({ market }) {
             })}
           </div>
           <div className={s.cmFootnote}>
-            {total} blocks in {DAYS_SHOWN} days. Served from the client&rsquo;s sync cache: recent
-            windows are complete, older ones thin out as rollups pay out.
+            {total} blocks in {DAYS_SHOWN} days, counted from canonical chain history — every day
+            is measured the same way, however long ago it was.
+            {error === 'partial' && ' Retained history does not cover the whole week.'}
           </div>
         </>
       )}
@@ -646,7 +676,7 @@ export default function OverviewPanel() {
       {market ? (
         <div className={s.cols}>
           <EmissionCard market={market} />
-          <BlocksFoundCard market={market} />
+          <BlocksFoundCard />
         </div>
       ) : (
         <div className={s.card}>

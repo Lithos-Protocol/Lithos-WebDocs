@@ -43,9 +43,9 @@ candidate on the critical path. The client prepares for it in advance:
 
 - **The collateral set is held in memory.** The client keeps the live collateral boxes, up to 100,
   loaded ahead of time and refreshes them after every block. Nothing is fetched while a block waits.
-- **A box is chosen per block.** A box that has waited 100 blocks or more is taken first, oldest first,
-  so no box waits forever. Otherwise the box offering the finder the largest priority fee wins, and the
-  oldest breaks a tie.
+- **A box is chosen per block.** The box offering the finder the largest priority fee wins, and the
+  oldest breaks a tie. A box that has been live for `clearanceAge` blocks, 7200 by default, is taken
+  ahead of every bid, oldest first, so no box waits forever.
 - **The coinbase goes to the lender.** The client asks the node for a candidate paying the block reward
   to the chosen box's lender, which is what the collateral box paid for.
 

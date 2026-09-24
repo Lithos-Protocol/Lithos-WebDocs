@@ -83,7 +83,8 @@ The value is in base units at 9 decimals, so 40,000 LIT is `40000000000000`.
 
 A miner who finds a block spends the collateral box that pays them most, so a position that offers
 more is spent ahead of the ones that offer nothing. `priorityFeeNanoErgs` is that offer, for the
-positions `autoCollateralize` creates. A join from the web panel sets its own. Each position then locks `2.915 ERG + priorityFeeNanoErgs`, and when a miner spends it the fee divides as follows:
+positions `autoCollateralize` creates. A join from the web panel sets its own. Each position then locks
+`2.915 ERG + priorityFeeNanoErgs`, and when a miner spends it the fee divides as follows:
 
 | Share | Goes to |
 |---|---|
@@ -92,6 +93,12 @@ positions `autoCollateralize` creates. A join from the web panel sets its own. E
 
 Because transaction fees in a Lithos block go to the lender, paying for priority works like a fee
 future: you pay to be spent sooner, for example when you expect the blocks ahead to carry high fees.
+
+**A position that offers nothing is still spent eventually.** Miners running this client draw any box
+that has been live for 7200 blocks, about 10 days on mainnet, ahead of every priority fee. Each miner
+can change that age with
+[`stratum.candidate.clearanceAge`](./candidate.mdx#which-box-your-block-spends), so treat it as
+typical rather than guaranteed.
 
 `0` posts at the floor and offers nothing. Any other value must be at least `1000000` (0.001 ERG), so
 the miner's fifth is worth more than the output it arrives in.

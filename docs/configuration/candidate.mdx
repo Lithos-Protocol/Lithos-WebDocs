@@ -25,6 +25,7 @@ earn goes, is explained in [Candidate building](../tutorial-basics/candidate-bui
 |---|---|---|---|
 | `stratum.candidate.collateralPoolSize` | 100 | 1 to 100 | Collateral boxes kept pre-loaded in memory |
 | `stratum.candidate.collateralRefreshInterval` | 60000 | 100 to 3600000 ms | How often the collateral set is refreshed. It also refreshes on every new block |
+| `stratum.candidate.clearanceAge` | 7200 | 100 to 14400 blocks | How long a box may stay live before it is drawn ahead of every priority fee |
 
 The active set never holds more than 100 boxes protocol-wide, which is why the pool size stops there.
 Fetching a box at mining time would put an indexer round trip on the critical path of every block, so
@@ -32,6 +33,23 @@ the whole set is held in memory instead.
 
 The refresh interval is a floor rather than a schedule. Every new block triggers one anyway, since that
 is the only moment a collateral box can be spent.
+
+### Which box your block spends
+
+Each block, the client draws one box from the set by the following rules:
+
+1. If any box has been live for `clearanceAge` blocks or more, the oldest of those is drawn, whatever
+   the others offer.
+2. Otherwise the box offering the finder the largest priority fee is drawn, and the oldest breaks a tie.
+
+The default of 7200 blocks is about 10 days on mainnet. Until a box reaches it, lenders compete on
+priority fee alone, which is what makes paying one worth anything. The age rule then clears boxes that
+offer nothing, so no box waits in the active set forever.
+
+**A lower value clears idle boxes sooner and weakens priority fees.** At the minimum of 100 blocks,
+about 3 hours 20 minutes on mainnet, a box that bids nothing outranks every bid after waiting only that
+long. The maximum of 14400 blocks, about 20 days, lets bids decide for longest. The rule is this
+client's own choice, not a contract rule, so different miners may run different values.
 
 ## Building the genesis transaction
 

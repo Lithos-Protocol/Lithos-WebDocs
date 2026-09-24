@@ -72,6 +72,10 @@ function DifficultiesPanel({ configDiff, difficulty }) {
   const near = (score) => score != null && config != null && Math.abs(config - Number(score)) / Number(score) <= 0.005;
   // A pending commitment matching the config is the change already under way, not a mismatch.
   const differs = config != null && d?.committed != null && !near(d.committed) && !near(d.pending);
+  // A client that does not report the multiplier always reduced by the full coefficient.
+  const multiplier = Number(d?.reductionMultiplier ?? NISP_COEFFICIENT);
+  const onlySuper = multiplier >= NISP_COEFFICIENT;
+  const base = d?.forcedConfig ? 'config' : 'committed';
 
   return (
     <div className={`${s.card} ${s.stackGap}`}>
@@ -112,19 +116,22 @@ function DifficultiesPanel({ configDiff, difficulty }) {
           What the stratum sends your mining software, and the difficulty it shows.
           {d?.reducedReporting ? (
             <span className={s.diffAside}>
-              Reduced share reporting is on, so this is {fmtInt(NISP_COEFFICIENT)}× your{' '}
-              {d.forcedConfig ? 'config' : 'committed'} diff. This means that your miner only reports
-              super shares.
+              Reduced share reporting is on, so this is {fmtInt(multiplier)}× your {base} diff.{' '}
+              {onlySuper
+                ? 'This means that your miner only reports super shares.'
+                : `Your miner reports about ${fmtInt(NISP_COEFFICIENT / multiplier)} shares for every super share.`}
             </span>
           ) : (
-            d && ` It is your ${d.forcedConfig ? 'config' : 'committed'} diff.`
+            d && ` It is your ${base} diff.`
           )}
         </DiffTile>
 
         <DiffTile label="Super-share diff" value={asDiff(d?.superShare)} raw={d?.superShare ? fmtInt(d.superShare) : null}>
-          {fmtInt(NISP_COEFFICIENT)} × your {d?.forcedConfig ? 'config' : 'committed'} diff. A share this
-          hard to find counts toward a NISP.
-          {d?.reducedReporting && ' Equal to the stratum diff while reduced share reporting is on.'}
+          {fmtInt(NISP_COEFFICIENT)} × your {base} diff. A share this hard to find counts toward a NISP.
+          {d?.reducedReporting &&
+            (onlySuper
+              ? ' Equal to the stratum diff while reduced share reporting is on.'
+              : ` ${fmtInt(NISP_COEFFICIENT / multiplier)}× the stratum diff at a reduction multiplier of ${fmtInt(multiplier)}.`)}
         </DiffTile>
       </div>
 

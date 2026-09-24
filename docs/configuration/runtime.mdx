@@ -2,7 +2,7 @@
 sidebar_position: 9
 tags:
   - configuration
-description: Background tasks, thread pools, and the two switches that disable protocol work.
+description: Committing your difficulty, background tasks, thread pools, and the switch that disables protocol work.
 ---
 
 # Tasks and dispatchers
@@ -11,9 +11,9 @@ description: Background tasks, thread pools, and the two switches that disable p
 
 *Assumes you know what an Akka dispatcher is and why thread pool isolation matters. Most miners never change anything on this page.*
 
-Three blocks are left. `state` holds two switches that turn protocol work off, `lithos-tasks`
-configures the three background timers, and `lithos-contexts` defines the thread pools everything runs
-on.
+Three blocks are left. `state` holds two switches: one that commits your difficulty on chain and one
+that turns protocol work off. `lithos-tasks` configures the three background timers, and
+`lithos-contexts` defines the thread pools everything runs on.
 
 The dispatcher pools in particular encode a design decision rather than a preference, and the page says
 which ones you must not merge.
@@ -22,15 +22,53 @@ which ones you must not merge.
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
+| `state.autoCommit` | `false` | `true` or `false` | Register this miner and commit `stratum.diff` on chain, then keep the commitment equal to it |
 | `state.disableTransforms` | `false` | `true` or `false` | Disable every transaction and interaction with LFSM rollups |
-| `state.autoCommit` | `true` | `true` or `false` | Commit `stratum.diff` on chain whenever it differs from your current commitment |
 
 `disableTransforms` is a blunt instrument. With it on the client follows the chain but submits nothing:
-no NISPs, no phase transforms, no fraud proofs, no payouts. **You mine and are not paid.** This can be useful for testing.
+no NISPs, no phase transforms, no fraud proofs, no payouts, and no commitments. **You mine and are not
+paid.** This can be useful for testing.
 
-`autoCommit` only runs while `disableTransforms` is false. Pair `autoCommit = false` with
-`stratum.forceConfigDiff = true` to measure difficulties without writing any of them on chain, as in
+### Committing your difficulty
+
+A miner is paid from a rollup only after two things are on chain: a registration in the **Miner
+Dictionary**, the on-chain registry of Lithos miners, and a **difficulty commitment**, the score your
+NISPs are judged against. `autoCommit` makes the client handle both.
+
+**It ships off**, so a new client never writes a difficulty you are still testing. While it is off and
+you are not registered, the client mines normally but cannot submit NISPs, and the log says so at
+startup. Turn it on once you have chosen `stratum.diff`.
+
+With it on, the dictionary task checks every minute, starting about a minute after startup:
+
+1. If you are not registered, the client registers you with `stratum.diff` as your first commitment.
+   Registration waits until the Miner Dictionary has synced.
+2. If you are registered and your newest commitment differs from `stratum.diff`, the client replaces
+   it as soon as the contracts allow.
+3. After sending either transaction, the client waits for it to confirm and for its own sync to reach
+   that block, then checks again.
+4. Once the confirmed commitment equals `stratum.diff`, the loop stops until the next restart.
+
+The contracts decide how fast a commitment moves. The following counts blocks from the moment the
+client sends it:
+
+| Event | Blocks after sending | Testnet | Mainnet |
+|---|---|---|---|
+| The commitment binds, and NISPs are judged against it | 125 | about 1 hour 35 minutes | about 4 hours 10 minutes |
+| The commitment may be replaced by a new one | 845 | about 10 hours 30 minutes | about 28 hours |
+
+A registration or change has 5 blocks to be included. If it misses them it becomes invalid, and the
+client sends a new one on a later check.
+
+While the loop is waiting, it logs the reason once, as `Auto-commit waiting on ...`, and again only when
+the reason changes. `autoCommit` does nothing while `disableTransforms` is true or the dictionary task is
+disabled.
+
+:::tip Choose `diff` before you turn this on
+A commitment holds for 845 blocks before it can be replaced. Measure your super share rate first with
+`stratum.forceConfigDiff = true`, as in
 [Stratum and difficulty](./stratum.mdx#testing-without-committing).
+:::
 
 ## Background tasks
 
@@ -49,9 +87,10 @@ The three tasks and what they ship as:
 |---|---|---|---|---|
 | `lithos-tasks.stratum-server` | `true` | 30 seconds | 30 seconds | Runs the stratum server that your mining software connects to |
 | `lithos-tasks.rollup-sync-task` | `true` | 10 seconds | 500 millis | Drives rollup phase work against current state |
-| `lithos-tasks.dictionary-sync-task` | `true` | 5 seconds | 500 millis | Keeps the Miner Dictionary in step, and warns before your registration expires |
+| `lithos-tasks.dictionary-sync-task` | `true` | 60 seconds | 60 seconds | Registers and commits when `state.autoCommit` is on, and warns before your registration expires |
 
 Durations take any form the config library parses, such as `500 millis`, `30 seconds` or `5 minutes`.
+The dictionary task runs at most once a minute, so a shorter `interval` there is raised to one minute.
 
 **A missing task block stops the client** rather than defaulting, because a task silently not running
 is worse than a refusal to start. The one exception is a lookup that only picks a log message, which
@@ -69,7 +108,7 @@ submissions.
 `lithos-contexts` defines every thread pool the client uses. **Startup checks that each named block
 exists** and leaves the contents to Akka, so a missing block is caught and a bad pool size is not.
 
-The client requires all nineteen of these blocks:
+The client requires all twenty-three of these blocks:
 
 | Dispatcher | Pool | Serves |
 |---|---|---|
@@ -92,6 +131,14 @@ The client requires all nineteen of these blocks:
 | `tx-dispatcher` | fork-join, 2 to 10 | General transaction work |
 | `dex-dispatcher` | 16 threads | The local LithosDex HTTP endpoints |
 | `database-dispatcher` | 2 threads | Local database work |
+| `stats-dispatcher` | 1 thread | The statistics collector behind the web panels |
+| `stats-read-dispatcher` | 1 thread, queue 1 | LithosDex statistics reads from the node |
+| `stats-store-dispatcher` | 1 thread, queue 1 | Writing LithosDex statistics to disk |
+| `mining-stats-dispatcher` | 1 thread, queue 1 | Mining statistics: node reads and their history on disk |
+
+A top-level `stats-mailbox` block also bounds the statistics collector's mailbox at 256 messages, so
+a slow statistics read drops observations rather than growing memory. See
+[Statistics and web panels](./stats.mdx).
 
 ### Why they are separate
 
@@ -124,3 +171,4 @@ behind something slower. Raising a count is usually safe; merging two blocks is 
 
 - [Configuration overview](./overview.mdx): how a missing block is reported at startup.
 - [Synchronization and storage](./sync.mdx): what `snapshot-io-dispatcher` is doing.
+- [Statistics and web panels](./stats.mdx): what the four statistics dispatchers serve.

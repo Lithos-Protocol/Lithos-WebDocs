@@ -1,0 +1,110 @@
+---
+sidebar_position: 3
+tags:
+  - lithosdex
+description: Depositing ERG and LIT into the LithosDex pool, the two ways it earns, and closing a position without losing fees.
+---
+
+# Providing liquidity
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you know what an automated market maker is and what price movement does to a liquidity position. Read the [LithosDex overview](./overview.mdx) first.*
+
+Liquidity providers own the LithosDex pool's reserves and earn the fees every swap pays. This page
+covers opening a position, the two ways it earns, claiming those earnings, and closing it again. How to
+place orders in general is in [Trading with orders](./orders.mdx).
+
+## What a position is
+
+A position on LithosDex is a **provision**: a box of its own on Ergo that records how many **shares**
+of the pool you own. It holds no ERG or LIT of yours beyond a fixed 0.6 ERG floor. Your ERG and LIT sit
+in the pool, and your shares say how much of them is yours.
+
+Each provision comes with an **owner NFT**, a token minted for that provision alone and sent to your
+wallet. Claiming the provision's fees and closing it both require the NFT as an input.
+
+:::danger The owner NFT is the position
+Whoever holds the NFT owns the provision, its fees and its share of the reserves. Sending the NFT to
+another address hands all of that over. Losing it loses the position, and nothing can recover it.
+:::
+
+## Opening a position
+
+A deposit adds ERG and LIT to the pool at its current ratio. To deposit from the web interface, follow
+these steps:
+
+1. Open **LithosDex**, then the **Liquidity** tab.
+2. Under **Add liquidity**, enter the **ERG to deposit**. The interface works out the LIT that matches it
+   at the current price.
+3. Check the quote, including the shares you receive and, for an order, the **Minimum shares**.
+4. Select **Place order**, or **Deposit liquidity** when **Use orders** is off.
+
+The deposit also funds the new provision box with 0.6 ERG, which comes back to you when you close it.
+If the pool moves before your deposit lands, whatever does not match the new ratio is returned rather
+than traded.
+
+As an order, a deposit carries a minimum number of shares. It protects you from a pool someone moved in
+the same block: a deposit that would buy fewer shares than your minimum does not fill.
+
+## How a position earns
+
+Each swap pays two fees to providers, and they reach you in different ways:
+
+| Fee | Share of each swap | How you receive it |
+|---|---|---|
+| Pool fee | 0.15% | It stays in the reserves, so each of your shares is worth more when you close |
+| Permanent fee | 0.15% | It is set aside and claimed separately, without closing the position |
+
+**Permanent fees are kept apart from the reserves**, so price movement in the pool does not touch
+them. What your shares are worth in the reserves does move with the price, as in any automated market
+maker. The permanent fees you have earned do not.
+
+## Claiming permanent fees
+
+Permanent fees pass through two steps before they reach you:
+
+1. **The pool collects them.** Every swap sets its permanent fee aside inside the pool box.
+2. **A flush moves them to the vault.** The vault is a separate box that pays providers. Miners flush
+   at the end of the order runs they put in their own blocks, and anyone can flush from the **Flush**
+   tab.
+
+Once fees are in the vault, the **Fees** tab lists them as **Claimable now**. Select
+**Claim settled permanent fees** on a provision to send them to your wallet. Fees still in the pool are
+listed as **Awaiting flush** and become claimable after the next flush.
+
+Each provision is owed its own share of every fee that arrived while it existed. Claiming takes nothing
+from anyone else, and what you do not claim stays owed to you.
+
+## Closing a position
+
+Closing redeems your shares for their part of the reserves, returns the provision box's 0.6 ERG, and
+burns the owner NFT. To close from the web interface, open the **Liquidity** tab and use
+**Remove liquidity**.
+
+**A redemption forfeits every permanent fee the provision has not claimed.** The provision box is
+spent, and the fees owed to it go with it. The interface handles this for you in each mode:
+
+| Mode | What happens to fees |
+|---|---|
+| Order | Fees already in the vault are claimed in the same transaction that places the order. Fees still awaiting a flush, and any that arrive while the order waits, are lost when it fills |
+| Direct | Nothing is claimed. The interface warns you and requires **Redeem anyway and give up these fees** before it sends |
+
+To keep everything, flush from the **Flush** tab, claim from the **Fees** tab, and redeem afterwards.
+
+## Keeping an idle position alive
+
+Ergo lets anyone collect a box that has sat untouched for four years. A provision can safely sit much
+longer than that:
+
+- **Claiming renews it.** A claim replaces the provision box with a new one, which starts the clock
+  again.
+- **Anyone may refresh an old one.** After 525,600 blocks, about two years on mainnet, anyone may
+  replace a provision box with an identical new one. A refresh moves nothing and changes no owner.
+- **The 0.6 ERG floor covers the rest.** If neither of the above happens, the floor pays for two
+  storage-rent collections, and the provision survives both with a smaller floor.
+
+## Next steps
+
+- [Trading with orders](./orders.mdx): order fees, statuses and cancelling.
+- [LithosDex overview](./overview.mdx): how the price and fees work.

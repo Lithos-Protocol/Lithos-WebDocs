@@ -61,6 +61,9 @@ not eligible consolidation inputs.
 | Log text | Meaning | Operator action |
 |---|---|---|
 | `No usable difficulty commitment ... may be considered fraudulent` | No active commitment is currently usable | Expected at first startup until dictionary synchronization and commitment activation complete. Work submitted before the commitment is active is not payable. If it persists after synchronization, check `state.autoCommit`, the configured difficulty, and the on-chain commitment |
+| `Auto-commit is off (state.autoCommit)` | The client will not register you or change your commitment | Expected while you test. Set `state.autoCommit = true` once you have chosen `stratum.diff`. An unregistered miner cannot submit NISPs |
+| `Auto-commit waiting on ...` | Registration or a commitment change is waiting on the named condition | No action for sync, confirmation or the 845-block replacement rule. Logged again only when the reason changes |
+| `Difficulty commitment ... is on chain` | The confirmed commitment equals `stratum.diff` | None. The client stops checking until the next restart |
 | `Cannot submit NISPs until commit (height,diff) is in effect` | The commitment exists and is waiting to activate | No action; this is progress rather than a fault |
 
 :::danger A fallback that is logged but not fatal

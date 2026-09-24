@@ -80,15 +80,15 @@ const config: Config = {
             to: "/mining",
           },
           {
+            label: "Collateral",
+            position: "left",
+            to: "/collateral",
+          },
+          {
             label: "LithosDex",
             position: "left",
             to: "/dex",
             className: "navbar__link--dex",
-          },
-          {
-            label: "Collateral",
-            position: "left",
-            to: "/collateral",
           },
           {
             href: "https://github.com/Lithos-Protocol",

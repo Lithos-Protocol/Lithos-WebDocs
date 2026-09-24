@@ -162,15 +162,17 @@ and the [startup guide](../startup-intro.mdx) explains why.
 Your difficulty is a commitment made in advance, on chain. That is what stops anyone waiting to see
 which shares they found and then claiming whatever difficulty those shares happen to justify.
 
-It also means you cannot tune it freely:
+It also means you cannot tune it freely. Both rules below count from when the client sends a
+commitment:
 
 | Rule | Blocks | On testnet | On mainnet |
 |---|---|---|---|
-| Before a new commitment takes effect | 60 | 45 minutes | 2 hours |
-| Before you may replace a commitment | 780 | about 9 hours 45 minutes | about 26 hours |
+| Before the commitment takes effect | 125 | about 1 hour 35 minutes | about 4 hours 10 minutes |
+| Before you may replace the commitment | 845 | about 10 hours 30 minutes | about 28 hours |
 
-**Test before you commit.** Setting `stratum.forceConfigDiff = true` and `state.autoCommit = false`
-lets you measure super share rates at several values without writing any of them on chain. The
+**Test before you commit.** The client only commits once you turn on `state.autoCommit`, which ships
+off. Until then, `stratum.forceConfigDiff = true` lets you measure super share rates at several values
+without writing any of them on chain. The
 [startup guide](../startup-intro.mdx#testing-values-without-committing) covers how.
 
 ## What each submission costs

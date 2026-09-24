@@ -15,8 +15,9 @@ Everything under `stratum.candidate` controls the blocks this client builds: whi
 draws, how long it waits for the genesis transaction, and what other transactions it inserts. This page
 covers that block and the five transaction sources beneath it.
 
-Inserting transactions is just one way a Lithos miner earns beyond the block reward, and it is **off by
-default**. The settings that turn it on are in [Transaction sources](#transaction-sources).
+Inserting transactions is **off by default**. The settings that turn it on are in
+[Transaction sources](#transaction-sources). What the client does with them, and where the revenue they
+earn goes, is explained in [Candidate building](../tutorial-basics/candidate-building.mdx).
 
 ## Collateral selection
 
@@ -94,6 +95,10 @@ different chains.
 Each source is bounded on its own **before** the package is bounded as a whole, so a busy source cannot
 crowd out a quieter one that matters more. A source that is off is never asked, so it costs no build
 and no node read.
+
+**Revenue the package earns goes to the pool, not to you alone.** Executor fees and collected storage
+rent are added to the holding box your block's genesis transaction creates, so every miner who submits
+to that rollup is paid a share of them by score. You submit to it too.
 
 Every source takes the same four keys under `stratum.candidate.sources.<name>`:
 
@@ -177,5 +182,6 @@ the package budget, and what was refused for want of room.
 
 ## Next steps
 
+- [Candidate building](../tutorial-basics/candidate-building.mdx): how a package is assembled, and what happens when part of it fails.
 - [Batching and orders](./batching.mdx): the two sources that fill other people's orders.
 - [Collateral and emission](./emission.mdx): what the `emissions` source is doing.

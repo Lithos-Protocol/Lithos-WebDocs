@@ -20,6 +20,7 @@ import {
   splitHashrate,
   timeLabel,
 } from './format';
+import { NISP_COEFFICIENT } from './trade';
 
 /*
  * One colour per actor, fixed for the whole page: cyan is the Ergo network, purple is Lithos,
@@ -183,6 +184,19 @@ function blockPaceMs(current) {
   const done = current ? current.endHeight - current.startHeight + 1 : 0;
   const elapsed = current ? current.endTimestamp - current.startTimestamp : 0;
   return done > 1 && elapsed > 0 ? elapsed / (done - 1) : null;
+}
+
+/**
+ * What reduced reporting means for the hashrate reading at the stratum's multiplier. A client that
+ * does not report one always reduced by the full coefficient.
+ */
+function reductionNote(reported) {
+  const multiplier = Number(reported ?? NISP_COEFFICIENT);
+  const sent =
+    multiplier >= NISP_COEFFICIENT
+      ? 'your miners send only super shares'
+      : `your miners send shares at ${fmtInt(multiplier)}× your diff, about ${fmtInt(NISP_COEFFICIENT / multiplier)} per super share`;
+  return `Reduced share reporting is on: ${sent}, and each is credited that difficulty's work. Your hashrate display may be less accurate or more volatile.`;
 }
 
 /**
@@ -811,8 +825,7 @@ export default function HashratePanel() {
 
           {workers?.reducedReporting && (
             <p className={s.cardNote} style={{ marginTop: 12 }}>
-              Reduced share reporting is on: your miners send only super shares, and each is credited
-              the super-share threshold's work. Your hashrate display may be less accurate or more volatile.
+              {reductionNote(stats?.local?.stratum?.difficulty?.reductionMultiplier)}
             </p>
           )}
         </div>

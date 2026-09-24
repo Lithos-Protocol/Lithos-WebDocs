@@ -1,0 +1,111 @@
+---
+sidebar_position: 2
+tags:
+  - lithosdex
+description: Placing a LithosDex order, what it locks and pays, following it until it fills, and cancelling it.
+---
+
+# Trading with orders
+
+<span className="badge badge--success">Standard</span>
+
+*For anyone trading on LithosDex. Read the [LithosDex overview](./overview.mdx) first if you have not.*
+
+An order is how you trade on LithosDex without racing anyone for the pool. This page covers placing an
+order from the web interface, what it costs, how to follow it, and how to cancel it. Deposits and
+redemptions can be placed as orders too, and [Providing liquidity](./liquidity.mdx) covers what is
+particular to them.
+
+## What an order is
+
+An order is a box on Ergo that holds the funds you are trading and states your terms. Its contract lets
+exactly two things happen to it:
+
+- **A miner fills it.** The miner trades your funds against the pool, and the contract requires you to
+  receive at least your minimum. The miner keeps the executor fee and nothing else.
+- **You cancel it.** Only your key can spend it this way, and your funds come back to you.
+
+Nobody else can move the funds, and there is no time limit. An order that is never filled waits until
+you cancel it.
+
+## Placing a swap order
+
+To place a swap order from the web interface, follow these steps:
+
+1. Open **LithosDex**, then the **Swap** tab.
+2. Check that **Use orders** is on.
+3. Enter the amount you want to trade. Use the arrow between the two fields to switch between buying
+   and selling LIT.
+4. Choose a **Slippage** allowance. The interface turns it into the **Minimum received** written into
+   your order.
+5. Check the quote, then select **Place order**.
+
+The order is placed by an ordinary transaction from your node wallet. It appears under **Your orders**
+as soon as the client has sent it.
+
+### Choosing your slippage
+
+Your minimum is the only protection your order carries against the pool moving before it fills. Other
+trades in the same block can move the price in either direction, so:
+
+- **Too tight** and a small move leaves your order unfillable. It then waits until the price comes back,
+  or until you cancel it.
+- **Too loose** and your order fills at a worse price than you needed to accept.
+
+The fill is always at the pool's actual price at that moment. The minimum is a floor, not a target, so
+a looser allowance does not by itself make your trade worse.
+
+## What an order costs and locks
+
+The quote lists what the order needs:
+
+| Line | What it is | When you pay it |
+|---|---|---|
+| **Executor fee** | What the miner who fills your order keeps. 0.003 ERG by default | Only when the order fills |
+| **Network fee** | The fee on the transaction that places the order | When you place it |
+| Total locked | Your trade amount plus the executor fee, held in the order box | Returned in full if you cancel |
+
+**A cancelled order pays no executor fee.** Cancelling is a transaction of its own, so it pays an
+ordinary network fee.
+
+### Changing the default fees
+
+The executor fee and the most of it a miner may spend on network fees come from `lithosdex.orders` in
+your configuration. You can also set them for your own orders under **Settings**, with **Custom order
+fees**. See [Batching and orders](../configuration/batching.mdx#fees-on-orders-you-place) for both.
+
+**Lowering the executor fee can leave your order unfilled.** Miners skip orders paying less than their
+own minimum. The default is set to clear every miner running this client with its shipped settings.
+
+## Following an order
+
+**Your orders** lists every outstanding order your wallet owns, with one of the following statuses:
+
+| Status | What it means | Can you cancel? |
+|---|---|---|
+| **Placing** | The transaction that places it has not confirmed yet | Yes |
+| **Open** | On chain and waiting for a miner | Yes |
+| **Filling** | A transaction filling it is waiting to confirm | No |
+| **Cancelling** | Your cancel is waiting to confirm | No |
+
+An open order marked **Waiting for price** cannot fill against the pool as it stands, because the
+pool's price is past your minimum. It fills if the price returns. Otherwise cancel it and place a new
+one at the current price.
+
+A filled order disappears from the list. What you received arrives in your node wallet.
+
+## Cancelling an order
+
+Select **Cancel** next to the order under **Your orders**. The client sends a transaction that returns
+the order's funds to your wallet, including the executor fee.
+
+:::note A miner may fill it first
+If a miner's fill confirms before your cancel, the order is filled and your cancel fails. You then have
+the result of the trade rather than your funds back. That trade still met your minimum.
+:::
+
+## Next steps
+
+- [Providing liquidity](./liquidity.mdx): depositing into the pool, and placing deposits and
+  redemptions as orders.
+- [LithosDex overview](./overview.mdx): how the price and fees work.

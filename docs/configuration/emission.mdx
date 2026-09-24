@@ -64,6 +64,7 @@ effectiveness and queue slot availability.
 | `emission.maxOwnCollateral` | 10 | 0 to 2000 | Your boxes live at once, across the queue, live collateral and the active set |
 | `emission.maxLenderKeys` | 32 | 1 to 1000, and at most `node.numAddresses` | Wallet addresses dedicated to lending |
 | `emission.maxPermitPerJoin` | 40000000000000 | Any positive value, in LIT base units | The most LIT to post as a permit on one box |
+| `emission.priorityFeeNanoErgs` | 0 | `0`, or 1000000 to 3000000000 nanoERG | ERG each position adds above the 2.915 ERG floor, to be spent sooner |
 
 ### What a position costs
 
@@ -78,12 +79,28 @@ never blocks a join.
 
 The value is in base units at 9 decimals, so 40,000 LIT is `40000000000000`.
 
-:::note Collateral boxes may contain extra rewards
-Collateral boxes support **fee futures**, where lenders may add additional ERG to their collateral box,
-in hopes of being selected out of the live set quicker. Since transaction fees go to lenders, this can break
-down into a sort of fee futures market, where lenders may add more ERG to their collateral box in hopes of
-getting selected when they expect transaction fees to be higher. Fee futures are supported by the client,
-but no config or API options allows them to be set yet.
+### Paying for priority
+
+A miner who finds a block spends the collateral box that pays them most, so a position that offers
+more is spent ahead of the ones that offer nothing. `priorityFeeNanoErgs` is that offer, for the
+positions `autoCollateralize` creates. A join from the web panel sets its own. Each position then locks `2.915 ERG + priorityFeeNanoErgs`, and when a miner spends it the fee divides as follows:
+
+| Share | Goes to |
+|---|---|
+| One fifth | The miner who spends the box |
+| Four fifths | The rollup that block opens, paid to every miner who submits to it |
+
+Because transaction fees in a Lithos block go to the lender, paying for priority works like a fee
+future: you pay to be spent sooner, for example when you expect the blocks ahead to carry high fees.
+
+`0` posts at the floor and offers nothing. Any other value must be at least `1000000` (0.001 ERG), so
+the miner's fifth is worth more than the output it arrives in.
+
+:::warning Past 0.085 ERG the block reward no longer covers your principal
+The lender receives the 3 ERG block reward plus the block's transaction fees. Above `85000000`
+(0.085 ERG) the priority fee takes the principal past 3 ERG, so getting it all back depends on the
+fees in the block that spends your box. The client allows it, and logs a warning on every
+self-collateralization pass that posts above this.
 :::
 
 ### One key per box, and why it matters

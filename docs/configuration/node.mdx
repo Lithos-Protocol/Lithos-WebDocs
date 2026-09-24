@@ -29,8 +29,15 @@ Every setting here is **required**. The client refuses to start if any is missin
 | `node.storagePath` | empty | Any string | Full path to the node wallet's `keyfile.json`. The client signs transactions with it |
 | `node.pass` | empty | Any string | The node wallet password, used to unlock that keystore |
 | `node.networkType` | `MAINNET` | `MAINNET` or `TESTNET` | Decides the default node port, address prefixes and contract set. Case-insensitive |
-| `node.explorerURL` | `default` | A URL, or the literal `default` | The explorer the client falls back to. `default` picks the right one for the network |
+| `node.explorerURL` | `default` | A URL, or the literal `default` | Required by the Ergo SDK the client is built on. The client reads nothing from it. `default` picks the public explorer for the network |
 | `node.numAddresses` | 32 | 1 to 1000 | How many EIP-3 addresses the prover holds keys for |
+
+### The client reads the chain from your node alone
+
+Every box, transaction and block the client uses comes from your node. `node.explorerURL` exists only
+because the Ergo SDK the client is built on requires one, and leaving it at `default` is correct. This
+is also why the node must run with `extraIndex = true`: the client looks boxes up by token and script
+through the node's own index.
 
 ### The port is appended, not required
 

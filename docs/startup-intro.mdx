@@ -18,9 +18,9 @@ This guide takes you from nothing to a Lithos client mining on the Ergo testnet.
 requirements, the configuration file, starting the client, connecting your mining software, and making
 your first difficulty commitment.
 
-It does not cover lending collateral or using the LithosDex, which both live in the client's web
-interface, and it does not explain how the protocol works internally. For that, read
-[Lithos Protocol](./intro.mdx).
+It does not cover lending collateral or using LithosDex, which both live in the client's web
+interface. LithosDex has its own [section](./lithosdex/overview.mdx). It also does not explain how the
+protocol works internally. For that, read [Lithos Protocol](./intro.mdx).
 
 :::info Testnet only
 The current release runs on the Ergo **testnet**. Contract addresses and token IDs are not final. Use a
@@ -97,7 +97,7 @@ pulls in the shipped defaults through the `include` on the first line.
     storagePath = "path/to/nodefolder/.ergo/wallet/keystore/keyfile.json"
     pass        = "NODE_WALLET_PASS_HERE"
     networkType = "TESTNET"
-    explorerURL = "https://api-testnet.ergoplatform.com"
+    explorerURL = "default"
     numAddresses = 32
     mempoolSorting = "bySize"
   }
@@ -110,13 +110,14 @@ pulls in the shipped defaults through the `include` on the first line.
   lithos.apiKeyHash = "324dcf027dd4a30a932c441f365a25e86b173defa4b8e58948253471b81b72cf"
 
   stratum {
-    diff = "140M"              # Format: (value)(powerOfTen), e.g. "4.0G", "1.52M", "300.1K"
+    diff = "140M"               # Format: (value)(powerOfTen), e.g. "4.0G", "1.52M", "300.1K"
     stratumPort = 4444
-    reduceShareMessages = true # Cuts share traffic between your mining software and Lithos
-    forceConfigDiff = false    # Leave false unless you are experimenting
+    reduceShareMessages = true  # Cuts share traffic between your mining software and Lithos
+    reductionMultiplier = 10000 # How far it cuts: 10, 100, 1000 or 10000
+    forceConfigDiff = false     # Leave false unless you are experimenting
   }
 
-  state.autoCommit = true
+  state.autoCommit = false      # Turn on once you have chosen diff. See Step 6
 }
 ```
 
@@ -129,7 +130,7 @@ Every setting in that file:
 | `node.storagePath` | Full path to the node wallet's `keyfile.json`. Lithos signs transactions with it |
 | `node.pass` | The node wallet password, used to unlock that keystore |
 | `node.networkType` | `TESTNET` or `MAINNET`. Decides the node port, address prefixes and contract set |
-| `node.explorerURL` | The explorer the client falls back to. `default` picks the right one for the network |
+| `node.explorerURL` | Required by the Ergo SDK the client is built on. The client reads nothing from it, so leave it at `default` |
 | `node.numAddresses` | How many wallet addresses Lithos derives keys for. Leave it at 32. Raising it later is safe; lowering it strands any ERG already paid to the addresses above the new limit |
 | `node.mempoolSorting` | Must match your node's `ergo.node.mempoolSorting`, either `bySize` or `byExecutionCost`. Lithos packs blocks against the rule your node actually applies |
 | `play.http.secret.key` | Signs the client's own web session cookies. Set it to any long random string |
@@ -137,8 +138,9 @@ Every setting in that file:
 | `stratum.diff` | Your difficulty commitment. This is the number that decides your payout. See [Choosing a difficulty](#choosing-a-difficulty) |
 | `stratum.stratumPort` | The port your mining software connects to |
 | `stratum.reduceShareMessages` | Raises the difficulty your mining software reports at, without changing the difficulty Lithos pays you at |
+| `stratum.reductionMultiplier` | How many times your committed difficulty it raises it to: `10`, `100`, `1000` or `10000`. At `10000` your mining software sends only super shares |
 | `stratum.forceConfigDiff` | Forces Lithos to mine at `diff` instead of your on-chain commitment. For testing only |
-| `state.autoCommit` | Commits `diff` to the blockchain automatically whenever it differs from your current on-chain commitment |
+| `state.autoCommit` | Registers you and commits `diff` on the blockchain, then keeps your commitment equal to `diff`. Ships off. See [Step 6](#step-6-commit-your-difficulty) |
 
 ### Keeping secrets out of the file
 
@@ -210,38 +212,63 @@ rigel.exe -a autolykos2 -o stratum+tcp://127.0.0.1:4444 -u YOUR_ERG_WALLET -w my
 </TabItem>
 </Tabs>
 
-## Step 6: Wait for your difficulty commitment
+## Step 6: Commit your difficulty
 
-You cannot be paid until your difficulty is committed on the blockchain. A commitment is a promise to
-mine at a given hashrate, made in advance, and it is what makes your payouts reflect your hashrate
-rather than your luck.
+You cannot be paid until you are registered on the blockchain and your difficulty is committed there.
+A commitment is a promise to mine at a given hashrate, made in advance, and it is what makes your
+payouts reflect your hashrate rather than your luck.
 
-Two waits stand between starting the client and earning:
+The client registers and commits for you once you turn on `state.autoCommit`. **It ships off**, so
+nothing is written on chain while you test. Until you turn it on, the client mines normally but cannot
+submit NISPs, so you are not paid from rollups.
+
+To commit, follow these steps:
+
+1. Choose your difficulty. See [Choosing a difficulty](#choosing-a-difficulty).
+2. Set it in `lithos.conf`, and turn `autoCommit` on:
+
+   ```hocon title="lithos-client/bin/lithos.conf"
+     stratum.diff = "YOUR_DIFF"
+     state.autoCommit = true
+   ```
+
+3. Restart the client.
+
+Three waits then stand between you and earning:
 
 1. **Synchronizing.** The client syncs from `sync.startHeight` in `application.conf`, which you can
    override in your own file with `sync.startHeight = NEW_HEIGHT`. Syncing the miner registry takes
    about 30 minutes on the current testnet.
-2. **The commitment taking effect.** With `state.autoCommit = true`, the client submits your commitment
-   as soon as the registry is synced. A new commitment becomes active 60 blocks later, which is about
-   45 minutes on testnet. Work you do before then is not payable.
+2. **Registering.** About a minute after startup, and every minute after that, the client checks your
+   registration. Once the registry is synced, it registers you with `diff` as your first commitment and
+   waits for that transaction to confirm.
+3. **The commitment taking effect.** A commitment binds 125 blocks after the client sends it: about
+   1 hour 35 minutes on testnet, and about 4 hours 10 minutes on mainnet. Work you do before then is
+   not payable.
+
+The log reports progress. `Auto-commit waiting on ...` names what the client is waiting for, and
+`Difficulty commitment ... is on chain` means it is done.
 
 ### Changing your difficulty later costs a day, not an hour
 
-Two separate rules govern a change, and the second one is the expensive one:
+To change your difficulty, edit `diff` and restart with `autoCommit` still on. The client sends the
+change as soon as the contracts allow it. Two rules decide when that is, both counted from when the
+client sends a commitment:
 
 | Rule | Blocks | On testnet | On mainnet |
 |---|---|---|---|
-| How long before a new commitment takes effect | 60 | 45 minutes | 2 hours |
-| How long you must wait after the last commitment before setting another | 780 | about 9 hours 45 minutes | about 26 hours |
+| Before the commitment takes effect | 125 | about 1 hour 35 minutes | about 4 hours 10 minutes |
+| Before the commitment may be replaced | 845 | about 10 hours 30 minutes | about 28 hours |
 
-The second rule exists because a rollup stays open to fraud proofs for 720 blocks after the block that
-opened it, and a super share may be 60 blocks older than that block. Your commitment has to survive
-that whole span so the contracts can check old work against the difficulty you actually promised.
+The second rule is the expensive one. A rollup stays open to fraud proofs for 720 blocks after the
+block that opened it, and a super share may be 60 blocks older than that block. Your commitment has to
+survive that whole span so the contracts can check old work against the difficulty you actually
+promised.
 
 :::warning Pick a difficulty you can leave alone
-Once you commit, you are held to that difficulty for 780 blocks before you may change it, and the
-change then takes a further 60 blocks to bind. On testnet that is most of a day from one difficulty to
-the next. Use the offline method below to find your value before you commit to it.
+Once you commit, you are held to that difficulty for 845 blocks before you may change it, and the
+change then takes a further 125 blocks to bind. That is about half a day on testnet and well over a day
+on mainnet. Use the offline method below to find your value before you commit to it.
 :::
 
 ## Choosing a difficulty
@@ -327,9 +354,10 @@ everyone else's share.
 
 ### Testing values without committing
 
-To experiment without writing anything to the blockchain, set both of these:
+To experiment without writing anything to the blockchain, leave `autoCommit` off and force the stratum
+to use your `diff`:
 
-```hocon
+```hocon title="lithos-client/bin/lithos.conf"
 stratum.forceConfigDiff = true
 state.autoCommit = false
 ```
@@ -337,7 +365,7 @@ state.autoCommit = false
 The client then always mines at the `diff` in your config and never commits it. Your experimental
 values stay off-chain.
 
-:::warning Return both settings to their defaults before mining for real
+:::warning Set `forceConfigDiff` back to `false` before mining for real
 With `forceConfigDiff = true`, mining at a difficulty below your on-chain commitment produces NISPs
 that will not be accepted.
 :::
@@ -346,8 +374,12 @@ that will not be accepted.
 
 At low difficulties your mining software may send enough shares to trigger errors about duplicate or
 old shares. Set `reduceShareMessages = true`, the default in the shipped config, to raise the stratum
-difficulty by a factor of 1,000. Your mining software then sends only super shares, and the difficulty
-Lithos evaluates and pays you at is unchanged.
+difficulty to `reductionMultiplier` times your committed difficulty. The difficulty Lithos evaluates and
+pays you at is unchanged.
+
+At the default `reductionMultiplier = 10000`, your mining software sends only super shares. If that
+leaves it too few shares to show a steady hashrate, lower it to `1000`, `100` or `10`. See
+[Share traffic](./configuration/stratum.mdx#share-traffic).
 
 ## Where Lithos stores its data
 
@@ -364,8 +396,8 @@ The following table lists the failures reported most often, and what to do about
 | No blocks are ever marked as Lithos blocks | The node is older than 6.0.4 | Upgrade the node |
 | Box lookups fail, or the collateral list is empty | The node was started without `extraIndex = true` | Add it to `ergo.conf` and restart the node |
 | Your hashrate is far below normal | The Autolykos 2 table does not fit in VRAM | See the memory warning above |
-| Duplicate or old share errors | `diff` is low enough to flood the stratum | Set `reduceShareMessages = true` |
-| Mining works, but you are never paid | Your commitment has not taken effect, or you are producing fewer than 10 super shares per 60 blocks | Wait 60 blocks after committing. If that was not it, lower `diff` |
+| Duplicate or old share errors | `diff` is low enough to flood the stratum | Set `reduceShareMessages = true`, or raise `reductionMultiplier` |
+| Mining works, but you are never paid | `state.autoCommit` is off, your commitment has not taken effect, or you are producing fewer than 10 super shares per 60 blocks | Turn on `autoCommit`, then wait 125 blocks after it commits. If that was not it, lower `diff` |
 | Submissions fail to build | The node wallet cannot cover a bond | Fund the wallet. See [What submitting costs](#what-submitting-costs) |
 | Transactions fail to broadcast | The node wallet has no ERG for fees | Fund the node wallet with testnet ERG |
 

@@ -1,0 +1,110 @@
+---
+sidebar_position: 10
+tags:
+  - configuration
+description: What feeds the Mining, Collateral and LithosDex web panels, and how much history the client keeps for them.
+---
+
+# Statistics and web panels
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you know your client reads everything from your Ergo node, and what a node read costs. Start with [Node connection and security](./node.mdx) if not.*
+
+The `stats` block controls the statistics behind the client's web panels: your stratum's hashrate and
+shares, your Lithos blocks and payments, the collateral market, and the LithosDex graphs. This page
+covers what each part collects, how often it reads your node, and how much history it keeps on disk.
+
+**Statistics never affect mining.** The collector runs on its own threads and nothing on the mining
+path waits for it. Turning any of it off blanks the matching panels and changes nothing else.
+
+## Turning statistics on and off
+
+The following switches decide what is collected:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stats.enabled` | `true` | `true` or `false` | Collect statistics at all. Off, every panel reports `disabled` |
+| `stats.mining.enabled` | `true` | `true` or `false` | Collect Lithos block, payment, difficulty and collateral history for the Mining and Collateral panels |
+| `stats.dex.enabled` | `true` | `true` or `false` | Collect LithosDex pool history for the LithosDex graphs |
+| `stats.storage.enabled` | `true` | `true` or `false` | Keep history on disk across restarts. Off, history lives in memory and starts over at every restart |
+
+## Your stratum
+
+These settings cover what your own mining software reports to the stratum server:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stats.refreshIntervalMs` | 1000 | 100 to 60000 ms | How often the stratum's hashrate and share counts are published |
+| `stats.staleAfterMs` | 15000 | More than `refreshIntervalMs`, at most 3600000 ms | How old a published reading may be before the panel marks it stale |
+
+These readings come from the stratum itself, so they cost no node reads.
+
+## Mining and collateral history
+
+The Mining and Collateral panels read your Lithos blocks, payments and difficulty epochs from the chain.
+The client walks the chain a few blocks at a time and keeps what it found:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stats.mining.historyDays` | 30 | 1 to 36500 days | How far back the first walk reaches, and how long history is kept after it |
+| `stats.mining.pruning.enabled` | `true` | `true` or `false` | Remove history older than `historyDays` |
+| `stats.mining.refreshIntervalMs` | 10000 | 1000 to 3600000 ms | Gap between refreshes |
+| `stats.mining.staleAfterMs` | 120000 | More than `refreshIntervalMs`, at most 86400000 ms | How old the history may be before the panel marks it stale |
+| `stats.mining.blocksPerRefresh` | 20 | 1 to 100 | Blocks one refresh reads |
+| `stats.mining.readTimeoutMs` | 3000 | 100 to 30000 ms | Deadline on one node read |
+| `stats.mining.readBudgetMs` | 20000 | 1000 to 120000 ms | Deadline on one whole refresh |
+
+**Totals on the Mining panel cover retained history only.** A payment older than `historyDays` is
+pruned and no longer counted. Raise `historyDays` before the first start if you want a longer record,
+because the first walk only reaches that far back.
+
+On a fresh start the client walks `historyDays` of chain at `blocksPerRefresh` blocks per refresh, so
+the panels fill in over the first minutes rather than at once.
+
+## LithosDex history
+
+The LithosDex graphs read the pool's past boxes from your node's index:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stats.dex.refreshIntervalMs` | 30000 | 1000 to 3600000 ms | Delay after one refresh finishes before the next starts |
+| `stats.dex.staleAfterMs` | 120000 | More than `refreshIntervalMs`, at most 86400000 ms | How old the graphs may be before the panel marks them stale |
+| `stats.dex.readTimeoutMs` | 3000 | 100 to 30000 ms | Deadline on one node read |
+| `stats.dex.refreshBudgetMs` | 20000 | 100 to 120000 ms | Deadline on one whole refresh |
+| `stats.dex.historyPages` | 10 | 1 to 50 | Pages of 200 pool boxes read per refresh, newest first |
+| `stats.dex.timestampLookups` | 128 | 0 to 250 | Block headers read per refresh to put times on the pool's history |
+
+The graphs reach back at most 30 days, plus the window before that for comparison. `historyPages`
+caps how many pool boxes a refresh reads to get there, so a very busy pool can show a shorter span.
+Only one of these reads runs at a time, which is why the interval is measured from the end of a
+refresh rather than its start.
+
+## Storing history on disk
+
+History is kept in a LevelDB store under your client folder:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `stats.storage.backend` | `leveldb` | A backend the client can resolve | Which key-value store to use |
+| `stats.storage.path` | `.lithos/stats` | A non-empty path | Where that store lives |
+| `stats.storage.flushIntervalMs` | 5000 | 1000 to 3600000 ms | How often LithosDex observations are written |
+| `stats.storage.sampleIntervalMinutes` | 5 | 1 to 1440 minutes | One stored LithosDex observation per interval. Readings between them are merged |
+| `stats.storage.pruning.enabled` | `true` | `true` or `false` | Remove stored LithosDex observations older than `retentionDays` |
+| `stats.storage.pruning.retentionDays` | 30 | 1 to 36500 days | How long stored LithosDex observations are kept |
+| `stats.storage.pruning.intervalMs` | 60000 | 1000 to 3600000 ms | Gap between pruning passes |
+| `stats.storage.pruning.batchSize` | 256 | 1 to 1440 | Observations removed per pruning pass |
+
+Mining history is stored under the same path, in its own database, and pruned by
+`stats.mining.historyDays`. Deleting `.lithos/stats` while the client is stopped is safe: the client
+rebuilds the history from the chain on its next start.
+
+:::note A client upgrade can start the mining history over
+The mining history database is versioned. When an upgrade changes its layout, the client leaves the old
+database untouched and rebuilds a new one from the chain, which takes the first walk described above.
+:::
+
+## Next steps
+
+- [Tasks and dispatchers](./runtime.mdx): the four threads statistics run on.
+- [Synchronization and storage](./sync.mdx): the other store under `.lithos`.

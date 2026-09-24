@@ -1,0 +1,112 @@
+---
+sidebar_position: 1
+sidebar_label: Overview
+tags:
+  - lithosdex
+description: What LithosDex is, how a trade is priced, what it costs, and how orders reach the pool.
+---
+
+# LithosDex
+
+<span className="badge badge--success">Standard</span>
+
+*For anyone trading ERG and LIT through the Lithos client. No Ergo or smart contract experience needed.*
+
+LithosDex is a decentralized exchange for ERG and LIT. It runs entirely on Ergo smart contracts, and
+your Lithos client includes a web interface for it. This page explains how a trade is priced, what it
+costs, and how your trade reaches the exchange.
+
+It does not cover depositing into the exchange, which is in
+[Providing liquidity](./liquidity.mdx), or the settings a miner uses to fill other people's orders,
+which are in [Batching and orders](../configuration/batching.mdx).
+
+## How the price is set
+
+LithosDex holds its ERG and LIT together in one **pool**, which is a single box on Ergo. You trade
+against the pool, not against another person, so a trade never waits for someone to take the other
+side.
+
+The pool sets its price from its own reserves. It keeps the product of its ERG and its LIT constant
+across a trade, before fees. Two things follow from that:
+
+- **Every trade moves the price.** Buying LIT takes LIT out of the pool and puts ERG in, so the next
+  LIT costs a little more.
+- **Large trades move it further.** The bigger your trade is against the reserves, the worse your
+  average price. The web interface shows the price you will get before you confirm.
+
+The reserves belong to **liquidity providers**, who deposit ERG and LIT together and earn the fees
+trades pay.
+
+## What a trade costs
+
+Every swap pays about 0.3% of what you put in, in two equal parts:
+
+| Fee | Share of your input | Where it goes |
+|---|---|---|
+| Pool fee | 0.15% | Stays in the reserves, which raises the value of every provider's share |
+| Permanent fee | 0.15% | Set aside for providers, who claim it separately |
+
+On top of that you pay:
+
+- **A network fee** on the transaction you send, as with any Ergo transaction.
+- **An executor fee**, if you trade with an order. It is paid only when a miner fills the order.
+
+## Orders and direct trades
+
+A trade reaches the pool in one of two ways. The **Use orders** switch in the web interface picks
+between them, and it is on by default:
+
+| | Order | Direct trade |
+|---|---|---|
+| What you send | An order box that holds your funds and your terms | A transaction that spends the pool itself |
+| Who completes it | A miner, who fills the order against the pool | You, if your transaction lands |
+| Extra cost | The executor fee, 0.003 ERG by default, paid only on fill | None |
+| When several trades arrive at once | Miners fill them one after another in the same block | Only one can spend the current pool box. The rest fail and must be sent again |
+| If you change your mind | Cancel the order and your funds come back | Nothing to cancel once it is sent |
+
+**Use orders.** The pool is one box, so direct trades collide with each other and with miners. A
+miner filling orders replaces any unconfirmed direct trade in the blocks it builds, and that trade then
+has to be sent again against the new pool. An order does not collide: it waits in its own box until a
+miner fills it at your price or better.
+
+[Trading with orders](./orders.mdx) covers placing, following and cancelling an order.
+
+## Who fills orders
+
+Miners do. A Lithos miner with block transactions turned on fills LithosDex orders in the blocks it
+mines, and keeps each order's executor fee. A miner can also fill orders by broadcasting them to the
+network, paying the network fee out of the executor fee.
+
+Filling is permissionless and checked by the order's own contract. A miner cannot fill your order at a
+worse price than your minimum, and cannot take anything but the executor fee you set.
+
+**An order paying less than miners accept waits.** Miners skip orders whose executor fee is below
+their own minimum. The default executor fee clears the shipped minimum of every miner running this
+client, so leave it unless you have a reason to change it.
+
+## Using the web interface
+
+Open **LithosDex** in the client's navigation bar. The interface has the following tabs:
+
+| Tab | What you do there |
+|---|---|
+| **Swap** | Trade ERG for LIT or LIT for ERG, and follow or cancel your orders |
+| **Liquidity** | Deposit into the pool, or close a position |
+| **Flush** | Move the permanent fees the pool has collected into the vault, where providers claim them |
+| **Fees** | See and claim the permanent fees your positions have earned |
+| **History** | Chart the fees earned over time, for the whole pool or one position |
+
+Anything that sends a transaction needs the client's API key. Enter it under **Settings** on the Swap
+tab. The key is kept only in memory, so you enter it again after refreshing the page. **Settings** also
+holds auto-refresh and your own executor fee for new orders.
+
+:::danger Your client signs with your node wallet
+LithosDex trades spend funds from the node wallet the client uses. Keep the client's port off the open
+internet, and change the shipped API key. See [Node connection and security](../configuration/node.mdx).
+:::
+
+## Next steps
+
+- [Trading with orders](./orders.mdx): placing, following and cancelling an order.
+- [Providing liquidity](./liquidity.mdx): depositing into the pool and claiming its fees.
+- [Batching and orders](../configuration/batching.mdx): the settings for filling other people's orders.

@@ -1,0 +1,156 @@
+---
+sidebar_position: 7
+tags:
+  - mining
+description: How the Lithos client builds each block you mine, where the revenue from its extra transactions goes, and what happens when part of it fails.
+---
+
+# Candidate building
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you know how Ergo blocks are assembled and what a mempool is. Read [Mining on Lithos](./mining-on-lithos.mdx) first.*
+
+Every block you mine starts as a **block candidate**: the transactions your Ergo node will commit to,
+turned into the job your mining software hashes. With Lithos, your own client decides what goes into
+that candidate before your node fills in the rest. This page explains how the client builds a
+candidate, where the revenue from its extra transactions goes, and how it falls back when something
+fails.
+
+It stays general. The settings are listed in [Block packages](../configuration/candidate.mdx), and the
+ErgoDEX and LithosDex sources are configured in [Batching and orders](../configuration/batching.mdx).
+
+## What goes into a candidate
+
+A Lithos candidate is built in layers, in the following order:
+
+1. **The genesis transaction.** It spends a collateral box and creates the holding box for the rollup
+   this block opens. It is what makes the block a Lithos block, so it always comes first.
+2. **The block package.** Extra transactions from the client's transaction sources, such as NISP
+   submissions and order executions. These are optional and ship off.
+3. **The holding top-up.** One final transaction that moves the revenue the package earned into the
+   holding box.
+4. **Your node's own selection.** Your Ergo node fills the space left with fee-paying transactions from
+   its mempool, as it would for any block.
+
+With the package off, which is the default, a candidate is the genesis transaction followed by your
+node's selection.
+
+## Building the genesis transaction
+
+The genesis transaction has to exist before the node can hand out a job, so it is the one part of the
+candidate on the critical path. The client prepares for it in advance:
+
+- **The collateral set is held in memory.** The client keeps the live collateral boxes, up to 100,
+  loaded ahead of time and refreshes them after every block. Nothing is fetched while a block waits.
+- **A box is chosen per block.** A box that has waited 100 blocks or more is taken first, oldest first,
+  so no box waits forever. Otherwise the box offering the finder the largest priority fee wins, and the
+  oldest breaks a tie.
+- **The coinbase goes to the lender.** The client asks the node for a candidate paying the block reward
+  to the chosen box's lender, which is what the collateral box paid for.
+
+The genesis transaction is signed on its own thread, so nothing else the client is doing can delay it.
+
+## Building the block package
+
+When `stratum.candidate.blockTransactions` is on, the client asks each enabled **transaction source**
+for work as soon as a new block arrives. The sources, in the order they are asked, are:
+
+| Source | What it inserts | Ships |
+|---|---|---|
+| `rollups` | Your NISP submissions, rollup phase transforms, fraud proofs and payouts | On |
+| `emissions` | Maintenance of the collateral queue | On |
+| `rent` | Collection of boxes old enough to owe storage rent | Off |
+| `lithosdex` | LithosDex order executions and the fee flush | On |
+| `ergodex` | ErgoDEX order executions | Off |
+
+Every transaction a source offers is **inserted without a fee**. You are the one mining the block, so
+there is nobody to pay. Rollup and emission work is the same transaction the client would otherwise
+broadcast, so inserting it makes sure it lands in your block.
+
+### How the package is bounded
+
+A package is bounded twice. Each source is first held to its own limits on transactions, bytes and
+execution cost, so a busy source cannot use space a quieter one needs. The whole package is then held to
+`blockShare` of your node's current block limits, half by default, since the node still needs room for
+its own selection.
+
+Sources are admitted in the order above until the package is full. The genesis transaction is counted
+first, so it is never the part that is dropped. A transaction that depends on an unconfirmed parent is
+admitted together with that parent or not at all, because a block carrying the child alone is invalid.
+
+### Waiting for sources
+
+Two deadlines apply after a new block, and they protect different things:
+
+- **The job waits at most `genesisWaitMs`**, 1.5 seconds by default. If the package is not ready by
+  then, your mining software gets the genesis transaction alone, and the package follows as a new job
+  when it is.
+- **The sources get at most `blockTxTimeout`**, 20 seconds by default. A source that has not answered
+  two seconds before then is left out, and what the others built still goes in. A source that answers
+  later is picked up by the next refresh.
+
+## Where the revenue goes
+
+Some sources earn ERG: executor fees from filled orders, and storage rent from collected boxes.
+**That revenue goes to the pool, not to you alone.** The holding top-up adds it to the holding box this
+block's genesis transaction created, and the rollup pays it out by score to every miner who submits to
+it, you included.
+
+Two limits apply to the top-up:
+
+- **Tokens cannot enter the holding box.** Any tokens the package earns stay on outputs your wallet
+  owns.
+- **A top-up that does not fit is skipped.** If the package budget has no room left for it, or it would
+  cost more than it adds, the revenue stays on outputs your wallet owns and can be spent later.
+
+:::note Why revenue is pooled
+The holding box of a new rollup accepts extra value only inside the block that creates it, so only the
+miner who found the block can add to it. Pooling is what turns one miner's package revenue into a
+payout every Lithos miner shares, in the same way the block reward is shared.
+:::
+
+## Refreshing within a block
+
+Transactions keep arriving after a block starts, and some pay more than what the package already holds.
+Every `mempoolRefreshMs`, 20 seconds by default, the client rebuilds the package against the current
+mempool.
+
+**A rebuilt package does not always replace the job.** Changing jobs costs your mining software a moment
+of work, so the client switches only when the rebuilt package earns at least
+`minCandidateChangeRevenue` more than the one it is serving, 0.001 ERG by default.
+
+## When part of a candidate fails
+
+The client never stops mining over a failed candidate. It falls back one step at a time, and each step
+is logged at warning or error level with the reason:
+
+| What failed | What the client does |
+|---|---|
+| A source errors or does not answer in time | Builds the package without that source |
+| The node refuses the candidate with the package in it | Mines the genesis transaction alone until the next block |
+| Collecting the package takes longer than `blockTxTimeout` | Mines the genesis transaction alone until the next block |
+| The genesis transaction cannot be built | Tries a different collateral box, up to two more times |
+| The node refuses the genesis transaction | Tries a different collateral box, up to three times per block |
+| No genesis transaction is ready within `genesisWaitMs` | Serves a solo job until one is ready |
+| No genesis transaction can be built at all | Serves a solo job for the rest of the block |
+
+:::warning Solo blocks are not Lithos blocks
+A solo block pays its reward to your node's own mining address, and no rollup opens. Super shares found on a
+solo job do not count towards a NISP. Occasional solo jobs are normal while a new block's genesis is
+being built. A client that mines solo for long stretches has a collateral or node problem, and the log
+names it.
+:::
+
+## Seeing what your client built
+
+The **Block package** tab on the Mining page shows the job your stratum is serving right now: its
+genesis transaction, the transactions the package inserted, the holding top-up, and the sources that
+contributed. To see the same detail in the log, turn on `stratum.candidate.logTimings` and
+`stratum.candidate.logBudgets`.
+
+## Next steps
+
+- [Block packages](../configuration/candidate.mdx): every setting on this page.
+- [Batching and orders](../configuration/batching.mdx): the sources that fill other people's orders.
+- [Mining on Lithos](./mining-on-lithos.mdx): how the rollup that shares this revenue pays you.

@@ -376,11 +376,14 @@ that very NISP, not the score the miner committed to. Only `FP_NonMatchingCommit
 
 Two timing rules live in `changeDiff` and they do different jobs:
 
-1. A new commitment takes effect `NISP_WINDOW` = 60 blocks in the future. This is the notice period
-   that makes a commitment binding.
+1. A new commitment names a height at least `NISP_WINDOW` = 60 blocks past the block that includes
+   it, and takes effect `NISP_WINDOW` blocks after that named height. This is the notice period that
+   makes a commitment binding. The reference client names a height 65 blocks ahead, so a commitment it
+   sends binds 125 blocks later.
 2. A commitment cannot be replaced sooner than `NISP_WINDOW + ROLLUP_LIFETIME` = 780 blocks after the
-   last one took effect. This keeps the commitment governing an older rollup present in one of the two
-   slots for as long as that rollup can still be challenged.
+   height the last one named, which is 720 blocks after it took effect. This keeps the commitment
+   governing an older rollup present in one of the two slots for as long as that rollup can still be
+   challenged.
 
 Rule 2 is load-bearing. Loosen the spacing and a miner evicts the governing commitment by churning,
 which turns the proof into one that either declines to fire or compares against the wrong score.

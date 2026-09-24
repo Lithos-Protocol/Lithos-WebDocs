@@ -34,7 +34,17 @@ const sidebars: SidebarsConfig = {
       label: "Mining",
       items: [
         { type: "doc", id: "tutorial-basics/mining-on-lithos" },
+        { type: "doc", id: "tutorial-basics/candidate-building" },
         { type: "doc", id: "tutorial-basics/voting" },
+      ],
+    },
+    {
+      type: "category",
+      label: "LithosDex",
+      link: { type: "doc", id: "lithosdex/overview" },
+      items: [
+        { type: "doc", id: "lithosdex/orders" },
+        { type: "doc", id: "lithosdex/liquidity" },
       ],
     },
   ],
@@ -76,6 +86,7 @@ const sidebars: SidebarsConfig = {
         { type: "doc", id: "configuration/batching" },
         { type: "doc", id: "configuration/emission" },
         { type: "doc", id: "configuration/wallet" },
+        { type: "doc", id: "configuration/stats" },
         { type: "doc", id: "configuration/sync" },
         { type: "doc", id: "configuration/runtime" },
       ],

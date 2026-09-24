@@ -223,9 +223,10 @@ nothing.
 
 > **A score chosen after the shares are known measures luck, not hashrate.**
 
-Everything below assumes your τ is committed in advance and binding. It is: a commitment takes effect
-60 blocks after you set it and cannot be replaced for 780 blocks, and `FP_NonMatchingCommitment` slashes
-a NISP whose score is not the commitment that was in effect.
+Everything below assumes your τ is committed in advance and binding. It is: a commitment is declared
+at least 60 blocks ahead, takes effect 60 blocks after its declared height, and cannot be replaced for
+780 blocks after that height. `FP_NonMatchingCommitment` slashes a NISP whose score is not the
+commitment that was in effect.
 
 Without that, none of the analysis holds. A miner would simply wait, look at the ten best super shares
 they happened to find, and pick whatever τ those shares justify. Payouts would start rewarding the lucky tail of a miner's 

@@ -37,16 +37,21 @@ your committed difficulty, but you earn nothing for a block unless you produced 
 
 ### Testing without committing
 
-`forceConfigDiff` makes the client mine at the `diff` in your file rather than at whatever it has
-committed on chain. Paired with `state.autoCommit = false`, it lets you measure super share rates at
-several difficulties without writing any of them to the blockchain:
+`diff` is written on chain only while `state.autoCommit` is on, and it ships off. That leaves you free
+to try values first. `forceConfigDiff` makes the client mine at the `diff` in your file rather than at
+whatever it has committed, so with both settings as below you can measure super share rates at several
+difficulties without writing any of them to the blockchain:
 
-```hocon
+```hocon title="lithos-client/bin/lithos.conf"
 stratum.forceConfigDiff = true
 state.autoCommit = false
 ```
 
-:::warning Return both to their defaults before mining for real
+When you have chosen a value, set `forceConfigDiff = false` and `autoCommit = true`. The client then
+registers you and commits `diff`, as described in
+[Tasks and dispatchers](./runtime.mdx#committing-your-difficulty).
+
+:::warning Turn `forceConfigDiff` off before mining for real
 With `forceConfigDiff = true`, mining below your on-chain commitment produces NISPs that will not be
 accepted. The setting exists to measure hardware, not to run on.
 :::
@@ -59,17 +64,31 @@ accepted. The setting exists to measure hardware, not to run on.
 | `stratum.connectionTimeout` | 60000 | 1000 to 3600000 ms. **Required** | How long a silent connection is held before it is dropped |
 | `stratum.blockRefreshInterval` | 1000 | 100 to 600000 ms. **Required** | How often the server checks whether it has new work to push |
 | `stratum.reduceShareMessages` | `true` | `true` or `false`. **Required** | Raise the difficulty reported to your mining software without changing what Lithos pays you at |
+| `stratum.reductionMultiplier` | 10000 | `10`, `100`, `1000` or `10000` | How many times your committed difficulty the stratum sends while `reduceShareMessages` is on |
 
 ### Share traffic
 
 At low difficulties your mining software may send enough shares to trigger errors about duplicate or
-old shares. `reduceShareMessages` raises the stratum difficulty by a factor of 10,000, so your mining
-software sends only super shares. **The difficulty Lithos evaluates and pays you at is unchanged.**
-Besides the reduced traffic, another benefit is that you can directly see the number of super shares you made
-in your mining software. With this setting on, all accepted shares are automatically super shares, so it can
-easily be read in the mining softwares CLI output.
+old shares. `reduceShareMessages` raises the stratum difficulty to `reductionMultiplier` times your
+committed difficulty, so your mining software sends fewer shares. **The difficulty Lithos evaluates
+and pays you at is unchanged.**
 
-It ships on, and there generally no reason to turn it off outside debugging.
+| `reductionMultiplier` | Stratum difficulty | Shares sent per super share |
+|---|---|---|
+| `10000` (default) | Equal to the super-share difficulty | 1. Every accepted share is a super share |
+| `1000` | 1/10 of the super-share difficulty | About 10 |
+| `100` | 1/100 of the super-share difficulty | About 100 |
+| `10` | 1/1,000 of the super-share difficulty | About 1,000 |
+
+**At `10000`, your mining software's accepted-share count is your super-share count**, so you can read
+it straight from its output.
+
+The cost is how rarely your mining software sends a share. At a high committed difficulty that can be
+a few an hour, so its hashrate and share readouts barely move. A lower multiplier gives your mining
+software, and the Mining panel, more shares to measure from. Every share is still checked against the
+super-share difficulty, so NISPs are built the same at any setting.
+
+It ships on at `10000`. There is generally no reason to turn it off outside debugging.
 
 ## Extra nonce
 

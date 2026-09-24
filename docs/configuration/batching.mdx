@@ -64,9 +64,33 @@ These keys exist under both `batching.ergodex` and `batching.lithosdex`:
 | `maxMempoolOrdersPerTx` | 4 | 1 to 4096 | Unconfirmed orders any single transaction may contribute |
 | `maxUnbuildablePerRun` | 32 | 1 to 1000 | Orders a run fails to build before it stops trying more |
 | `maxUnbuildablePerTx` | 2 | 1 to 1000 | Orders from one transaction a run fails before passing over that transaction's others |
+| `strategy` | `maxFees` | `maxFees` | How each run chooses which orders to execute against a pool, and in what order |
+| `searchBudgetMs` | 250 | 0 to 10000 ms | Most time the strategy may search one plan. `0` plans greedily without searching |
 
 `deniedPools` also exists on both as a list of pool NFT ids never to execute against. It defaults to
 empty and is **not validated at startup**. Ids are compared lowercased.
+
+## Choosing which orders a run executes
+
+Every fill moves the pool's price, so the order a run fills orders in changes what each one pays. One
+order can push another below its minimum, or bring it back within it. `strategy` names how a run
+settles that, and `maxFees` is currently the only strategy.
+
+`maxFees` looks for the set and sequence of orders that earns you the most:
+
+1. It starts from a greedy plan that re-prices every remaining order after each fill.
+2. It then tries dropping each planned order and inserting each unplanned one at every position, and
+   keeps any change that earns strictly more.
+3. Between plans that earn the same, it keeps the one that leaves the price nearest where the run
+   opened, since that keeps more of the other orders within their minimums.
+
+The search considers at most 64 orders per pool, the most valuable first, and stops after
+`searchBudgetMs`. It never takes more than a quarter of the time left to build, whatever the budget, so
+a deep order book cannot hold up your block. Startup refuses a strategy name it does not know.
+
+Raising `searchBudgetMs` can find a better plan on a busy pool, at the cost of build time on every run.
+The first plan is ready long before the budget runs out, so a budget of `0` still executes orders. It
+only skips the search for a better set.
 
 ## Executing unconfirmed orders
 
@@ -98,7 +122,7 @@ is one wasted signature, which is why the bounds exist at all.
 
 ## ErgoDEX only
 
-ErgoDEX executes against many pools, so it has two settings LithosDex does not need:
+ErgoDEX executes against many pools, so it bounds how many it tracks and skips idle ones:
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
@@ -112,15 +136,24 @@ block until you enable `stratum.candidate.sources.ergodex`.
 
 ## LithosDex only
 
-LithosDex executes against the single ERG to LIT pool, so it needs no pool tracking:
+LithosDex always executes against the ERG:LIT pool. Anyone can deploy another LithosDex pool from the
+same contracts, and the batcher can serve those too:
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
 | `batching.lithosdex.autoFlush` | `true` | `true` or `false` | Close each candidate run with a flush, moving the pool's pending fees to the vault |
+| `batching.lithosdex.discoverPools` | `true` | `true` or `false` | Also execute orders for LithosDex pools other than ERG:LIT, in your own blocks and by broadcast |
+| `batching.lithosdex.maxTrackedPools` | 256 | 1 to 1024 | With `discoverPools` on, the most pools served besides ERG:LIT, newest first |
 
 A flush is what lets liquidity providers claim the fees the pool has accumulated. It pays you nothing
 and costs nothing in a block besides the small space it takes up in size and cost. It is enabled by default to ensure
 permanent fees are moved quickly. **It is never broadcast**, because a broadcast flush would pay a network fee for no return.
+
+**A discovered pool is served only when it checks out.** The client rebuilds the pool and vault
+contracts from the pool's own token ids and requires them to match what is on chain exactly. A pool
+that fails the check is ignored, so a look-alike box cannot draw your executions. To exclude a pool that
+passes, add its NFT id to `batching.lithosdex.deniedPools`. For what LithosDex is and how its orders
+work, see [LithosDex](../lithosdex/overview.mdx).
 
 ## Fees on orders you place
 

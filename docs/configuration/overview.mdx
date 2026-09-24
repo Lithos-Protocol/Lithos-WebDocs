@@ -87,16 +87,17 @@ Three kinds of problem are reported:
 - **A value of the wrong type**, such as text where a number belongs.
 - **A value outside its range**, or one that contradicts another setting.
 
-### Two settings are checked against each other
+### Some settings are checked against each other
 
-Most validation looks at one key at a time. Three pairs do not, because a value that is fine alone
-breaks something when combined:
+Most validation looks at one key at a time. The following pairs are not, because a value that is fine
+alone breaks something when combined:
 
 | Pair | Rule | Why |
 |---|---|---|
 | `emission.maxLenderKeys` and `node.numAddresses` | Keys must not exceed addresses | A lender key past the prover's last index receives permit returns and coinbases the client cannot sign for |
 | `wallet.max-optional-inputs` and `wallet.max-wallet-inputs` | Optional must not exceed the total | Otherwise a saturated background queue leaves nothing for a NISP submission or fraud proof to fund itself with |
 | `wallet.consolidation.attempt-timeout-ms` and `wallet.inventory-walk-timeout-ms` | The attempt must be longer than the walk | A pass whose wallet walk uses the whole budget expires before it can send anything |
+| Each `staleAfterMs` under `stats` and its `refreshIntervalMs` | Stale must be longer than the refresh | Otherwise every reading is labelled stale the moment it arrives |
 
 ## Keeping secrets out of the file
 
@@ -141,6 +142,7 @@ key can move funds. See [Node connection and security](./node.mdx).
 | [Batching and orders](./batching.mdx) | `batching`, `lithosdex.orders` | Advanced |
 | [Collateral and emission](./emission.mdx) | `emission` | Advanced |
 | [Wallet and consolidation](./wallet.mdx) | `wallet` | Advanced |
+| [Statistics and web panels](./stats.mdx) | `stats` | Advanced |
 | [Synchronization and storage](./sync.mdx) | `sync` | Expert |
 | [Tasks and dispatchers](./runtime.mdx) | `state`, `lithos-tasks`, `lithos-contexts` | Expert |
 

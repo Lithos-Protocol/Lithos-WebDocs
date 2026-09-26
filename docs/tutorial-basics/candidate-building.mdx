@@ -26,8 +26,8 @@ A Lithos candidate is built in layers, in the following order:
 
 1. **The genesis transaction.** It spends a collateral box and creates the holding box for the rollup
    this block opens. It is what makes the block a Lithos block, so it always comes first.
-2. **The block package.** Extra transactions from the client's transaction sources, such as NISP
-   submissions and order executions. These are optional and ship off.
+2. **The block package.** Extra transactions from the client's transaction sources, such as
+   Non-Interactive Share Proof (NISP) submissions and order executions. These are optional and ship off.
 3. **The holding top-up.** One final transaction that moves the revenue the package earned into the
    holding box.
 4. **Your node's own selection.** Your Ergo node fills the space left with fee-paying transactions from
@@ -65,8 +65,9 @@ for work as soon as a new block arrives. The sources, in the order they are aske
 | `ergodex` | ErgoDEX order executions | Off |
 
 Every transaction a source offers is **inserted without a fee**. You are the one mining the block, so
-there is nobody to pay. Rollup and emission work is the same transaction the client would otherwise
-broadcast, so inserting it makes sure it lands in your block.
+there is nobody to pay. Rollup and emission work is protocol work the client also sends to the mempool
+with a fee, so that it lands whoever finds the block. For rollup work, your own block gets the first
+chance, as [How rollup work reaches the chain](#how-rollup-work-reaches-the-chain) explains.
 
 ### How the package is bounded
 
@@ -120,6 +121,31 @@ mempool.
 of work, so the client switches only when the rebuilt package earns at least
 `minCandidateChangeRevenue` more than the one it is serving, 0.001 ERG by default.
 
+Rollup and emission transactions earn no ERG, so the client also switches when the rebuilt package adds
+at least `minNewProtocolTxs` of them, 1 by default. Setting `refreshForProtocolTxs` to `false` turns
+that rule off.
+
+## How rollup work reaches the chain
+
+Your client sends its rollup transactions to the mempool with a fee, so they land whoever finds the
+block. These are your NISP submissions, rollup phase transforms, fraud proofs and payouts. With
+`blockTransactions` on, your own block gets the first chance to carry each one without a fee, in the
+following order:
+
+1. A new rollup transaction waits for the next package rebuild, up to `mempoolRefreshMs`, so your
+   package can take it first.
+2. While your block carries the transaction, the client holds the fee-paying copy back.
+3. If you find the block, the transaction lands without a fee, and the client sends nothing.
+4. If someone else finds the block, the client checks the chain within a minute. If the work is still
+   undone, the client sends the fee-paying copy and stops offering the transaction to your blocks.
+
+NISP submissions and fraud proofs must land before a fixed window closes. Any with 10 blocks or fewer
+left, about 20 minutes at Ergo's 2-minute block time, are sent with a fee at once, whatever your block
+carries.
+
+Emission transactions are not held back. The client sends them to the mempool on its own timers.
+The settings that change when rollup work waits are in [Rollup work](../configuration/candidate.mdx#rollup-work).
+
 ## When part of a candidate fails
 
 The client never stops mining over a failed candidate. It falls back one step at a time, and each step
@@ -128,6 +154,7 @@ is logged at warning or error level with the reason:
 | What failed | What the client does |
 |---|---|
 | A source errors or does not answer in time | Builds the package without that source |
+| The node leaves one inserted transaction out of the candidate | Mines the rest of the package and logs which transaction was left out |
 | The node refuses the candidate with the package in it | Mines the genesis transaction alone until the next block |
 | Collecting the package takes longer than `blockTxTimeout` | Mines the genesis transaction alone until the next block |
 | The genesis transaction cannot be built | Tries a different collateral box, up to two more times |
@@ -148,6 +175,16 @@ The **Block package** tab on the Mining page shows the job your stratum is servi
 genesis transaction, the transactions the package inserted, the holding top-up, and the sources that
 contributed. To see the same detail in the log, turn on `stratum.candidate.logTimings` and
 `stratum.candidate.logBudgets`.
+
+The following log lines show what happened to individual transactions. A **stub** is the client's
+record of one rollup transaction waiting to be sent, named as its type and the first 8 characters of
+its rollup's id:
+
+| Log line | What it means |
+|---|---|
+| `Holding N rollup stub(s) back from the funded path…` | Your block carries these rollup transactions, so their fee-paying copies wait |
+| `Releasing N rollup stub(s) to the funded path…` | The block passed without them, so their fee-paying copies go out now |
+| `Node left N of M requested transaction(s) out of candidate…` | Your node left these transactions out of your block. A `Not included transaction` line in the node's log gives the reason, and no such line means one of the transaction's inputs was missing or already spent |
 
 ## Next steps
 

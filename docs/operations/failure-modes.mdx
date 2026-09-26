@@ -15,7 +15,7 @@ Start with the first relevant log line. Similar symptoms can have different caus
 status endpoints and effective settings all help separate them.
 
 :::info Verified against
-Client 5.4.0 (testnet) and 1.0.0 pre-release (mainnet), September 2026. Exact log text is
+Client 5.4.0 and 5.5.0 (testnet) and 1.0.0 pre-release (mainnet), September 2026. Exact log text is
 version-sensitive.
 :::
 
@@ -65,6 +65,8 @@ not eligible consolidation inputs.
 | `Auto-commit waiting on ...` | Registration or a commitment change is waiting on the named condition | No action for sync, confirmation or the 845-block replacement rule. Logged again only when the reason changes |
 | `Difficulty commitment ... is on chain` | The confirmed commitment equals `stratum.diff` | None. The client stops checking until the next restart |
 | `Cannot submit NISPs until commit (height,diff) is in effect` | The commitment exists and is waiting to activate | No action; this is progress rather than a fault |
+| `Node left N of M requested transaction(s) out of candidate ...` | Your Ergo node left the named transactions out of the block it built. The rest of the package is still mined | Search the Ergo node's log for the transaction id. A `Not included transaction` line gives the reason, and no such line means one of its inputs was missing or already spent |
+| `Only N of M pinned input(s) can be set aside` | The wallet has too few plain boxes of at least 0.001 ERG to fund fraud proofs inside your own block | Add a plain wallet box of 0.001 ERG or more, or lower `stratum.candidate.pinnedInputs`. Fraud proofs still reach the chain through the mempool |
 
 :::danger A fallback that is logged but not fatal
 **`Collateral retrieval failed ... falling back to solo-mining`** means the client could not obtain

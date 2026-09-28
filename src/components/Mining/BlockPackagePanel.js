@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import s from './styles.module.css';
+import * as api from './api';
 import { useMining } from './MiningLayout';
 import BlockCube from './BlockCube';
 import TxStackList from './TxStackList';
 import CompositionPanel from './CompositionPanel';
-import { Alert } from '../Dex/ui';
+import PackageSettings from './PackageSettings';
+import { NETWORKS } from './trade';
+import { Alert, Spinner } from '../Dex/ui';
 import { big, fmtAge, fmtErgAmount, fmtInt, fmtNum, fmtPct, fullTime, shortId } from './format';
 
 /*
@@ -142,11 +145,46 @@ function Meter({ label, used, limit, share, color, unit }) {
 }
 
 export default function BlockPackagePanel() {
-  const { stats, loading } = useMining();
+  const { stats, loading, refresh, tick } = useMining();
   const [axis, setAxis] = useState('bytes');
   const [scale, setScale] = useState('package');
   const [hovered, setHovered] = useState(null);
   const [focused, setFocused] = useState(null);
+  const [settings, setSettings] = useState(null);
+  const [settingsError, setSettingsError] = useState(null);
+  const [network, setNetwork] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // A failed read keeps the last settings shown: they only change when the client restarts.
+  const loadSettings = useCallback(
+    () =>
+      Promise.all([
+        api
+          .getCandidateSettings()
+          .then((c) => {
+            setSettings(c);
+            setSettingsError(null);
+          })
+          .catch((e) => setSettingsError(e)),
+        api
+          .getInfo()
+          .then((i) => setNetwork(i?.network ?? null))
+          .catch(() => {}),
+      ]),
+    [],
+  );
+
+  // Re-read on the layout's tick too, since saving the settings panel can move the base URL.
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings, tick]);
+
+  const refreshNow = () => {
+    setRefreshing(true);
+    Promise.all([refresh(), loadSettings()]).finally(() => setRefreshing(false));
+  };
+
+  const blockSeconds = NETWORKS[network]?.blockSeconds ?? null;
 
   const stratum = stats?.local?.stratum;
   const job = stratum?.activeJob;
@@ -209,19 +247,31 @@ export default function BlockPackagePanel() {
 
   if (loading && !stats) return <div className={s.card}>Loading…</div>;
 
+  const refreshButton = (
+    <button className={s.gearBtn} onClick={refreshNow} disabled={refreshing} type="button">
+      {refreshing ? <Spinner /> : '↻'} Refresh
+    </button>
+  );
+
   if (!job) {
     return (
-      <div className={s.card}>
-        <div className={s.cardHead}>
-          <h3 className={s.cardTitle}>No job being served</h3>
-          <span className={s.label}>{stratum?.status ?? 'unknown'}</span>
+      <>
+        <div className={s.card}>
+          <div className={s.cardHead}>
+            <h3 className={s.cardTitle}>No job being served</h3>
+            <div className={s.controls}>
+              <span className={s.label}>{stratum?.status ?? 'unknown'}</span>
+              {refreshButton}
+            </div>
+          </div>
+          <p className={s.cardNote} style={{ fontSize: 13 }}>
+            {stratum?.status === 'disabled'
+              ? 'The Stratum server is not running, so this client is not serving work.'
+              : 'The client has not published a job yet. It appears here as soon as one is broadcast.'}
+          </p>
         </div>
-        <p className={s.cardNote} style={{ fontSize: 13 }}>
-          {stratum?.status === 'disabled'
-            ? 'The Stratum server is not running, so this client is not serving work.'
-            : 'The client has not published a job yet. It appears here as soon as one is broadcast.'}
-        </p>
-      </div>
+        <PackageSettings settings={settings} error={settingsError} blockSeconds={blockSeconds} />
+      </>
     );
   }
 
@@ -261,6 +311,15 @@ export default function BlockPackagePanel() {
               <span className={s.kvVal}>{fmtInt(pkg?.revision ?? 0)}</span>
             </div>
             <div className={s.kv}>
+              <span className={s.kvKey}>Extra txs</span>
+              <span
+                className={`${s.kvVal} ${settings ? (settings.blockTransactions ? s.srcOn : s.kvValWarn) : s.kvValDim}`}
+                title="stratum.candidate.blockTransactions"
+              >
+                {settings ? (settings.blockTransactions ? 'on' : 'off') : '—'}
+              </span>
+            </div>
+            <div className={s.kv}>
               <span className={s.kvKey}>Connections</span>
               <span className={`${s.kvVal} ${s.kvValDim}`}>
                 {fmtInt(stratum?.connectedConnections ?? 0)}
@@ -270,9 +329,10 @@ export default function BlockPackagePanel() {
           <div className={s.workMsg} title={job.workMessage}>
             <span className={s.kvKey}>work</span> {shortId(job.workMessage, 16, 16)}
           </div>
-          <p className={s.cardNote} style={{ marginTop: 10 }}>
-            The last publication this client broadcast to workers
-          </p>
+          <div className={s.jobActions}>
+            <p className={s.cardNote}>The last publication this client broadcast to workers</p>
+            {refreshButton}
+          </div>
         </div>
 
         <div className={`${s.card} ${s.meterCard}`}>
@@ -459,7 +519,9 @@ export default function BlockPackagePanel() {
               </div>
               <div className={s.kv}>
                 <span className={s.kvKey}>Proof leaf</span>
-                <span className={`${s.kvVal} ${s.kvValDim}`}>
+                <span
+                  className={`${s.kvVal} ${hoveredTx && !hoveredTx.proofLeafMatched ? s.kvValWarn : s.kvValDim}`}
+                >
                   {!hoveredTx ? '—' : hoveredTx.proofLeafMatched ? 'matched' : 'unproven'}
                 </span>
               </div>
@@ -522,6 +584,8 @@ export default function BlockPackagePanel() {
         hovered={hovered}
         onHover={setHovered}
       />
+
+      <PackageSettings pkg={pkg} settings={settings} error={settingsError} blockSeconds={blockSeconds} />
     </>
   );
 }

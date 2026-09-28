@@ -20,6 +20,14 @@ export const NETWORKS = {
   MAINNET: { label: 'Mainnet', blockSeconds: 120 },
 };
 
+/**
+ * Blocks from sending a commitment until NISPs are judged against it, and until it may be replaced.
+ * The contracts want a declared height at least a window ahead that binds a window after that; the
+ * client declares 5 blocks further out for inclusion. Replacement waits a window plus a rollup lifetime.
+ */
+export const COMMIT_BINDS_BLOCKS = 125;
+export const COMMIT_REPLACE_BLOCKS = 845;
+
 export const windowSeconds = (network) => WINDOW_BLOCKS * (NETWORKS[network] ?? NETWORKS.MAINNET).blockSeconds;
 
 /**

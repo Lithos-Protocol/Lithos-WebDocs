@@ -256,7 +256,7 @@ This comes at the cost of a smaller score (and therefore, a smaller payout).
 ### The ideal τ
 
 The ideal τ is not a value the formula produces. It is where rational miners converge: **a τ that
-averages between 10 and 15 super shares per window**, which is the range where consistency and pay
+averages between 10 and 16 super shares per window**, which is the range where consistency and pay
 balance out.
 
 Because the number of super shares a window produces is a count of rare independent events, it follows
@@ -273,19 +273,21 @@ what each average does to score and to expected earnings, both relative to avera
 | 13 | 83.4% | 77% | 118% |
 | 14 | 89.1% | 71% | 117% |
 | 15 | 93.0% | 67% | 114% |
+| 16 | 95.7% | 63% | 110% |
 | 18 | 98.5% | 56% | 101% |
 | 20 | 99.5% | 50% | 92% |
 
 Expected earnings is score multiplied by the chance of being paid. It treats the miner's own score as a
 small part of each rollup's total, so changing it does not move the denominator.
 
-**Expected earnings peak at an average of 13 and stay within about 6% of that peak from 11 to 15.** That
+**Expected earnings peak at an average of 13 and stay within about 7% of that peak from 11 to 16.** That
 flat top is why convergence lands on a range rather than a point: inside it a miner gives up very little
 expected income wherever they sit, so they choose by how much variance they will tolerate. Ten is the
 floor of the range, where score is highest and a window is paid about half the time, at roughly 15%
 below the peak.
 
-The scores at the two ends of the range and at the peak between them, on both networks:
+The scores at the floor of the range, at the peak, and at the recommended start of averaging 15, on
+both networks:
 
 | Hashrate | Testnet, k = 10 | Testnet, k = 13 | Testnet, k = 15 | Mainnet, k = 10 | Mainnet, k = 13 | Mainnet, k = 15 |
 |---|---|---|---|---|---|---|
@@ -305,16 +307,17 @@ sustain across block boundaries, not the peak your miner reports.
 
 ### Inflating τ
 
-An **inflated** τ sits above the ideal range: it averages **more than 15** super shares per window.
+An **inflated** τ sits above the ideal range: it averages **more than 16** super shares per window.
 
 The proof is almost always valid, since reaching ten is nearly certain. **But score falls in direct
 proportion**, because score is `2^256 / τ`. A miner averaging 20 is paid 99.5% of the time and holds
 half the score of one averaging 10, doing the same work.
 
 Inflation fades rather than collapses. At an average of 18 expected earnings are still level with
-averaging 10, and at 20 they are 92% of it. It is the safe direction and the right place to start while
-measuring hardware. Slowly lowering it can increase expected payments while still maintaining good
-consistency. 
+averaging 10, and at 20 they are 92% of it. It is the safe direction to err in while measuring
+hardware. The recommended start, averaging 15, sits just inside the range for that reason: a hashrate
+up to a third below the estimate still averages 10. Lowering τ from there one step at a time raises
+expected earnings toward the peak while keeping payouts consistent.
 
 ### Deflating τ
 
@@ -333,8 +336,8 @@ eighth. Far enough down, no window ever produces a valid proof and the score is 
 | | Super shares averaged | Chance a window pays | Expected earnings |
 |---|---|---|---|
 | Deflated τ | Fewer than 10 | Falls steeply toward zero | Collapses |
-| Ideal τ | 10 to 15 | About 54% to 93% | Near its peak |
-| Inflated τ | More than 15 | Approaches certainty | Fades slowly |
+| Ideal τ | 10 to 16 | About 54% to 96% | Near its peak |
+| Inflated τ | More than 16 | Approaches certainty | Fades slowly |
 
 **Both directions lose in expectation**, and that is the property the design depends on. It is what
 makes an honest, well-chosen τ the profitable one rather than merely the fair one. Inflating gives away

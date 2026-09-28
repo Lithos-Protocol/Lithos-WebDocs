@@ -27,7 +27,8 @@ A Lithos candidate is built in layers, in the following order:
 1. **The genesis transaction.** It spends a collateral box and creates the holding box for the rollup
    this block opens. It is what makes the block a Lithos block, so it always comes first.
 2. **The block package.** Extra transactions from the client's transaction sources, such as
-   Non-Interactive Share Proof (NISP) submissions and order executions. These are optional and ship off.
+   Non-Interactive Share Proof (NISP) submissions and order executions. These are optional, and every
+   source except storage rent ships on.
 3. **The holding top-up.** One final transaction that moves the revenue the package earned into the
    holding box.
 4. **Your node's own selection.** Your Ergo node fills the space left with fee-paying transactions from
@@ -45,7 +46,10 @@ candidate on the critical path. The client prepares for it in advance:
   loaded ahead of time and refreshes them after every block. Nothing is fetched while a block waits.
 - **A box is chosen per block.** The box offering the finder the largest priority fee wins, and the
   oldest breaks a tie. A box that has been live for `clearanceAge` blocks, 7200 by default, is taken
-  ahead of every bid, oldest first, so no box waits forever.
+  ahead of every bid, oldest first, so no box waits forever. Setting `collateralStrategy` to `random`
+  draws uniformly instead. Boxes paying into a rollup chain this release does not build are never
+  drawn, as [Boxes your block never spends](../configuration/candidate.mdx#boxes-your-block-never-spends)
+  explains.
 - **The coinbase goes to the lender.** The client asks the node for a candidate paying the block reward
   to the chosen box's lender, which is what the collateral box paid for.
 
@@ -62,12 +66,14 @@ for work as soon as a new block arrives. The sources, in the order they are aske
 | `emissions` | Maintenance of the collateral queue | On |
 | `rent` | Collection of boxes old enough to owe storage rent | Off |
 | `lithosdex` | LithosDex order executions and the fee flush | On |
-| `ergodex` | ErgoDEX order executions | Off |
+| `ergodex` | ErgoDEX order executions | On |
 
 Every transaction a source offers is **inserted without a fee**. You are the one mining the block, so
 there is nobody to pay. Rollup and emission work is protocol work the client also sends to the mempool
 with a fee, so that it lands whoever finds the block. For rollup work, your own block gets the first
-chance, as [How rollup work reaches the chain](#how-rollup-work-reaches-the-chain) explains.
+chance, as [How rollup work reaches the chain](#how-rollup-work-reaches-the-chain) explains. Queue
+Activates get the same first block, and a Clear is always taken, as
+[Queue work in your own blocks](../configuration/emission.mdx#queue-work-in-your-own-blocks) explains.
 
 ### How the package is bounded
 
@@ -173,8 +179,18 @@ names it.
 
 The **Block package** tab on the Mining page shows the job your stratum is serving right now: its
 genesis transaction, the transactions the package inserted, the holding top-up, and the sources that
-contributed. To see the same detail in the log, turn on `stratum.candidate.logTimings` and
-`stratum.candidate.logBudgets`.
+contributed. **Refresh** reads the newest job without waiting for the page's timer. Below the block,
+three cards show the following:
+
+- **Collateral box**: the box the genesis transaction spends, its priority fee above the principal
+  floor, and the part of that fee paid to you.
+- **Extra transactions**: whether `blockTransactions` is on, and for each source whether it is
+  asked, its limits, and whether it made it into this job.
+- **Job refresh**: when a rebuilt package replaces the job mid-block.
+
+A source marked **not asked**, **no slots** or **batcher off** is enabled but contributes nothing, and
+hovering the status names the setting that stops it. To see the same detail in the log, turn on
+`stratum.candidate.logTimings` and `stratum.candidate.logBudgets`.
 
 The following log lines show what happened to individual transactions. A **stub** is the client's
 record of one rollup transaction waiting to be sent, named as its type and the first 8 characters of
@@ -185,6 +201,8 @@ its rollup's id:
 | `Holding N rollup stub(s) back from the funded path…` | Your block carries these rollup transactions, so their fee-paying copies wait |
 | `Releasing N rollup stub(s) to the funded path…` | The block passed without them, so their fee-paying copies go out now |
 | `Node left N of M requested transaction(s) out of candidate…` | Your node left these transactions out of your block. A `Not included transaction` line in the node's log gives the reason, and no such line means one of the transaction's inputs was missing or already spent |
+| `Node left N transaction(s) out of block H, and the top-up spending their outputs with them…` | Your node refused an inserted transaction, which also invalidates the top-up collecting its revenue. The client mines the genesis transaction alone for a moment, then rebuilds the package without that transaction, up to twice per block |
+| `Dropping optional candidate transactions…` | The inserted transactions could not be used, after any rebuilds. The rest of this block is mined with the genesis transaction alone |
 
 ## Next steps
 

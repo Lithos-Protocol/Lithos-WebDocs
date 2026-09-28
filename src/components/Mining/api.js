@@ -161,5 +161,11 @@ export const MAX_PAYMENTS_PAGE = 500;
 /** GET /mining — Stratum difficulty and tau. */
 export const getStratumInfo = () => req('/mining');
 
+/**
+ * GET /mining/candidate — the `stratum.candidate` settings the client started with: whether blocks
+ * carry extra transactions, which sources are asked, and when a served job is replaced.
+ */
+export const getCandidateSettings = () => req('/mining/candidate');
+
 /** GET /info — sync state, and which network this client is configured for. */
 export const getInfo = () => req('/info');

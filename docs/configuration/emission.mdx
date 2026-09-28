@@ -41,18 +41,45 @@ is already active and which would otherwise hold the whole queue still.
 
 `txFee` is floored at the network minimum because a transaction below it will not relay.
 
-## Chaining off the mempool
+## Queue work in your own blocks
+
+When you mine with inserted transactions on, your block also carries queue spends without a fee,
+built from the confirmed chain. The following setting caps them:
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `emission.mempoolChaining` | `true` | `true` or `false` | Chain off unconfirmed spends of the emission box rather than waiting for confirmation |
-| `emission.maxChainDepth` | 16 | 0 to 4096 | Unconfirmed spends followed before falling back to confirmed state |
+| `emission.candidateActivates` | 5 | 0 to 100 | Activates your block carries when there is no Clear to take |
 
-During a join burst the confirmed emission box is several spends behind the real tip, so without
-chaining the queue can barely be driven at all.
+What your block carries depends on what is already waiting in the mempool, as the following table shows:
 
-**The unconfirmed spends being chained onto belong to other lenders.** They are chained onto to ensure maximum
-effectiveness and queue slot availability.
+| Waiting in the mempool | Your block carries |
+|---|---|
+| No queue spend | Activates up to `candidateActivates`, for one block. A block later the queue pass sends them with a fee instead |
+| Anything, with a Clear within reach | Every queue spend up to the `emissions` source's `maxTxs`, replacing what is waiting |
+| Only joins | Nothing. The queue pass runs straight away, so its Activates follow the joins |
+| Other queue spends | Nothing. Your node adds the waiting ones to the block itself |
+
+**A Clear pays whoever builds it** the forfeited queue box, about 2.9 ERG plus its permit. That is
+why your block takes one even when another client has already sent theirs. Joins waiting in the
+mempool are left out of that block, and their clients send them again. Nobody's principal is at risk.
+
+While the active set is still filling, each Activate takes about 7 KB of your block. That is why
+`candidateActivates` sits below the `emissions` source's `maxTxs` of 20, which Clears may fill.
+
+## Chaining off the mempool
+
+The following setting decides how far a queue pass looks into the mempool:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `emission.maxChainDepth` | 16 | 0 to 4096 | Unconfirmed spends of the emission box to follow |
+
+Queue passes always build on the newest emission box, confirmed or not. Following the unconfirmed
+spends behind it is what lets a pass activate queue boxes that joins still in the mempool created.
+Boxes further along the chain are not seen until they confirm.
+
+**The unconfirmed spends being chained onto belong to other lenders.** A queue pass chains onto them
+and never replaces them in the mempool.
 
 ## Lending your own funds
 

@@ -74,20 +74,25 @@ export default function MiningLayout({ title, description, children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const refresh = useCallback(() => {
-    // Both reads are open endpoints, so neither can fail for a missing key — an error here really
-    // does mean the client is unreachable, which is worth saying plainly.
-    Promise.all([api.getStats(), api.getWorkers()])
-      .then(([st, w]) => {
-        setStats(st);
-        setWorkers(w);
-        setError(null);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  /** Settles once both reads have landed, so a button can show it is working. Never rejects. */
+  const refresh = useCallback(
+    () =>
+      // Both reads are open endpoints, so neither can fail for a missing key — an error here really
+      // does mean the client is unreachable, which is worth saying plainly.
+      Promise.all([api.getStats(), api.getWorkers()])
+        .then(([st, w]) => {
+          setStats(st);
+          setWorkers(w);
+          setError(null);
+        })
+        .catch((e) => setError(e.message))
+        .finally(() => setLoading(false)),
+    [],
+  );
 
-  useEffect(refresh, [refresh]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const [autoSecs, setAutoSecs] = useState(0);
   const [tick, setTick] = useState(0);

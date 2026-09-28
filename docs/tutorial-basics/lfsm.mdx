@@ -35,8 +35,8 @@ The LFSM divides into four groups, each owning one part of the protocol:
 
 | Group | Contracts | Governs |
 |---|---|---|
-| `collateral/` | `Emission_Guard`, `LIT_Emissions`, `Collateral_Enforcer`, `Emission_Config`, `Emission_Gate`, `Collateral_Mainnet` | LIT emission, the collateral queue, and the boxes miners spend to make a block a Lithos block |
-| `rollups/` | `Holding_Guard`, `Holding_Logic`, `Evaluation`, `Payout`, `FP_Control` | The three-phase lifecycle of one block's payout |
+| `collateral/` | `Emission_Guard`, `LIT_Emissions`, `Collateral_Enforcer`, `Emission_Config_Mainnet`, `Emission_Gate`, `Collateral_Mainnet` | LIT emission, the collateral queue, and the boxes miners spend to make a block a Lithos block |
+| `rollups/` | `Holding_Guard`, `Holding_Logic`, `Evaluation`, `Payout`, `FP_Control_Mainnet` | The three-phase lifecycle of one block's payout |
 | `fraudproofs/` | Nine `FP_*` contracts | Removing NISPs that do not hold up |
 | `dictionaries/` | `MinerDictionary`, `MinerData_Guard`, `MinerData_Logic` | Miner identity and difficulty commitments |
 
@@ -68,8 +68,9 @@ scripts that ride in context variables:
 | `authenticGuard` | `SELF.tokens(0)._1 == CONST_EMISSION_NFT` |
 
 **That split is the design.** Emission arithmetic is pinned by a constant inside the Guard, so it is
-fixed at genesis. Queue policy is pinned by a config register, so it can be replaced by a multisig, DAO, or some
-sort of NISP-based voting mechanism in the future.
+fixed at genesis. Queue policy is pinned by a config register, so it can be replaced by a vote. Any
+spend of the config box needs 3 of the 5 voting tokens in its inputs, and a vote may also move the
+config NFT to another script, such as a DAO or a NISP-based voting mechanism.
 
 `authenticGuard` carries more weight than it looks. Without it, anyone could build a box under the
 public Guard script and run the full emission logic against tokens of their own minting.
@@ -119,7 +120,7 @@ Three properties are worth not undoing:
   including the spammer's own.
 
 The function is frozen in the enforcer hash. The three numbers live in config `R4` and are tunable by a
-multisig spend with no redeploy.
+3-of-5 vote with no redeploy.
 
 ### What the enforcer checks at Join
 

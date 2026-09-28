@@ -122,6 +122,18 @@ const sidebar: SidebarsConfig = {
       items: [
         {
           type: "doc",
+          id: "lithosapi/schemas/candidatesourcesettings",
+          label: "CandidateSourceSettings",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/candidatesettings",
+          label: "CandidateSettings",
+          className: "schema",
+        },
+        {
+          type: "doc",
           id: "lithosapi/schemas/stratuminfo",
           label: "StratumInfo",
           className: "schema",
@@ -136,6 +148,12 @@ const sidebar: SidebarsConfig = {
           type: "doc",
           id: "lithosapi/get-stratum-info",
           label: "Get Stratum information",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-candidate-settings",
+          label: "Get candidate settings",
           className: "api-method get",
         },
         {

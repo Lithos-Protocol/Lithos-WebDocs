@@ -131,8 +131,9 @@ ErgoDEX executes against many pools, so it bounds how many it tracks and skips i
 
 The ErgoDEX batcher covers MewDex too, since MewDex is the same contracts under a different interface.
 
-**Its candidate source ships off.** The batcher itself ships on, so it scans, but nothing reaches your
-block until you enable `stratum.candidate.sources.ergodex`.
+**Its candidate source ships on**, so ErgoDEX executions reach your blocks. To keep them out, set
+`stratum.candidate.sources.ergodex.enabled = false`. The batcher then stops scanning unless
+`batching.ergodex.broadcast` is on.
 
 ## LithosDex only
 

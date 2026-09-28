@@ -5,6 +5,8 @@ import * as api from './api';
 import { useMining } from './MiningLayout';
 import { fmtDuration, fmtInt, fmtNum, fmtPct } from './format';
 import {
+  COMMIT_BINDS_BLOCKS,
+  COMMIT_REPLACE_BLOCKS,
   NETWORKS,
   NISP_COEFFICIENT,
   NISP_SHARES,
@@ -27,14 +29,17 @@ const ROWS = tradeRows(5, 20);
 const PEAK = ROWS.find((r) => r.peak);
 const TOP = PEAK.earnings;
 /** The guide's ideal range: steady enough to pool for, close enough to the peak to cost little. */
-const IDEAL = { from: 10, to: 15 };
+const IDEAL = { from: 10, to: 16 };
 const isIdeal = (mean) => mean >= IDEAL.from && mean <= IDEAL.to;
 
-/** The three averages worth reading first: the floor of the range, its peak, and its safe end. */
+/** Where the guide says to begin: paid most windows, then raised toward the peak. */
+const START = ROWS.find((r) => r.mean === 15);
+
+/** The three averages worth reading first: where to start, where to aim, and how far to go. */
 const PICKS = [
   { mean: IDEAL.from, label: 'Floor', note: 'biggest cut, paid about half the time' },
   { mean: PEAK.mean, label: 'Peak', note: 'highest expected earnings' },
-  { mean: IDEAL.to, label: 'Steady', note: 'paid almost every window' },
+  { mean: START.mean, label: 'Start', note: 'where to begin, paid almost every window' },
 ];
 
 /** A whole number of milliseconds from what was typed, or null when it is not one. */
@@ -75,7 +80,11 @@ function DifficultiesPanel({ configDiff, difficulty }) {
   // A client that does not report the multiplier always reduced by the full coefficient.
   const multiplier = Number(d?.reductionMultiplier ?? NISP_COEFFICIENT);
   const onlySuper = multiplier >= NISP_COEFFICIENT;
-  const base = d?.forcedConfig ? 'config' : 'committed';
+  // Scores round-trip through tau, so two readings of one commitment can differ in the last digits.
+  const same = (a, b) => a != null && b != null && Math.abs(Number(a) - Number(b)) <= Number(b) * 0.005;
+  // A raise is served from just before its declared height, a window before it binds.
+  const early = !d?.forcedConfig && same(d?.served, d?.pending) && !same(d?.served, d?.committed);
+  const base = d?.forcedConfig ? 'config' : early ? 'pending' : 'committed';
 
   return (
     <div className={`${s.card} ${s.stackGap}`}>
@@ -102,6 +111,7 @@ function DifficultiesPanel({ configDiff, difficulty }) {
           {d?.pending && (
             <span className={s.diffPending}>
               Changing to {asDiff(d.pending)} at block {fmtInt(d.pendingFromHeight)}.
+              {early && ' The stratum already serves it, so the super shares its first rollups need are found at it.'}
             </span>
           )}
           {d && !d.committed && !d.pending && ' None is in force yet.'}
@@ -269,7 +279,10 @@ export default function DifficultyPanel() {
 
         <div className={s.picks}>
           {PICKS.map((p) => (
-            <div key={p.label} className={`${s.pick} ${p.mean === PEAK.mean ? s.pickPeak : ''}`}>
+            <div
+              key={p.label}
+              className={`${s.pick} ${p.mean === PEAK.mean ? s.pickPeak : ''} ${p.mean === START.mean ? s.pickStart : ''}`}
+            >
               <span className={s.label}>
                 {p.label} · averaging {p.mean}
               </span>
@@ -278,6 +291,16 @@ export default function DifficultyPanel() {
             </div>
           ))}
         </div>
+
+        <p className={s.cardNote} style={{ marginTop: 12 }}>
+          <b>Start at {START.mean}</b>, then raise your <code>diff</code> slowly. Averaging{' '}
+          {START.mean} pays in about {fmtPct(START.chance, 0)} of windows, and a hashrate up to a
+          third lower than you measured still lands inside the ideal range. Once payouts arrive
+          steadily, raise your <code>diff</code> a step at a time toward the peak at {PEAK.mean}. A
+          commitment can only be replaced {fmtInt(COMMIT_REPLACE_BLOCKS)} blocks after it is sent,
+          about {fmtDuration(COMMIT_REPLACE_BLOCKS * NETWORKS[network].blockSeconds * 1000)} on{' '}
+          {NETWORKS[network].label.toLowerCase()}, so that is the shortest gap between steps.
+        </p>
 
         {configDiff && (
           <p className={s.cardNote} style={{ marginTop: 12 }}>
@@ -302,7 +325,7 @@ export default function DifficultyPanel() {
         <div className={s.cardHead}>
           <h3 className={s.cardTitle}>Optimal difficulty</h3>
           <span className={s.label}>
-            ideal {IDEAL.from}–{IDEAL.to} · peak {PEAK.mean}
+            ideal {IDEAL.from}–{IDEAL.to} · start {START.mean} · peak {PEAK.mean}
           </span>
         </div>
 
@@ -313,8 +336,8 @@ export default function DifficultyPanel() {
           one pays makes it easier to mine a NISP, but each payout is smaller.
           
           <br/><br/> <b>Expected earnings</b> multiplies
-          the two. It peaks at {PEAK.mean} and stays within about 6% of that from 11 to 15, which is why
-          10–15 is the ideal range. Going toward 10 leads to bigger, less frequent payouts, while going toward 15 allows for
+          the two. It peaks at {PEAK.mean} and stays within about 7% of that from 11 to 16, which is why
+          10–16 is the ideal range. Going toward 10 leads to bigger, less frequent payouts, while going toward 16 allows for
           smaller, steadier ones. Below 10, earnings fall off fast.
         </p>
 
@@ -333,6 +356,7 @@ export default function DifficultyPanel() {
               r.mean === IDEAL.from && s.tradeIdealFirst,
               r.mean === IDEAL.to && s.tradeIdealLast,
               r.peak && s.tradePeak,
+              r.mean === START.mean && s.tradeStart,
             ]
               .filter(Boolean)
               .join(' ');
@@ -341,6 +365,7 @@ export default function DifficultyPanel() {
                 <span className={s.tradeMean} role="cell">
                   {r.mean}
                   {r.peak && <span className={s.peakTag}>peak</span>}
+                  {r.mean === START.mean && <span className={s.startTag}>start</span>}
                   {r.mean === youRow && <span className={s.youTag}>your diff</span>}
                 </span>
                 <span className={s.tradeDiff} role="cell">
@@ -362,7 +387,8 @@ export default function DifficultyPanel() {
         <p className={s.cardNote} style={{ marginTop: 12 }}>
           Score and expected earnings are relative to averaging ten, and expected earnings assumes your
           score is a small part of each block's total. Super shares per window follow a Poisson spread
-          around your average. A new <code>diff</code> takes {WINDOW_BLOCKS} blocks to take effect. The{' '}
+          around your average. A new <code>diff</code> binds {fmtInt(COMMIT_BINDS_BLOCKS)} blocks after
+          the client commits it. The{' '}
           <Link to="/docs/tutorial-basics/mining-on-lithos#the-trade">mining guide</Link> covers the
           trade in full.
         </p>

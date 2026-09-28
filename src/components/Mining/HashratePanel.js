@@ -20,7 +20,7 @@ import {
   splitHashrate,
   timeLabel,
 } from './format';
-import { NISP_COEFFICIENT } from './trade';
+import { NETWORKS, NISP_COEFFICIENT } from './trade';
 
 /*
  * One colour per actor, fixed for the whole page: cyan is the Ergo network, purple is Lithos,
@@ -37,6 +37,41 @@ const EPOCH_WINDOWS = [
   { id: 256, label: '256' },
   { id: 512, label: '512' },
 ];
+
+/*
+ * How many samples a charted point should rest on, and how far each way it may reach for them:
+ * blocks for the network and Lithos, accepted shares for this client's workers. Lithos blocks are
+ * a small slice of the chain, so it reaches furthest.
+ */
+const SMOOTHING = {
+  network: { min: 60, reach: { hour: 3, day: 1 } },
+  lithos: { min: 20, reach: { hour: 12, day: 3 } },
+  mine: { min: 12, reach: { hour: 2, day: 1 } },
+};
+
+/**
+ * One rate per interval over a centred window that widens until it holds `min` samples or spans
+ * `reach` intervals each side. `cells[i]` is null where nothing was measured, which stays a gap;
+ * a measured interval with no work is a real zero. Each point keeps how many intervals it averaged.
+ */
+function smoothRates(cells, min, reach) {
+  return cells.map((cell, i) => {
+    if (cell == null) return null;
+    let { work, ms, samples } = cell;
+    let span = 1;
+    for (let h = 1; samples < min && h <= reach; h++) {
+      [cells[i - h], cells[i + h]].forEach((c) => {
+        if (!c) return;
+        work += c.work;
+        ms += c.ms;
+        samples += c.samples;
+        span += 1;
+      });
+    }
+    const raw = rateFrom(work, Math.round(ms)) ?? '0';
+    return { y: Number(big(raw)), raw, span };
+  });
+}
 
 /** A radial gauge for the adoption share, swept from the left like a speedometer. */
 function AdoptionDial({ share, blocks, chainBlocks }) {
@@ -176,14 +211,23 @@ function Rails({ rows }) {
   );
 }
 
+/** Block intervals an epoch needs before its pace is worth projecting from. */
+const PACE_MIN_BLOCKS = 32;
+
 /**
- * Milliseconds per block across the epoch in progress, or null before it has two blocks. Any
- * projection from it assumes the blocks still to come arrive the way the ones so far did.
+ * Milliseconds per block, measured on this network: across the epoch in progress once it is long
+ * enough, else across the newest complete epoch, else the network's target block time. Any
+ * projection from it assumes the blocks still to come arrive the way recent ones did.
  */
-function blockPaceMs(current) {
-  const done = current ? current.endHeight - current.startHeight + 1 : 0;
-  const elapsed = current ? current.endTimestamp - current.startTimestamp : 0;
-  return done > 1 && elapsed > 0 ? elapsed / (done - 1) : null;
+function blockPaceMs(epochs, network) {
+  const pace = (e) => {
+    const blocks = e ? e.endHeight - e.startHeight : 0;
+    const elapsed = e ? e.endTimestamp - e.startTimestamp : 0;
+    return blocks >= PACE_MIN_BLOCKS && elapsed > 0 ? elapsed / blocks : null;
+  };
+  const complete = epochs?.epochs ?? [];
+  const target = NETWORKS[network]?.blockSeconds;
+  return pace(epochs?.current) ?? pace(complete[complete.length - 1]) ?? (target ? target * 1000 : null);
 }
 
 /**
@@ -255,18 +299,23 @@ function NispMeter({ nisp, blockMs }) {
           </>
         )}
       </p>
+      {nisp.source === 'session' && (
+        <p className={s.cardNote} style={{ marginTop: 6 }}>
+          Counted from this session only: the NISP store could not be read, so super shares from
+          before the last restart are missing.
+        </p>
+      )}
     </div>
   );
 }
 
 /** Progress through the epoch in progress, and what it means for the next retarget. */
-function EpochRing({ current, epochLength }) {
+function EpochRing({ current, epochLength, perBlock }) {
   const R = 54;
   const C = 2 * Math.PI * R;
   const done = current ? current.endHeight - current.startHeight + 1 : 0;
   const frac = current && epochLength ? Math.max(0, Math.min(1, done / epochLength)) : 0;
   const remaining = current && epochLength ? Math.max(0, epochLength - done) : null;
-  const perBlock = blockPaceMs(current);
 
   return (
     <>
@@ -337,6 +386,12 @@ export default function HashratePanel() {
   const [epochs, setEpochs] = useState(null);
   const [busy, setBusy] = useState(true);
   const [err, setErr] = useState(null);
+  const [network, setNetwork] = useState(null);
+
+  // Only for the target block time, which is all the pace falls back on before an epoch is measured.
+  useEffect(() => {
+    api.getInfo().then((i) => setNetwork(i?.network ?? null)).catch(() => {});
+  }, []);
 
   // The range and epoch depth the data on screen belongs to.
   const shown = useRef(null);
@@ -378,70 +433,75 @@ export default function HashratePanel() {
   useEffect(load, [load, tick]);
 
   /*
-   * The bucket endpoints only return intervals that had retained activity, so the response is
-   * sparse. A chart needs a dense axis or a quiet hour would shift every later point left, so the
-   * range is rebuilt here in full and the response indexed onto it by bucket start. An interval
-   * with no bucket becomes null, which the chart draws as a break rather than a zero.
+   * The bucket endpoints only return intervals that had blocks, so the response is sparse. The
+   * range is rebuilt in full and indexed by bucket start. An interval inside the collected span
+   * with no bucket held no blocks, which is a measured zero; only time outside that span is a gap.
+   *
+   * Each interval is rated over the time it actually covers, so the hour in progress is not
+   * divided by a full hour, then smoothed until it rests on enough blocks to read.
    */
   const model = useMemo(() => {
     if (!buckets?.range) return null;
     const { from, until, widthMs, interval } = buckets.range;
-    const seconds = widthMs / 1000;
     const starts = [];
     for (let t = from; t < until; t += widthMs) starts.push(t);
 
     const byStart = new Map((buckets.buckets ?? []).map((b) => [Number(b.start), b]));
     const localByStart = new Map((local?.points ?? []).map((p) => [Number(p.start), p]));
+    // Collected from the block before the first retained one up to the newest processed block.
+    const retained = buckets.retainedFrom == null ? Infinity : Number(buckets.retainedFrom);
+    const newest = Number(buckets.source?.timestamp ?? until);
+    const covered = (t) => Math.max(0, Math.min(t + widthMs, newest) - Math.max(t, retained));
 
     let chainWork = 0n;
     let lithosWork = 0n;
     let lithosBlocks = 0n;
     let chainBlocks = 0n;
+    let coveredMs = 0;
 
-    const network = [];
-    const lithos = [];
-    const mine = [];
-    const adoption = [];
+    const chainCells = [];
+    const lithosCells = [];
+    const mineCells = [];
 
     starts.forEach((t) => {
       const b = byStart.get(t);
+      const ms = covered(t);
       if (b) {
         chainWork += metric(b, 'chain.difficultySum');
         lithosWork += metric(b, 'lithos.difficultySum');
         chainBlocks += metric(b, 'chain.blocks');
         lithosBlocks += metric(b, 'lithos.blocks');
       }
-      const chainRate = b ? rateFrom(metric(b, 'chain.difficultySum'), widthMs) : null;
-      const lithosRate = b ? rateFrom(metric(b, 'lithos.difficultySum'), widthMs) : null;
-      const share = b ? shareOf(metric(b, 'lithos.difficultySum'), metric(b, 'chain.difficultySum')) : null;
-      const lp = localByStart.get(t);
+      coveredMs += ms;
+      chainCells.push(
+        ms > 0 ? { work: metric(b, 'chain.difficultySum'), ms, samples: Number(metric(b, 'chain.blocks')) } : null,
+      );
+      lithosCells.push(
+        ms > 0 ? { work: metric(b, 'lithos.difficultySum'), ms, samples: Number(metric(b, 'lithos.blocks')) } : null,
+      );
 
-      network.push(chainRate == null ? null : { y: Number(big(chainRate)), raw: chainRate });
-      lithos.push(lithosRate == null ? null : { y: Number(big(lithosRate)), raw: lithosRate });
-      adoption.push(share == null ? null : { y: share * 100, raw: share });
-      mine.push(
-        lp == null || big(lp.hashesPerSecond) <= 0n
-          ? null
-          : {
-              y: Number(big(lp.hashesPerSecond)),
-              raw: lp.hashesPerSecond,
-              shares: lp.acceptedShares,
-            },
+      // A client that predates `measuredMs` rated each point over one interval.
+      const lp = localByStart.get(t);
+      const lms = lp ? Number(lp.measuredMs ?? widthMs) : 0;
+      mineCells.push(
+        lp && lms > 0
+          ? { work: (big(lp.hashesPerSecond) * BigInt(Math.round(lms))) / 1000n, ms: lms, samples: Number(lp.acceptedShares ?? 0) }
+          : null,
       );
     });
+
+    const smooth = (cells, id) => smoothRates(cells, SMOOTHING[id].min, SMOOTHING[id].reach[interval] ?? 0);
 
     return {
       starts,
       interval,
-      seconds,
-      network,
-      lithos,
-      mine,
-      adoption,
+      network: smooth(chainCells, 'network'),
+      lithos: smooth(lithosCells, 'lithos'),
+      mine: smooth(mineCells, 'mine'),
       // Window totals, which are what the hero reads — a per-bucket rate is far noisier than the
       // whole window, and the headline should be the steadier number.
-      windowNetwork: rateFrom(chainWork, starts.length * widthMs),
-      windowLithos: rateFrom(lithosWork, starts.length * widthMs),
+      windowNetwork: rateFrom(chainWork, coveredMs),
+      windowLithos: rateFrom(lithosWork, coveredMs),
       share: shareOf(lithosWork, chainWork),
       lithosBlocks,
       chainBlocks,
@@ -465,6 +525,8 @@ export default function HashratePanel() {
    */
   const series = useMemo(() => {
     if (!model) return [];
+    const unit = model.interval === 'day' ? 'd' : 'h';
+    const format = (p) => `${fmtHashrate(p.raw)}${p.span > 1 ? ` · ${p.span}${unit} avg` : ''}`;
     const all = [
       {
         id: 'network',
@@ -473,7 +535,7 @@ export default function HashratePanel() {
         area: true,
         areaOpacity: 0.32,
         points: model.network,
-        format: (p) => fmtHashrate(p.raw),
+        format,
       },
       {
         id: 'lithos',
@@ -482,7 +544,7 @@ export default function HashratePanel() {
         area: true,
         areaOpacity: 0.32,
         points: model.lithos,
-        format: (p) => fmtHashrate(p.raw),
+        format,
       },
       {
         id: 'mine',
@@ -491,7 +553,7 @@ export default function HashratePanel() {
         area: true,
         areaOpacity: 0.32,
         points: model.mine,
-        format: (p) => fmtHashrate(p.raw),
+        format,
       },
     ];
     return all.filter((l) => l.id === view);
@@ -499,6 +561,7 @@ export default function HashratePanel() {
 
   const localRate = workers?.hashesPerSecond ?? null;
   const epochLength = epochs?.epochLength ?? 128;
+  const blockMs = blockPaceMs(epochs, network);
 
   return (
     <>
@@ -571,7 +634,7 @@ export default function HashratePanel() {
 
         <div className={`${s.card} ${s.ringCard}`}>
           <div className={s.label}>Difficulty epoch</div>
-          <EpochRing current={epochs?.current} epochLength={epochLength} />
+          <EpochRing current={epochs?.current} epochLength={epochLength} perBlock={blockMs} />
         </div>
       </div>
 
@@ -653,7 +716,9 @@ export default function HashratePanel() {
           />
         )}
         <p className={s.cardNote} style={{ marginTop: 10 }}>
-          Dashed areas represent parts where hashrate was not tracked or could not be determined.
+          Each point averages the intervals around it until it rests on enough blocks, or shares
+          for your workers, to read; the tooltip says how many. Dashed lines cross stretches that
+          were not measured.
           {buckets?.partial && (
             <>
               {' '}
@@ -744,7 +809,7 @@ export default function HashratePanel() {
                 ` · ${fmtNum(workers.superSharesPerHour, 2)}/h`}
             </span>
           </div>
-          <NispMeter nisp={workers?.nisp} blockMs={blockPaceMs(epochs?.current)} />
+          <NispMeter nisp={workers?.nisp} blockMs={blockMs} />
           <p className={s.cardNote} style={{ marginTop: 12 }}>
             A super share is an accepted share that is rare and hard to find. These shares are collected to make NISPs,
             meaning that hitting at least 10 determines whether or not you get paid for a block.

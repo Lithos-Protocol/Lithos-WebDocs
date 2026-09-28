@@ -1,0 +1,33 @@
+---
+id: candidatesourcesettings
+title: "CandidateSourceSettings"
+description: "One `stratum.candidate.sources` entry."
+sidebar_label: "CandidateSourceSettings"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"name":"rollups","enabled":true,"active":true,"maxTxs":0,"maxBytes":0,"maxCost":0}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CandidateSourceSettings"}
+>
+</Heading>
+
+
+
+One `stratum.candidate.sources` entry.
+
+<Schema
+  schema={{"description":"One `stratum.candidate.sources` entry.","type":"object","x-tags":"mining","required":["name","enabled","active","maxTxs","maxBytes","maxCost"],"properties":{"name":{"type":"string","enum":["rollups","emissions","rent","lithosdex","ergodex"]},"enabled":{"type":"boolean","description":"The source's own `enabled` setting."},"active":{"type":"boolean","description":"Whether candidates ask this source for transactions: `blockTransactions` is on, the source is enabled with `maxTxs` above 0 and, for `lithosdex` and `ergodex`, the matching `batching` block is enabled."},"maxTxs":{"type":"integer","description":"Transactions this source may place in one block, carried ancestors included."},"maxBytes":{"type":"integer","format":"int64","description":"Serialized bytes this source may claim."},"maxCost":{"type":"integer","format":"int64","description":"Validation cost this source may claim."}},"title":"CandidateSourceSettings"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

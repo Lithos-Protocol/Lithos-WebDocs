@@ -15,17 +15,20 @@ Everything under `stratum.candidate` controls the blocks this client builds: whi
 draws, how long it waits for the genesis transaction, and what other transactions it inserts. This page
 covers that block and the five transaction sources beneath it.
 
-Inserting transactions is **off by default**. The settings that turn it on are in
-[Transaction sources](#transaction-sources). What the client does with them, and where the revenue they
+Inserting transactions is **on by default**, from every source except storage rent. The settings that
+control it are in [Transaction sources](#transaction-sources). What the client does with them, and where the revenue they
 earn goes, is explained in [Candidate building](../tutorial-basics/candidate-building.mdx).
 
 ## Collateral selection
+
+The following settings decide which collateral box your block spends:
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
 | `stratum.candidate.collateralPoolSize` | 100 | 1 to 100 | Collateral boxes kept pre-loaded in memory |
 | `stratum.candidate.collateralRefreshInterval` | 60000 | 100 to 3600000 ms | How often the collateral set is refreshed. It also refreshes on every new block |
-| `stratum.candidate.clearanceAge` | 7200 | 100 to 14400 blocks | How long a box may stay live before it is drawn ahead of every priority fee |
+| `stratum.candidate.collateralStrategy` | `highestFee` | `highestFee` or `random` | How a box is drawn from the set |
+| `stratum.candidate.clearanceAge` | 7200 | 100 to 14400 blocks | With `highestFee`, how long a box may stay live before it is drawn ahead of every priority fee |
 
 The active set never holds more than 100 boxes protocol-wide, which is why the pool size stops there.
 Fetching a box at mining time would put an indexer round trip on the critical path of every block, so
@@ -36,7 +39,8 @@ is the only moment a collateral box can be spent.
 
 ### Which box your block spends
 
-Each block, the client draws one box from the set by the following rules:
+The box is chosen afresh at every block height and kept for the rest of that height. With the default
+`highestFee` strategy, the client draws one box from the set by the following rules:
 
 1. If any box has been live for `clearanceAge` blocks or more, the oldest of those is drawn, whatever
    the others offer.
@@ -50,6 +54,23 @@ offer nothing, so no box waits in the active set forever.
 about 3 hours 20 minutes on mainnet, a box that bids nothing outranks every bid after waiting only that
 long. The maximum of 14400 blocks, about 20 days, lets bids decide for longest. The rule is this
 client's own choice, not a contract rule, so different miners may run different values.
+
+`random` draws uniformly from every usable box, ignoring priority fees and age. Because it ignores the
+bids, it usually earns you a smaller finder's share than `highestFee`.
+
+### Boxes your block never spends
+
+The client leaves a box out of the draw in the following cases:
+
+| Case | What happens |
+|---|---|
+| The box pays into a rollup chain this release does not build | Skipped with a warning. The chain is named by the box's R8, stamped from the emission config when the box was activated |
+| No box is left after that | Blocks are mined solo, with a warning, until you update the client |
+| The node left the box's genesis transaction out of its candidate | Skipped with a warning for up to three blocks, and the next build uses another box. At most three rebuilds per block |
+| The box was spent in a recent block | Skipped for up to three blocks, because the indexer can still report it unspent for a few seconds |
+
+A box skipped for the first reason stays skipped, because this release cannot pay into its chain at
+all. Updating to a release that builds that chain brings it back.
 
 ## Building the genesis transaction
 
@@ -119,7 +140,7 @@ different chains.
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `stratum.candidate.blockTransactions` | `false` | `true` or `false`. Not validated | The master switch. With it off, no source contributes anything |
+| `stratum.candidate.blockTransactions` | `true` | `true` or `false`. Not validated | The master switch. With it off, no source contributes anything |
 
 Each source is bounded on its own **before** the package is bounded as a whole, so a busy source cannot
 crowd out a quieter one that matters more. A source that is off is never asked, so it costs no build
@@ -143,9 +164,9 @@ The five sources and what they ship as:
 | Source | Ships | `maxTxs` | What it inserts |
 |---|---|---|---|
 | `rollups` | on | 5 | Non-Interactive Share Proof (NISP) submissions, phase transforms, fraud proofs and payouts |
-| `emissions` | on | 5 | Join, Activate and Clear on the collateral queue |
+| `emissions` | on | 20 | Clear and Activate on the collateral queue. Activates alone stop at [`emission.candidateActivates`](./emission.mdx#queue-work-in-your-own-blocks) |
 | `lithosdex` | on | 20 | LithosDex order executions, their placements and the closing flush |
-| `ergodex` | **off** | 20 | Native ErgoDEX swaps, deposits and redemptions, including ancestors |
+| `ergodex` | on | 20 | Native ErgoDEX swaps, deposits and redemptions, including ancestors |
 | `rent` | **off** | 1 | Storage rent collection |
 
 `maxBytes` and `maxCost` ship at 262144 and 1000000 for all five.

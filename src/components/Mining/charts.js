@@ -23,11 +23,16 @@ const AXIS_CHAR_W = 5.6;
 /** How long the draw-in sweep takes to cross the plot. */
 const DRAW_SECONDS = 1.1;
 
-/** Catmull-Rom through the points, emitted as cubic Beziers — the same smoothing the DEX uses. */
-function smoothPath(pts) {
+/**
+ * Catmull-Rom through the points, emitted as cubic Beziers — the same smoothing the DEX uses.
+ * Control points are held inside [top, bottom], so a spike beside a zero cannot swing the curve
+ * below the axis into a negative rate.
+ */
+function smoothPath(pts, top = -Infinity, bottom = Infinity) {
   if (pts.length === 0) return '';
   if (pts.length === 1) return `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   const at = (i) => pts[Math.max(0, Math.min(pts.length - 1, i))];
+  const cy = (v) => Math.max(top, Math.min(bottom, v)).toFixed(1);
   let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   for (let i = 0; i < pts.length - 1; i++) {
     const p0 = at(i - 1);
@@ -35,8 +40,8 @@ function smoothPath(pts) {
     const p2 = at(i + 1);
     const p3 = at(i + 2);
     d +=
-      ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)} ${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)}` +
-      ` ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)} ${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)}` +
+      ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)} ${cy(p1[1] + (p2[1] - p0[1]) / 6)}` +
+      ` ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)} ${cy(p2[1] - (p3[1] - p1[1]) / 6)}` +
       ` ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
   }
   return d;
@@ -133,7 +138,7 @@ export function SeriesChart({
         const pts = run.map(at);
         // A running total only ever holds or rises; a smoothed curve would dip before each rise.
         const d = smooth
-          ? smoothPath(pts)
+          ? smoothPath(pts, PAD.t, baseline)
           : pts.map((p, j) => `${j ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
         return {
           d,
@@ -149,9 +154,10 @@ export function SeriesChart({
       });
 
       /*
-       * Where nothing was measured the line drops straight to the axis, runs along it and climbs
-       * back where data resumes, dashed throughout. A break would read as the chart failing; a
-       * solid drop would read as a real zero. Dashed says "no data" without claiming either.
+       * Where nothing was measured the line is dashed. Between two measured stretches it runs
+       * straight from one to the other, since the rate most likely moved between them rather than
+       * stopping. Before the first and after the last it runs along the axis, where nothing on
+       * either side says what the rate was.
        */
       const floor = (i) => [x(i), baseline];
       const gaps = [];
@@ -162,7 +168,7 @@ export function SeriesChart({
         for (let k = 0; k + 1 < spans.length; k++) {
           const a = spans[k][spans[k].length - 1];
           const b = spans[k + 1][0];
-          gaps.push([at(a), floor(a), floor(b), at(b)]);
+          gaps.push([at(a), at(b)]);
         }
         if (end < last) gaps.push([at(end), floor(end), floor(last)]);
       }

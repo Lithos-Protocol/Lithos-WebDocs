@@ -300,10 +300,16 @@ Your payout is set entirely by your committed difficulty. Super shares only dete
 qualify. Ten is enough; a thousand pays exactly the same as ten.
 :::
 
-**Aim for a `diff` that averages between 10 and 15 super shares per window.** That range is where
+**Aim for a `diff` that averages between 10 and 16 super shares per window.** That range is where
 expected earnings peak. Averaging 10 pays you about half the time at the highest score in the range;
-averaging 15 pays you about 93% of the time at a lower one. Below 10 your earnings collapse, because
+averaging 16 pays you about 96% of the time at a lower one. Below 10 your earnings collapse, because
 most windows fall short.
+
+**Start at averaging 15, then raise `diff` slowly.** Averaging 15 pays you about 93% of the time,
+and still averages 10 if your hashrate turns out to be a third lower than you estimated. Once your
+payouts arrive steadily, raise `diff` a little at a time toward averaging 13, where expected earnings
+peak. Each change is a new commitment, so steps are at least 845 blocks apart, as
+[Changing your difficulty later](#changing-your-difficulty-later-costs-a-day-not-an-hour) explains.
 
 To find a starting value for your hardware:
 

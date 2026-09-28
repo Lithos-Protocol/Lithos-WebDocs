@@ -1656,6 +1656,16 @@
   color: #e9d5ff;
 }
 
+/* Start is green everywhere on this page: the pick, its table row and the tag. */
+.pickStart {
+  border-color: rgba(110, 231, 183, 0.5);
+  background: linear-gradient(160deg, rgba(110, 231, 183, 0.12), rgba(56, 189, 248, 0.05));
+}
+
+.pickStart .pickDiff {
+  color: #d1fae5;
+}
+
 /* ---- The trade table ---- */
 .tradeTable {
   display: flex;
@@ -1685,7 +1695,7 @@
   color: var(--cur-fainter);
 }
 
-/* 10 to 15 read as one band: a shared tint, squared off inside and rounded only at its ends. */
+/* The ideal range reads as one band: a shared tint, squared off inside and rounded only at its ends. */
 .tradeIdeal {
   background: rgba(56, 189, 248, 0.07);
   border-left-color: rgba(56, 189, 248, 0.55);
@@ -1758,7 +1768,21 @@
   background: linear-gradient(90deg, #a855f7, #6ee7b7);
 }
 
+.tradeStart {
+  position: relative;
+  background: linear-gradient(90deg, rgba(110, 231, 183, 0.16), rgba(56, 189, 248, 0.07));
+  border-left-color: #6ee7b7;
+  box-shadow: inset 0 0 0 1px rgba(110, 231, 183, 0.35);
+  color: var(--cur-text);
+  z-index: 1;
+}
+
+.tradeStart .tradeDiff {
+  color: #d1fae5;
+}
+
 .peakTag,
+.startTag,
 .youTag {
   font-family: var(--cur-font-mono);
   font-size: 9px;
@@ -1772,6 +1796,11 @@
 .peakTag {
   color: #1a0b2e;
   background: linear-gradient(90deg, #c084fc, #a855f7);
+}
+
+.startTag {
+  color: #052e21;
+  background: linear-gradient(90deg, #a7f3d0, #6ee7b7);
 }
 
 .youTag {
@@ -2727,4 +2756,122 @@
     animation: none;
     transform: none;
   }
+}
+
+/* ---- Block package settings row: collateral box, transaction sources, job refresh ---- */
+.pkgRow {
+  display: grid;
+  grid-template-columns: 302px minmax(0, 1fr) 268px;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.chipOn {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--cur-green);
+  border-color: rgba(110, 231, 183, 0.4);
+}
+
+.chipOff {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--cur-amber-light);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.srcTable {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.srcTr {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--cur-muted);
+}
+
+.srcTr:not(.srcTh):nth-child(even) {
+  background: rgba(125, 211, 252, 0.035);
+}
+
+.srcTh {
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cur-fainter);
+}
+
+.srcName {
+  color: var(--cur-text);
+  font-weight: 600;
+}
+
+.srcOn {
+  color: var(--cur-cyan-light);
+}
+
+.srcOff {
+  color: var(--cur-faint);
+}
+
+.srcWarn {
+  color: var(--cur-amber-light);
+}
+
+/* A proof leaf the node's answer did not confirm. */
+.kvValWarn {
+  color: var(--cur-amber-light);
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .pkgRow {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pkgRow > :nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 860px) {
+  .pkgRow {
+    grid-template-columns: 1fr;
+  }
+  .pkgRow > :nth-child(2) {
+    grid-row: auto;
+  }
+  .srcTable {
+    overflow-x: auto;
+  }
+  .srcTr {
+    min-width: 480px;
+  }
+}
+
+.jobActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.jobActions .gearBtn {
+  flex-shrink: 0;
+}
+
+.gearBtn:disabled {
+  cursor: progress;
+  color: var(--cur-cyan-light);
 }

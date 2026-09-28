@@ -84,6 +84,7 @@ appetite for risk:
 | 13 | 83.4% | 77% | 118% |
 | 14 | 89.1% | 71% | 117% |
 | 15 | 93.0% | 67% | 114% |
+| 16 | 95.7% | 63% | 110% |
 | 18 | 98.5% | 56% | 101% |
 | 20 | 99.5% | 50% | 92% |
 
@@ -92,17 +93,17 @@ multiplied by the chance of being paid, and assumes your score is a small part o
 
 ### The ideal `diff`
 
-**Your ideal `diff` is one that averages between 10 and 15 super shares per window.** It is not a single
+**Your ideal `diff` is one that averages between 10 and 16 super shares per window.** It is not a single
 number a formula hands you. It is the range where miners converge, because it is where consistency and
 pay balance out.
 
-The expected earnings column shows why. It peaks at an average of 13 and stays within about 6% of that
-peak from 11 to 15, so across most of the range you give up very little expected income whichever point
+The expected earnings column shows why. It peaks at an average of 13 and stays within about 7% of that
+peak from 11 to 16, so across most of the range you give up very little expected income whichever point
 you choose. The choice comes down to how steady you want your payouts:
 
 - **Toward 10**: a higher score, paid about half the time. Larger payouts with more gaps between them,
   at roughly 15% below the peak in expected earnings.
-- **Toward 15**: a lower score, paid about 93% of the time. Smaller payouts, almost never a gap.
+- **Toward 16**: a lower score, paid about 96% of the time. Smaller payouts, almost never a gap.
 
 Ten is the floor of the range, not a target to push past.
 
@@ -114,10 +115,9 @@ Leaving the range costs you in both directions, and the two directions are not e
 fifth of the time, so you earn less than half as much. At 5 you double your score and earn about an
 eighth. This is the direction that looks tempting and is not.
 
-**Above 15, your earnings fade slowly.** Averaging 20 halves your score and pays you almost every
-window, and you still earn over 90% of what you would at 10. It is a safe place to start while you
-measure your hardware, but you may want to slowly move down if you want slightly more returns over
-time. 
+**Above 16, your earnings fade slowly.** Averaging 20 halves your score and pays you almost every
+window, and you still earn over 90% of what you would at 10. Nothing is lost by staying there briefly,
+but it earns less than the range once you know your hashrate.
 
 :::note Steady payouts are the reason to pool at all
 You joined a pool so your income would be predictable. Pushing `diff` up until most of your windows
@@ -134,8 +134,8 @@ diff = (hashrate in H/s × window in seconds) ÷ (10,000 × super shares you wan
 ```
 
 The window is 60 blocks: **2,700 seconds on testnet** and **7,200 seconds on mainnet**. The following
-gives the two ends of the ideal range, averaging 10 and averaging 15, and the peak between them at
-averaging 13:
+gives the floor of the ideal range at averaging 10, the peak at averaging 13, and the recommended start
+at averaging 15:
 
 | Hashrate | Testnet, 10 | Testnet, 13 | Testnet, 15 | Mainnet, 10 | Mainnet, 13 | Mainnet, 15 |
 |---|---|---|---|---|---|---|
@@ -146,9 +146,21 @@ averaging 13:
 | 4 GH/s | 108M | 83.1M | 72M | 288M | 222M | 192M |
 
 **A lower `diff` averages more super shares**, so the averaging-15 column is always the smaller number.
-If you are unsure of your hashrate, start at the averaging-15 value or below it, watch how many super
-shares you actually produce per window, and move toward 10 only once you have seen your hardware hold
-up.
+
+**Start at the averaging-15 value, then raise `diff` slowly.** Averaging 15 pays in about 93% of
+windows, and a hashrate up to a third lower than you estimated still averages 10. Follow these steps:
+
+1. Commit the averaging-15 `diff` for your hashrate.
+2. Watch how many super shares you produce per window until the commitment may be replaced, 845 blocks
+   after the client sent it.
+3. If your windows pay reliably, raise `diff` so it averages one super share fewer, for example from
+   averaging 15 to averaging 14.
+4. Repeat, and stop at averaging 13 or wherever payouts start to skip windows.
+
+Each step is a new difficulty commitment. It binds 125 blocks after the client sends it, and the next
+step can follow 845 blocks after that send, about 10 hours 30 minutes on testnet and about 28 hours on
+mainnet. The next section explains both rules. The **Difficulty** page of the client's web panel
+works out these values from your hashrate.
 
 :::warning Use the hashrate you sustain, not the one your miner reports
 Autolykos 2 rebuilds its lookup table every time the block height changes, and your rig stops hashing
@@ -169,6 +181,12 @@ commitment:
 |---|---|---|---|
 | Before the commitment takes effect | 125 | about 1 hour 35 minutes | about 4 hours 10 minutes |
 | Before you may replace the commitment | 845 | about 10 hours 30 minutes | about 28 hours |
+
+When you raise `diff`, the client starts mining at the new value 62 blocks before it takes effect. The
+first rollups judged against the new value take super shares from the 60 blocks before them, so those
+shares are already found at the new value. A super share found at the higher value also counts toward
+the old one. When you lower `diff`, the client keeps mining at the old value until the new one takes
+effect, because super shares at the old, higher value count toward both.
 
 **Test before you commit.** The client only commits once you turn on `state.autoCommit`, which ships
 off. Until then, `stratum.forceConfigDiff = true` lets you measure super share rates at several values

@@ -27,7 +27,7 @@ budget gates and crash campaigns at its shipped setting. Changing one moves you 
 | `sync.catchUpBatchBlocks` | 16 | 1 to 64 | Whole blocks fetched per catch-up request |
 | `sync.revalidationChecks` | 30 seconds | 1000 to 3600000 ms. **Required** | How often the committed header is re-read while idle at the tip |
 | `sync.retriesBeforeAlarm` | 12 | 1 to 10000 | Consecutive failures at one height before a stalled cursor is logged |
-| `sync.cursorWindow` | 720 | 1 to 16000 | Canonical cursors retained for locating a fork |
+| `sync.cursorWindow` | 200 | 1 to 16000 | Canonical cursors retained for locating a fork |
 
 `pollInterval` is the **largest single term in both node load and block latency**. Raise it for a
 remote or shared node and accept slower tip following.
@@ -36,8 +36,10 @@ remote or shared node and accept slower tip following.
 input boxes in full, so the response grows with the blocks' contents rather than with the count alone.
 
 **Re-reading the committed header is what detects a same-height fork**, which a height comparison alone
-cannot show. Cursors are about 100 bytes each, so `cursorWindow` is sized for fork-search reach rather
-than for memory, and deeper forks recover from a snapshot instead.
+cannot show. A fork is rolled back in memory when it is shallow enough, and deeper forks recover from a
+snapshot instead. The default `cursorWindow` of 200 matches the Ergo node's default `keepVersions`, the
+deepest rollback the node itself can follow, so a larger window adds no reach. Each fork reads one
+header per cursor from the node.
 
 :::note The minimum start height is 2
 The seed reads the header below the start height, so height 1 has nothing beneath it.

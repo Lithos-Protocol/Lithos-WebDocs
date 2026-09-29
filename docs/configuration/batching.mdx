@@ -30,10 +30,11 @@ There are two ways to execute, and the difference is the miner fee:
 | Miner fee | **None** | `min(order cap, broadcastMinerFeeCeiling)` out of the executor fee |
 | Pool box | Confirmed only | Followed to its mempool tip |
 | Competing spends | Superseded | Never displaced |
-| Ships | On for LithosDex, off for ErgoDEX | Off for both |
+| Ships | On for both | On for both |
 
 In your own block an execution pays no fee at all, so the whole executor fee is revenue. A broadcast
-has to pay the network, so its revenue floor is higher.
+has to pay the network, so its revenue floor is higher. To fill orders only in your own blocks, set
+`batching.<name>.broadcast = false`.
 
 :::note Two switches must both be on for candidate execution
 `batching.<name>.enabled` runs the batcher, which scans and can broadcast. Inserting executions into
@@ -55,7 +56,7 @@ These keys exist under both `batching.ergodex` and `batching.lithosdex`:
 | `minRevenueNanoErg` | 1000000 | 0 to 1000000000000 | Minimum gross revenue per fill. An opening fill must also fund a takings box |
 | `broadcastMinRevenueNanoErg` | 2500000 | 0 to 1000000000000 | Minimum revenue for broadcasts. Net takings must stay positive after the miner fee |
 | `broadcastMinerFeeCeiling` | 2000000 | 0 to 100000000 | Most of the executor fee a broadcast may spend as a network fee, further limited by the order's own cap |
-| `broadcast` | `false` | `true` or `false` | Broadcast fills to the mempool rather than only filling in your own block |
+| `broadcast` | `true` | `true` or `false` | Broadcast fills to the mempool rather than only filling in your own block |
 | `broadcastMempoolOrders` | `true` | `true` or `false` | With `broadcast` on, also broadcast orders still unconfirmed |
 | `skippedOrderTtlMs` | 3600000 | 60000 to 86400000 ms | How long an order that priced but could not be built is left out |
 | `maxSkippedOrders` | 4096 | 0 to 100000 | Such orders remembered at once, oldest forgotten first. About 200 bytes each |
@@ -132,8 +133,8 @@ ErgoDEX executes against many pools, so it bounds how many it tracks and skips i
 The ErgoDEX batcher covers MewDex too, since MewDex is the same contracts under a different interface.
 
 **Its candidate source ships on**, so ErgoDEX executions reach your blocks. To keep them out, set
-`stratum.candidate.sources.ergodex.enabled = false`. The batcher then stops scanning unless
-`batching.ergodex.broadcast` is on.
+`stratum.candidate.sources.ergodex.enabled = false`. The batcher keeps scanning to broadcast, since
+`batching.ergodex.broadcast` ships on. Set that to `false` as well and it stops scanning.
 
 ## LithosDex only
 

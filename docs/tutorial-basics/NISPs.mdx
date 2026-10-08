@@ -117,6 +117,9 @@ At 60 blocks the window is about **45 minutes on testnet** and about **2 hours o
 testnet blocks arrive roughly every 45 seconds against mainnet's 2 minutes. **The block count is the
 same on both networks**, so testnet gives you less wall-clock time to reach ten super shares.
 
+Those durations are averages. [Measured windows move the range](#measured-windows-move-the-range)
+covers how much a window's length varies, and what that does to the choice of τ.
+
 ## Serialization
 
 A NISP is a score followed by ten shares laid out end to end. Each share is:
@@ -257,7 +260,9 @@ This comes at the cost of a smaller score (and therefore, a smaller payout).
 
 The ideal τ is not a value the formula produces. It is where rational miners converge: **a τ that
 averages between 10 and 16 super shares per window**, which is the range where consistency and pay
-balance out.
+balance out. That range assumes every window lasts exactly 60 target-length blocks. On mainnet's
+measured windows it moves to 12 to 17, as
+[Measured windows move the range](#measured-windows-move-the-range) shows.
 
 Because the number of super shares a window produces is a count of rare independent events, it follows
 a Poisson distribution. That makes the trade exact. The following shows the chance of reaching ten, and
@@ -286,15 +291,62 @@ expected income wherever they sit, so they choose by how much variance they will
 floor of the range, where score is highest and a window is paid about half the time, at roughly 15%
 below the peak.
 
-The scores at the floor of the range, at the peak, and at the recommended start of averaging 15, on
-both networks:
+### Measured windows move the range
 
-| Hashrate | Testnet, k = 10 | Testnet, k = 13 | Testnet, k = 15 | Mainnet, k = 10 | Mainnet, k = 13 | Mainnet, k = 15 |
+The table above holds `W` fixed at 60 target-length blocks. A live chain does not. Blocks arrive early
+or late around the target, so a window's length varies, and every miner's super shares vary with it.
+The following shows the spread over the 60-block windows ending between August and October 2026, as a
+multiple of the target length:
+
+| Network | Windows measured | 5th percentile | Median | 95th percentile |
+|---|---|---|---|---|
+| Mainnet | 43,139 | 0.81 | 1.01 | 1.28 |
+| Testnet | 107,939 | 0.69 | 1.01 | 1.40 |
+
+A variable window changes the trade in two ways. First, the chance of reaching ten is averaged over
+the measured lengths. On its own this barely moves anything: averaging 15 pays in 93.0% of fixed
+windows and in 91.5% of mainnet's measured ones.
+
+Second, a short window starves every miner at once, so misses are correlated. When others miss, the
+rollup's total score shrinks and the miners still paid take a larger share. The table above assumes a
+miner's score never moves the denominator. Dropping that assumption, with `N` miners of equal hashrate
+per rollup and the others averaging `k_o`:
+
+```text
+w            = window length ÷ target length, with p(w) its measured share
+reach(k, w)  = P(Poisson(k × w) ≥ 10)
+B            = number of others who reach ten, ~ Binomial(N − 1, reach(k_o, w))
+earnings(k)  = Σ p(w) × reach(k, w) × E[ k_o ÷ (k_o + B × k) ]
+```
+
+Each miner's best `k` depends on the others' `k_o`. Repeating best replies until they stop changing
+gives the average that miners settle on. The following shows it on mainnet's windows, for rigs that
+hash at their estimate and for rigs 10% slower:
+
+| Miners per rollup | Settled average | Rigs 10% slower than estimated |
+|---|---|---|
+| 2 | 15.75 | 17.25 |
+| 3 | 14.75 | 16.25 |
+| 5 | 14 | 15.5 |
+| 10 | 13.75 | 15 |
+| 30 or more | 13.25 | 14.5 to 14.75 |
+
+The client's calculator and guides use `N = 5`, the number of miners submitting to a typical mainnet
+rollup in October 2026. At `N = 5` expected earnings peak at an average of 14, with 15 only 0.56%
+lower, and stay within 7% of the peak from 12 to 17 on mainnet and from 12 to 19 on testnet. Fifteen
+pays in 91.5% of mainnet windows against 87.6% at 14, so the calculator marks 15 as the peak: rows
+it shows at the same whole percentage count as a tie, and a tie goes to the higher average.
+
+The recommended start moves to averaging 17. It pays in 96.2% of mainnet windows and 93.5% of testnet
+ones, and a hashrate 29% below the estimate still averages 12, the floor of the measured range. The
+scores at that floor, at the peak and at the start, on both networks:
+
+| Hashrate | Testnet, k = 12 | Testnet, k = 15 | Testnet, k = 17 | Mainnet, k = 12 | Mainnet, k = 15 | Mainnet, k = 17 |
 |---|---|---|---|---|---|---|
-| 100 MH/s | 2.7M | 2.08M | 1.8M | 7.2M | 5.54M | 4.8M |
-| 500 MH/s | 13.5M | 10.4M | 9M | 36M | 27.7M | 24M |
-| 1 GH/s | 27M | 20.8M | 18M | 72M | 55.4M | 48M |
-| 4 GH/s | 108M | 83.1M | 72M | 288M | 222M | 192M |
+| 100 MH/s | 2.25M | 1.8M | 1.59M | 6M | 4.8M | 4.24M |
+| 500 MH/s | 11.3M | 9M | 7.94M | 30M | 24M | 21.2M |
+| 1 GH/s | 22.5M | 18M | 15.9M | 60M | 48M | 42.4M |
+| 4 GH/s | 90M | 72M | 63.5M | 240M | 192M | 169M |
 
 The windows are 2,700 seconds on testnet and 7,200 seconds on mainnet.
 
@@ -307,7 +359,9 @@ sustain across block boundaries, not the peak your miner reports.
 
 ### Inflating τ
 
-An **inflated** τ sits above the ideal range: it averages **more than 16** super shares per window.
+An **inflated** τ sits above the ideal range: it averages **more than 16** super shares per window in
+a fixed window, or more than 17 on mainnet's measured windows. The numbers in this section use the
+fixed window.
 
 The proof is almost always valid, since reaching ten is nearly certain. **But score falls in direct
 proportion**, because score is `2^256 / τ`. A miner averaging 20 is paid 99.5% of the time and holds
@@ -315,13 +369,15 @@ half the score of one averaging 10, doing the same work.
 
 Inflation fades rather than collapses. At an average of 18 expected earnings are still level with
 averaging 10, and at 20 they are 92% of it. It is the safe direction to err in while measuring
-hardware. The recommended start, averaging 15, sits just inside the range for that reason: a hashrate
-up to a third below the estimate still averages 10. Lowering τ from there one step at a time raises
-expected earnings toward the peak while keeping payouts consistent.
+hardware. The recommended start, averaging 17, sits at the top of the measured range for that reason:
+a hashrate up to 29% below the estimate still averages 12. Lowering τ from there one step at a time
+raises expected earnings toward the peak while keeping payouts consistent.
 
 ### Deflating τ
 
-A **deflated** τ sits below the ideal range: it averages **fewer than 10** super shares per window.
+A **deflated** τ sits below the ideal range: it averages **fewer than 10** super shares per window in
+a fixed window, or fewer than 12 on mainnet's measured windows. The numbers in this section use the
+fixed window.
 
 Score rises, so each paid window pays more. But lowering τ narrows the threshold, and the hashes a miner
 can produce in a window are fixed by their hardware, so **reaching ten becomes unlikely**. A window
@@ -335,9 +391,9 @@ eighth. Far enough down, no window ever produces a valid proof and the score is 
 
 | | Super shares averaged | Chance a window pays | Expected earnings |
 |---|---|---|---|
-| Deflated τ | Fewer than 10 | Falls steeply toward zero | Collapses |
-| Ideal τ | 10 to 16 | About 54% to 96% | Near its peak |
-| Inflated τ | More than 16 | Approaches certainty | Fades slowly |
+| Deflated τ | Fewer than 10 (12 measured) | Falls steeply toward zero | Collapses |
+| Ideal τ | 10 to 16 (12 to 17 measured) | About 54% to 96% (75% to 96% measured) | Near its peak |
+| Inflated τ | More than 16 (17 measured) | Approaches certainty | Fades slowly |
 
 **Both directions lose in expectation**, and that is the property the design depends on. It is what
 makes an honest, well-chosen τ the profitable one rather than merely the fair one. Inflating gives away

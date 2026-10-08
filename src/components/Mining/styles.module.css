@@ -1568,6 +1568,58 @@
   align-items: end;
 }
 
+/* A card head's right side when it holds more than one item. */
+.cardHeadSide {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+/* Switches the trade table between nominal and measured windows, framed like the network switch. */
+.tableCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 13px 5px 10px;
+  background: rgba(10, 15, 30, 0.7);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 999px;
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--cur-dim);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tableCheck:hover {
+  color: var(--cur-cyan-light);
+}
+
+.tableCheck input {
+  accent-color: var(--cur-cyan);
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tableCheckOn {
+  color: var(--cur-cyan-light);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.tableCheckOff,
+.tableCheckOff:hover {
+  opacity: 0.42;
+  color: var(--cur-dim);
+  cursor: not-allowed;
+}
+
 .calcField {
   display: flex;
   flex-direction: column;

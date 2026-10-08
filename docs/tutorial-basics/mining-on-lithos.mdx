@@ -64,6 +64,19 @@ arrive roughly every 45 seconds against mainnet's 2 minutes.
 The block count is the same on both networks, so **testnet gives you less real time** than mainnet
 will. A `diff` that works on testnet is conservative for mainnet at the same hardware.
 
+**Sixty blocks is an average length, not a fixed one.** Blocks arrive early or late around Ergo's
+target time, so some windows give you far less time than others. The following shows how long windows
+lasted from August to October 2026:
+
+| Network | Target length | 9 windows in 10 lasted |
+|---|---|---|
+| Mainnet | 2 hours | 97 to 154 minutes |
+| Testnet | 45 minutes | 31 to 63 minutes |
+
+A short window cuts the super shares of every miner at the same time. The numbers on this page count
+both sides of that. You are paid less often in short windows. But when other miners fall short in the
+same window, the miners still paid take a larger share of it.
+
 ## The trade
 
 Everything about choosing `diff` is one trade: **how much you are paid, against how often you are paid
@@ -71,53 +84,60 @@ at all**.
 
 The clearest way to see it is in terms of how many super shares your `diff` makes you average per
 window. You need ten to be paid, so the question is how far above ten you want your average to sit.
-The following shows the trade at a range of averages, so you can find the row that matches your own
-appetite for risk:
+The following shows the trade on mainnet at a range of averages, so you can find the row that matches
+your own appetite for risk:
 
 | Super shares you average | Chance a window pays you | Your score | Expected earnings |
 |---|---|---|---|
-| 5 | 3.2% | 200% | 12% |
-| 7 | 17.0% | 143% | 45% |
-| 10 | 54.2% | 100% | 100% |
-| 11 | 65.9% | 91% | 111% |
-| 12 | 75.8% | 83% | 116% |
-| 13 | 83.4% | 77% | 118% |
-| 14 | 89.1% | 71% | 117% |
-| 15 | 93.0% | 67% | 114% |
-| 16 | 95.7% | 63% | 110% |
-| 18 | 98.5% | 56% | 101% |
-| 20 | 99.5% | 50% | 92% |
+| 5 | 4.4% | 200% | 12% |
+| 7 | 19.9% | 143% | 45% |
+| 10 | 55.7% | 100% | 100% |
+| 11 | 66.3% | 91% | 112% |
+| 12 | 75.2% | 83% | 120% |
+| 13 | 82.3% | 77% | 124% |
+| 14 | 87.6% | 71% | 125% |
+| 15 | 91.5% | 67% | 125% |
+| 16 | 94.3% | 63% | 122% |
+| 17 | 96.2% | 59% | 119% |
+| 18 | 97.5% | 56% | 116% |
+| 20 | 99.0% | 50% | 108% |
 
 Score and expected earnings are both relative to averaging 10. Expected earnings is your score
-multiplied by the chance of being paid, and assumes your score is a small part of each block's total.
+multiplied by the chance of being paid, plus the larger share you take when a short window stops other
+miners. It assumes 5 miners of similar size submit to each rollup, as on mainnet in October 2026.
 
 ### The ideal `diff`
 
-**Your ideal `diff` is one that averages between 10 and 16 super shares per window.** It is not a single
+**Your ideal `diff` is one that averages between 12 and 17 super shares per window.** It is not a single
 number a formula hands you. It is the range where miners converge, because it is where consistency and
 pay balance out.
 
-The expected earnings column shows why. It peaks at an average of 13 and stays within about 7% of that
-peak from 11 to 16, so across most of the range you give up very little expected income whichever point
-you choose. The choice comes down to how steady you want your payouts:
+The expected earnings column shows why. It peaks at averages of 14 and 15, which differ by less than
+1%, and stays within about 7% of that peak from 12 to 17. Across most of the range you give up very
+little expected income whichever point you choose. The choice comes down to how steady you want your
+payouts:
 
-- **Toward 10**: a higher score, paid about half the time. Larger payouts with more gaps between them,
-  at roughly 15% below the peak in expected earnings.
-- **Toward 16**: a lower score, paid about 96% of the time. Smaller payouts, almost never a gap.
+- **Toward 12**: a higher score, paid about 75% of the time. Larger payouts with more gaps between them,
+  at roughly 5% below the peak in expected earnings.
+- **Toward 17**: a lower score, paid about 96% of the time. Smaller payouts, rarely a gap.
 
-Ten is the floor of the range, not a target to push past.
+**Between 14 and 15, choose 15.** The two earn the same, and averaging 15 pays in about 92% of windows
+against 88% at 14. The web panel marks 15 as the peak for that reason.
+
+Twelve is the floor of the range, not a target to push past.
 
 ### Outside the range
 
 Leaving the range costs you in both directions, and the two directions are not equally forgiving.
 
-**Below 10, your earnings collapse.** Averaging 7 gives you 43% more score, and you are paid less than a
-fifth of the time, so you earn less than half as much. At 5 you double your score and earn about an
-eighth. This is the direction that looks tempting and is not.
+**Below 12, your earnings fall quickly.** Averaging 10 pays you in only about 56% of windows. Averaging 7
+gives you 43% more score than 10, and you are paid about a fifth of the time, so you earn less than half
+as much. At 5 you double your score and earn about an eighth. This is the direction that looks
+tempting and is not.
 
-**Above 16, your earnings fade slowly.** Averaging 20 halves your score and pays you almost every
-window, and you still earn over 90% of what you would at 10. Nothing is lost by staying there briefly,
-but it earns less than the range once you know your hashrate.
+**Above 17, your earnings fade slowly.** Averaging 20 halves your score and pays you almost every
+window, and you still earn 8% more than you would at 10. Nothing is lost by staying there briefly, but
+it earns less than the range once you know your hashrate.
 
 :::note Steady payouts are the reason to pool at all
 You joined a pool so your income would be predictable. Pushing `diff` up until most of your windows
@@ -134,28 +154,29 @@ diff = (hashrate in H/s × window in seconds) ÷ (10,000 × super shares you wan
 ```
 
 The window is 60 blocks: **2,700 seconds on testnet** and **7,200 seconds on mainnet**. The following
-gives the floor of the ideal range at averaging 10, the peak at averaging 13, and the recommended start
-at averaging 15:
+gives the floor of the ideal range at averaging 12, the peak at averaging 15, and the recommended start
+at averaging 17:
 
-| Hashrate | Testnet, 10 | Testnet, 13 | Testnet, 15 | Mainnet, 10 | Mainnet, 13 | Mainnet, 15 |
+| Hashrate | Testnet, 12 | Testnet, 15 | Testnet, 17 | Mainnet, 12 | Mainnet, 15 | Mainnet, 17 |
 |---|---|---|---|---|---|---|
-| 100 MH/s | 2.7M | 2.08M | 1.8M | 7.2M | 5.54M | 4.8M |
-| 250 MH/s | 6.75M | 5.19M | 4.5M | 18M | 13.8M | 12M |
-| 500 MH/s | 13.5M | 10.4M | 9M | 36M | 27.7M | 24M |
-| 1 GH/s | 27M | 20.8M | 18M | 72M | 55.4M | 48M |
-| 4 GH/s | 108M | 83.1M | 72M | 288M | 222M | 192M |
+| 100 MH/s | 2.25M | 1.8M | 1.59M | 6M | 4.8M | 4.24M |
+| 250 MH/s | 5.63M | 4.5M | 3.97M | 15M | 12M | 10.6M |
+| 500 MH/s | 11.3M | 9M | 7.94M | 30M | 24M | 21.2M |
+| 1 GH/s | 22.5M | 18M | 15.9M | 60M | 48M | 42.4M |
+| 4 GH/s | 90M | 72M | 63.5M | 240M | 192M | 169M |
 
-**A lower `diff` averages more super shares**, so the averaging-15 column is always the smaller number.
+**A lower `diff` averages more super shares**, so the averaging-17 column is always the smaller number.
 
-**Start at the averaging-15 value, then raise `diff` slowly.** Averaging 15 pays in about 93% of
-windows, and a hashrate up to a third lower than you estimated still averages 10. Follow these steps:
+**Start at the averaging-17 value, then raise `diff` slowly.** Averaging 17 pays in about 96% of
+mainnet windows and about 93% of testnet windows, and a hashrate up to 29% lower than you estimated
+still averages 12. Follow these steps:
 
-1. Commit the averaging-15 `diff` for your hashrate.
+1. Commit the averaging-17 `diff` for your hashrate.
 2. Watch how many super shares you produce per window until the commitment may be replaced, 845 blocks
    after the client sent it.
 3. If your windows pay reliably, raise `diff` so it averages one super share fewer, for example from
-   averaging 15 to averaging 14.
-4. Repeat, and stop at averaging 13 or wherever payouts start to skip windows.
+   averaging 17 to averaging 16.
+4. Repeat, and stop at averaging 15 or wherever payouts start to skip windows.
 
 Each step is a new difficulty commitment. It binds 125 blocks after the client sends it, and the next
 step can follow 845 blocks after that send, about 10 hours 30 minutes on testnet and about 28 hours on

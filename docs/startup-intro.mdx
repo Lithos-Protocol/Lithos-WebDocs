@@ -305,6 +305,10 @@ Sixty blocks is about **45 minutes on testnet** and about **2 hours on mainnet**
 blocks arrive roughly every 45 seconds against mainnet's 2 minutes. The window is the same 60 blocks on
 both networks, so testnet gives you less wall-clock time to reach 10 super shares than mainnet will.
 
+Those times are averages. Blocks arrive early or late, so on mainnet about 1 window in 13 lasts under
+100 minutes. A short window costs every miner super shares at the same time, and the recommendations
+below allow for it.
+
 How many super shares you produce depends on your hashrate and your `diff`:
 
 - **Raising `diff`** increases your payout per block, and produces fewer super shares.
@@ -315,15 +319,16 @@ Your payout is set entirely by your committed difficulty. Super shares only dete
 qualify. Ten is enough; a thousand pays exactly the same as ten.
 :::
 
-**Aim for a `diff` that averages between 10 and 16 super shares per window.** That range is where
-expected earnings peak. Averaging 10 pays you about half the time at the highest score in the range;
-averaging 16 pays you about 96% of the time at a lower one. Below 10 your earnings collapse, because
-most windows fall short.
+**Aim for a `diff` that averages between 12 and 17 super shares per window.** That range is where
+expected earnings peak. On mainnet, averaging 12 pays you about 75% of the time at the highest score
+in the range. Averaging 17 pays you about 96% of the time at a lower one. Below 12 your earnings fall
+quickly, because short windows leave you under 10.
 
-**Start at averaging 15, then raise `diff` slowly.** Averaging 15 pays you about 93% of the time,
-and still averages 10 if your hashrate turns out to be a third lower than you estimated. Once your
-payouts arrive steadily, raise `diff` a little at a time toward averaging 13, where expected earnings
-peak. Each change is a new commitment, so steps are at least 845 blocks apart, as
+**Start at averaging 17, then raise `diff` slowly.** Averaging 17 pays you about 96% of the time on
+mainnet and about 93% on testnet. It still lands inside the range if your hashrate turns out to be
+29% lower than you estimated. Once your payouts arrive steadily, raise `diff` a little at a time
+toward averaging 15, where expected earnings peak. Each change is a new commitment, so steps are at
+least 845 blocks apart, as
 [Changing your difficulty later](#changing-your-difficulty-later-costs-a-day-not-an-hour) explains.
 
 To find a starting value for your hardware:
@@ -333,7 +338,7 @@ diff = (hashrate in H/s × window in seconds) ÷ (10,000 × super shares you wan
 ```
 
 The window is 2,700 seconds on testnet and 7,200 seconds on mainnet. So a 1 GH/s rig on testnet
-averages 15 super shares at a `diff` of 18M, and 10 at 27M.
+averages 17 super shares at a `diff` of 15.9M, and 12 at 22.5M.
 
 [Mining on Lithos](./tutorial-basics/mining-on-lithos.mdx) has the full table of payout chances at
 each average, and starting values for common hashrates. On testnet, try several values and watch how

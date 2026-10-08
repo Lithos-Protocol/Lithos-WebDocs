@@ -42,7 +42,6 @@ const LIT_DECIMALS = 9;
 /** Payouts the profile and share figures are computed over, so they hold still while paging. */
 const SAMPLE = 300;
 const PAGE_SIZES = [10, 25, 50, 100, 200, 300];
-const CLAIMS_PER_PAGE = 5;
 const BOUNTIES_PER_PAGE = 10;
 
 const fmtLit = (raw, dp = 4) => fmtTokenMin(raw, LIT_DECIMALS, dp);
@@ -480,12 +479,92 @@ function Pager({ page, pages, onPage }) {
   );
 }
 
+const CLAIM_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'holding', label: 'Holding' },
+  { id: 'evaluation', label: 'Evaluation' },
+  { id: 'payout', label: 'Payout' },
+  { id: 'slashed', label: 'Slashed' },
+];
+
+/**
+ * Orders for the claim list. Each key reads a claim as a BigInt, or null when the claim has no
+ * such value yet; nulls sort last in either direction. `desc` is the direction a pick starts in,
+ * and `dirs` names the two directions, descending first.
+ */
+const HIGH_LOW = ['highest', 'lowest'];
+const CLAIM_SORTS = [
+  { id: 'submitted', label: 'Submitted', desc: true, dirs: ['newest', 'oldest'], key: (c) => BigInt(c.submittedHeight) },
+  { id: 'mined', label: 'Block height', desc: true, dirs: HIGH_LOW, key: (c) => BigInt(c.minedHeight) },
+  {
+    id: 'ready',
+    label: 'Payout ready',
+    desc: false,
+    dirs: ['latest', 'soonest'],
+    // A payout already waiting sorts by when it became ready, ahead of every claim still to get there.
+    key: (c) =>
+      c.phase === 'payout'
+        ? BigInt(c.phaseHeight) - 10n ** 12n
+        : c.payoutReadyFrom != null
+          ? BigInt(c.payoutReadyFrom)
+          : null,
+  },
+  {
+    id: 'reward',
+    label: 'Reward',
+    desc: true,
+    dirs: HIGH_LOW,
+    key: (c) => (c.rewardNanoErg != null ? big(c.rewardNanoErg) : null),
+  },
+  {
+    id: 'share',
+    label: 'Share',
+    desc: true,
+    dirs: HIGH_LOW,
+    key: (c) => (big(c.rollupScore) > 0n ? (big(c.score) * 10n ** 18n) / big(c.rollupScore) : null),
+  },
+  { id: 'score', label: 'Score', desc: true, dirs: HIGH_LOW, key: (c) => big(c.score) },
+  { id: 'bond', label: 'Bond', desc: true, dirs: HIGH_LOW, key: (c) => big(c.bondNanoErg) },
+];
+
+function sortClaims(claims, sortId, descending) {
+  const sort = CLAIM_SORTS.find((o) => o.id === sortId) ?? CLAIM_SORTS[0];
+  const keyed = claims.map((c, i) => ({ c, i, k: sort.key(c) }));
+  keyed.sort((a, b) => {
+    if (a.k == null || b.k == null) return a.k == null ? (b.k == null ? a.i - b.i : 1) : -1;
+    if (a.k === b.k) return a.i - b.i;
+    return (a.k < b.k ? -1 : 1) * (descending ? -1 : 1);
+  });
+  return keyed.map((x) => x.c);
+}
+
 function ClaimsCard({ claims, height, pace, holdingBlocks, evaluationBlocks }) {
-  const [page, setPage] = useState(0);
-  const pages = Math.max(1, Math.ceil(claims.length / CLAIMS_PER_PAGE));
-  // A claim that pays drops out of the list, which can leave the current page past the end.
-  const at = Math.min(page, pages - 1);
-  const shown = claims.slice(at * CLAIMS_PER_PAGE, (at + 1) * CLAIMS_PER_PAGE);
+  const [filter, setFilter] = useState('all');
+  const [sortId, setSortId] = useState(CLAIM_SORTS[0].id);
+  const [descending, setDescending] = useState(CLAIM_SORTS[0].desc);
+
+  const counts = useMemo(() => {
+    const n = { all: claims.length };
+    claims.forEach((c) => {
+      n[c.phase] = (n[c.phase] ?? 0) + 1;
+    });
+    return n;
+  }, [claims]);
+  const shown = useMemo(
+    () => sortClaims(filter === 'all' ? claims : claims.filter((c) => c.phase === filter), sortId, descending),
+    [claims, filter, sortId, descending],
+  );
+
+  // A new order starts from the direction that suits it, as the history table's columns do.
+  const onSort = (id) => {
+    setSortId(id);
+    setDescending(CLAIM_SORTS.find((o) => o.id === id).desc);
+  };
+  const sort = CLAIM_SORTS.find((o) => o.id === sortId);
+  const [descName, ascName] = sort.dirs;
+  const dirName = descending ? descName : ascName;
+  const filterLabel = CLAIM_FILTERS.find((f) => f.id === filter).label.toLowerCase();
+
   return (
     <div className={`${s.card} ${s.fillCard}`}>
       <div className={s.cardHead}>
@@ -497,21 +576,74 @@ function ClaimsCard({ claims, height, pace, holdingBlocks, evaluationBlocks }) {
           No unpaid claims. Every rollup you submitted to has paid out.
         </div>
       ) : (
-        <div className={s.claimList}>
-          {shown.map((c) => (
-            <Claim key={c.rollupNft} claim={c} height={height} pace={pace} />
-          ))}
-        </div>
+        <>
+          <div className={s.claimTools}>
+            <div className={s.claimFilters} role="group" aria-label="Filter claims by phase">
+              {CLAIM_FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`${s.claimFilter} ${filter === f.id ? s.claimFilterOn : ''} ${
+                    f.id === 'slashed' && counts.slashed ? s.claimFilterWarn : ''
+                  }`}
+                  disabled={f.id !== 'all' && !counts[f.id]}
+                  aria-pressed={filter === f.id}
+                  onClick={() => setFilter(f.id)}
+                >
+                  {f.label} <span className={s.chipNum}>{fmtInt(counts[f.id] ?? 0)}</span>
+                </button>
+              ))}
+            </div>
+            <div className={s.controls}>
+              <span className={s.label}>sort</span>
+              <select
+                className={s.pageSelect}
+                value={sortId}
+                onChange={(e) => onSort(e.target.value)}
+                aria-label="Sort claims by"
+              >
+                {CLAIM_SORTS.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className={`${s.pageBtn} ${s.claimSortDir}`}
+                onClick={() => setDescending((d) => !d)}
+                aria-label={`${dirName} first; switch to ${descending ? ascName : descName} first`}
+                title={`${dirName} first`}
+              >
+                {descending ? '▾' : '▴'}
+              </button>
+            </div>
+          </div>
+          <div className={s.claimScroll}>
+            <div className={s.claimScrollInner}>
+              {shown.length === 0 ? (
+                <div className={s.empty} style={{ padding: '1.6rem 1rem' }}>
+                  No claims in {filterLabel}.
+                </div>
+              ) : (
+                <div className={s.claimList}>
+                  {shown.map((c) => (
+                    <Claim key={c.rollupNft} claim={c} height={height} pace={pace} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       )}
       <div className={s.fillFoot}>
-        {claims.length > CLAIMS_PER_PAGE && (
-          <div className={s.payFoot} style={{ marginTop: 0, marginBottom: 12 }}>
-            <span className={s.cardNote}>
-              {fmtInt(at * CLAIMS_PER_PAGE + 1)}–{fmtInt(at * CLAIMS_PER_PAGE + shown.length)} of{' '}
-              {fmtInt(claims.length)}, newest submission first
-            </span>
-            <Pager page={at} pages={pages} onPage={setPage} />
-          </div>
+        {claims.length > 0 && (
+          <p className={s.cardNote} style={{ marginBottom: 8 }}>
+            {filter === 'all'
+              ? `${fmtInt(claims.length)} claim${claims.length === 1 ? '' : 's'}`
+              : `${fmtInt(shown.length)} of ${fmtInt(claims.length)} claims, ${filterLabel} only`}
+            , by {sort.label.toLowerCase()}, {dirName} first
+          </p>
         )}
         <p className={s.cardNote}>
           A rollup takes submissions for {fmtInt(holdingBlocks)} blocks after it is mined, then stays open

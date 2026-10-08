@@ -212,6 +212,11 @@ rigel.exe -a autolykos2 -o stratum+tcp://127.0.0.1:4444 -u YOUR_ERG_WALLET -w my
 </TabItem>
 </Tabs>
 
+`127.0.0.1` reaches a client on the same machine as the rig. A rig on another machine uses the client
+machine's LAN address instead, such as `stratum+tcp://192.168.1.20:4444`. The stratum accepts rigs
+from every network by default; to limit it to this machine or to one network, set
+[`stratum.bindAddress`](./configuration/stratum.mdx#which-rigs-can-connect).
+
 ## Step 6: Commit your difficulty
 
 You cannot be paid until your difficulty is committed on the blockchain. A difficulty commitment is a

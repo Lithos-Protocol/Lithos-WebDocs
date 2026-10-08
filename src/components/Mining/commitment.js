@@ -105,7 +105,7 @@ export function SuperShareCommitmentNote({ commitment, network }) {
     text = 'Your difficulty is not committed, so these super shares cannot go into a NISP and earn nothing.';
   } else if (next) {
     text = `Your commitment takes effect at ${atBlock(next.inForceFromHeight, commitment.height, network)}. ` +
-      'Rollups opened before then cannot take your NISPs, so these super shares earn nothing until it does.';
+      'You do not earn rewards until it does.';
   } else {
     text = 'Your difficulty commitment could not be confirmed, so these super shares may earn nothing.';
   }

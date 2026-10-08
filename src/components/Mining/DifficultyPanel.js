@@ -40,8 +40,8 @@ function makeView(rows, ideal, startMean, floorNote) {
     top: Math.max(...rows.map((r) => r.earnings)),
     picks: [
       { mean: ideal.from, label: 'Floor', note: floorNote },
-      { mean: peak.mean, label: 'Peak', note: 'highest expected earnings' },
       { mean: startMean, label: 'Start', note: 'where to begin, paid almost every window' },
+      { mean: peak.mean, label: 'Peak', note: 'highest expected earnings' },
     ],
   };
 }
@@ -136,7 +136,7 @@ function DifficultiesPanel({ configDiff, difficulty }) {
           {d?.pending && (
             <span className={s.diffPending}>
               Changing to {asDiff(d.pending)} at block {fmtInt(d.pendingFromHeight)}.
-              {early && ' The stratum already serves it, so the super shares its first rollups need are found at it.'}
+              {early && ' The stratum already serves it, so that you can build up your super share window.'}
             </span>
           )}
           {d && !d.committed && !d.pending && ' None is in force yet.'}
@@ -430,7 +430,7 @@ export default function DifficultyPanel() {
 
         <p className={s.cardNote} style={{ marginTop: 12 }}>
           {measured
-            ? `Score and expected earnings are relative to averaging ten. Chance uses the window lengths measured on ${NETWORKS[network].label.toLowerCase()}, and expected earnings assumes ${ROLLUP_MINERS} miners of your size submit to each rollup.`
+            ? `Score and expected earnings are relative to averaging ten. Chance uses the window lengths measured on ${NETWORKS[network].label.toLowerCase()}, and expected earnings assumes sparse block production.`
             : "Score and expected earnings are relative to averaging ten, and expected earnings assumes your score is a small part of each block's total."}{' '}
           Super shares per window follow a Poisson spread
           around your average. A new <code>diff</code> binds {fmtInt(COMMIT_BINDS_BLOCKS)} blocks after

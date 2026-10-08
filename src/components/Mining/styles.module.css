@@ -2236,6 +2236,91 @@
   gap: 8px;
 }
 
+.claimTools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.claimFilters {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.claimFilter {
+  appearance: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: rgba(10, 15, 30, 0.6);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 8px;
+  padding: 4px 9px;
+  font-family: var(--cur-font-mono);
+  font-size: 10.5px;
+  color: var(--cur-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.claimFilter:hover:not(:disabled) {
+  color: var(--cur-cyan-light);
+  border-color: rgba(125, 211, 252, 0.35);
+}
+
+.claimFilter:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.claimFilterWarn {
+  border-color: rgba(251, 191, 36, 0.3);
+  color: var(--cur-amber-light);
+}
+
+.claimFilterOn,
+.claimFilterOn:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(125, 211, 252, 0.4);
+  color: var(--cur-cyan-light);
+}
+
+.claimSortDir {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+}
+
+/*
+ * Fills whatever height the row gives the card. The list is positioned out of flow so its length
+ * never sets that height: the column beside it does, and the list scrolls inside.
+ */
+.claimScroll {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 340px;
+}
+
+.claimScrollInner {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 211, 252, 0.25) transparent;
+}
+
+@media (max-width: 860px) {
+  .claimScroll {
+    min-height: 440px;
+  }
+}
+
 .claim {
   background: var(--cur-bg-well);
   border: 1px solid rgba(125, 211, 252, 0.08);

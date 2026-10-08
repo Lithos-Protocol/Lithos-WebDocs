@@ -61,6 +61,7 @@ not eligible consolidation inputs.
 | Log text | Meaning | Operator action |
 |---|---|---|
 | `No usable difficulty commitment ... may be considered fraudulent` | No active commitment is currently usable | Expected at first startup until dictionary synchronization and commitment activation complete. Work submitted before the commitment is active is not payable. If it persists after synchronization, check the **Commitment** tab under **Mining**, **Difficulty** in the web interface |
+| `Stratum is not accepting rigs on <address>, port <port>` | The stratum could not listen on `stratum.bindAddress` and `stratum.stratumPort`. The rest of the client keeps running, but no rig can connect | Check that `bindAddress` is an address this machine holds and that no other program uses the port, then restart. See [Which rigs can connect](../configuration/stratum.mdx#which-rigs-can-connect) |
 | `Auto-commit is off (state.autoCommit)` | The client will not register you or change your commitment on its own | Expected. Commit from the **Commitment** tab, or set `state.autoCommit = true`. An unregistered miner cannot submit NISPs |
 | `Auto-commit waiting on ...` | Registration or a commitment change is waiting on the named condition | No action for sync, confirmation or the 845-block replacement rule. Logged again only when the reason changes |
 | `Difficulty commitment ... is on chain` | The confirmed commitment equals `stratum.diff` | None. The client stops checking until the next restart |

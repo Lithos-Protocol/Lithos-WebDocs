@@ -1,9 +1,9 @@
 /**
  * Lithos Mining statistics API client.
  *
- * Talks to the `stats`-tagged endpoints plus `/mining`. Every one of these reads is open — only
+ * Talks to the `stats`-tagged endpoints plus `/mining`. Every read here is open — only
  * `/stats/local` needs a key, and nothing here calls it — so the page loads unattended on a
- * refresh instead of asking for a key first.
+ * refresh instead of asking for a key first. The one write, `postCommitment`, sends the key.
  *
  * Difficulty, assigned work and hashrate all cross the wire as decimal strings, and network
  * difficulty comfortably exceeds the exact range of a double. Nothing here coerces a wire value
@@ -169,3 +169,45 @@ export const getCandidateSettings = () => req('/mining/candidate');
 
 /** GET /info — sync state, and which network this client is configured for. */
 export const getInfo = () => req('/info');
+
+/**
+ * GET /mining/commitment — this miner's difficulty commitment, read from the chain. Open like the
+ * statistics reads, so the layout can warn on load before any key is entered.
+ */
+export const getCommitment = () => req('/mining/commitment');
+
+/**
+ * POST /mining/commitment — registers this miner with `diff`, or changes its commitment to it.
+ * The one write on these pages, and the only call that sends the API key.
+ */
+export async function postCommitment(diff) {
+  const key = getApiKey();
+  if (!key) throw new ApiError('An API key is needed to send a commitment. Enter it above or under Settings.', 401);
+  let res;
+  try {
+    res = await fetch(`${getBaseUrl()}/mining/commitment`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', api_key: key },
+      body: JSON.stringify({ diff }),
+    });
+  } catch (e) {
+    const target = getBaseUrl() || window.location.origin;
+    throw new ApiError(`Cannot reach the Lithos client at ${target}. Is it running?`, 0, String(e));
+  }
+  const text = await res.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    /* non-JSON body — fall through to the error below */
+  }
+  if (!res.ok) {
+    const msg =
+      data?.detail ||
+      data?.reason ||
+      (res.status === 403 ? 'The API key was refused. Check it under Settings.' : null) ||
+      `Request failed (${res.status} ${res.statusText})`;
+    throw new ApiError(msg, res.status, data);
+  }
+  return data;
+}

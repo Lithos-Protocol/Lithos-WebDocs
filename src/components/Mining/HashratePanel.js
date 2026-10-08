@@ -21,6 +21,7 @@ import {
   timeLabel,
 } from './format';
 import { NETWORKS, NISP_COEFFICIENT } from './trade';
+import { SuperShareCommitmentNote, isCommitted } from './commitment';
 
 /*
  * One colour per actor, fixed for the whole page: cyan is the Ergo network, purple is Lithos,
@@ -247,9 +248,10 @@ function reductionNote(reported) {
  * Whether the super shares found so far make a NISP, drawn as the ten it needs.
  *
  * Only the window counts, not the session: a NISP takes ten super shares from the blocks just
- * before a rollup starts, so older ones earn nothing however many there were.
+ * before a rollup starts, so older ones earn nothing however many there were. `uncommitted` means
+ * no commitment is in force, so a full window still cannot be submitted.
  */
-function NispMeter({ nisp, blockMs }) {
+function NispMeter({ nisp, blockMs, uncommitted = false }) {
   if (!nisp) {
     return (
       <div className={s.nisp}>
@@ -269,12 +271,14 @@ function NispMeter({ nisp, blockMs }) {
           blockMs ? `, about ${fmtDuration(left * blockMs)}` : ''
         }`;
 
+  const ready = nisp.held && !uncommitted;
+
   return (
-    <div className={`${s.nisp} ${nisp.held ? s.nispHeld : ''}`}>
+    <div className={`${s.nisp} ${ready ? s.nispHeld : ''}`}>
       <div className={s.nispHead}>
         <span className={s.label}>NISP</span>
-        <span className={`${s.nispBadge} ${nisp.held ? s.nispBadgeOn : ''}`}>
-          {nisp.held ? 'ready' : `${have} / ${nisp.required}`}
+        <span className={`${s.nispBadge} ${ready ? s.nispBadgeOn : ''}`}>
+          {ready ? 'ready' : nisp.held ? 'not committed' : `${have} / ${nisp.required}`}
         </span>
       </div>
       <div className={s.nispPips}>
@@ -287,7 +291,9 @@ function NispMeter({ nisp, blockMs }) {
         ))}
       </div>
       <p className={s.nispLine}>
-        {nisp.held ? (
+        {nisp.held && uncommitted ? (
+          <>The window holds a NISP, but no commitment is in force, so it cannot be submitted.</>
+        ) : nisp.held ? (
           <>
             Covers rollups starting up to block{' '}
             <span className={s.nispNum}>{fmtInt(nisp.validThroughHeight)}</span> — {lasts}.
@@ -371,7 +377,7 @@ function EpochRing({ current, epochLength, perBlock }) {
 }
 
 export default function HashratePanel() {
-  const { stats, workers, tick } = useMining();
+  const { stats, workers, tick, commitment } = useMining();
 
   const [rangeId, setRangeId] = useState('24H');
   // One series at a time now, so a linear axis no longer has to span six orders of magnitude.
@@ -799,6 +805,7 @@ export default function HashratePanel() {
             <h3 className={s.cardTitle}>Super shares</h3>
             <span className={s.label}>this session</span>
           </div>
+          <SuperShareCommitmentNote commitment={commitment} network={network} />
           <div className={s.bigStat}>
             <span className={`${s.bigStatValue} ${s.flowNum}`}>
               {fmtInt(workers?.superShares ?? 0)}
@@ -809,7 +816,11 @@ export default function HashratePanel() {
                 ` · ${fmtNum(workers.superSharesPerHour, 2)}/h`}
             </span>
           </div>
-          <NispMeter nisp={workers?.nisp} blockMs={blockMs} />
+          <NispMeter
+            nisp={workers?.nisp}
+            blockMs={blockMs}
+            uncommitted={commitment != null && !isCommitted(commitment)}
+          />
           <p className={s.cardNote} style={{ marginTop: 12 }}>
             A super share is an accepted share that is rare and hard to find. These shares are collected to make NISPs,
             meaning that hitting at least 10 determines whether or not you get paid for a block.

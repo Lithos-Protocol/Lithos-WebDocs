@@ -140,6 +140,42 @@ const sidebar: SidebarsConfig = {
         },
         {
           type: "doc",
+          id: "lithosapi/schemas/difficultycommitment",
+          label: "DifficultyCommitment",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/commitmententry",
+          label: "CommitmentEntry",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/commitmentinflight",
+          label: "CommitmentInFlight",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/commitmenttiming",
+          label: "CommitmentTiming",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/commitmentrequest",
+          label: "CommitmentRequest",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/commitmentresult",
+          label: "CommitmentResult",
+          className: "schema",
+        },
+        {
+          type: "doc",
           id: "lithosapi/schemas/nisprepresentation",
           label: "NISPRepresentation",
           className: "schema",
@@ -155,6 +191,18 @@ const sidebar: SidebarsConfig = {
           id: "lithosapi/get-candidate-settings",
           label: "Get candidate settings",
           className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-commitment",
+          label: "Get difficulty commitment",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/commit-difficulty",
+          label: "Commit a difficulty",
+          className: "api-method post",
         },
         {
           type: "doc",

@@ -1,0 +1,33 @@
+---
+id: commitmentinflight
+title: "CommitmentInFlight"
+description: "A registration or change that is sent but not yet part of `inForce` or `pending`."
+sidebar_label: "CommitmentInFlight"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"txId":"string","kind":"registration","confirmedHeight":0,"commitment":{"score":"string","diff":"1.50M","declaredHeight":0,"inForceFromHeight":0,"servedFromHeight":0}}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CommitmentInFlight"}
+>
+</Heading>
+
+
+
+A registration or change that is sent but not yet part of `inForce` or `pending`.
+
+<Schema
+  schema={{"description":"A registration or change that is sent but not yet part of `inForce` or `pending`.","type":"object","x-tags":"mining","required":["txId","kind","commitment"],"properties":{"txId":{"type":"string"},"kind":{"type":"string","enum":["registration","change"]},"confirmedHeight":{"type":"integer","description":"Present once the transaction confirmed, while this client has not yet synced to this height."},"commitment":{"description":"One commitment. Absent when there is none in that slot.","type":"object","x-tags":"mining","required":["score","diff","declaredHeight","inForceFromHeight"],"properties":{"score":{"type":"string","pattern":"^[0-9]+$","description":"The committed score, as an exact decimal string. Payouts are proportional to it."},"diff":{"type":"string","description":"`score` written the way `stratum.diff` is.","example":"1.50M"},"declaredHeight":{"type":"integer","description":"The height the commitment declares. Super shares count toward it from here."},"inForceFromHeight":{"type":"integer","description":"The first height whose rollups judge NISPs against this commitment."},"servedFromHeight":{"type":"integer","description":"The first block the stratum mines at this score. Present only on a commitment not yet in force."}},"title":"CommitmentEntry"}},"title":"CommitmentInFlight"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

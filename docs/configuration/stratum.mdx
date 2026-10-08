@@ -22,7 +22,7 @@ and whether you are paid at all.
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `stratum.diff` | `4.0G` | A parseable difficulty above zero. **Required** | The difficulty you commit to on chain. Your payout share is proportional to it |
+| `stratum.diff` | `4.0G` | A parseable difficulty above zero. **Required** | The difficulty the stratum serves until your difficulty commitment takes effect, and the one `state.autoCommit` commits |
 | `stratum.diffRefreshInterval` | 60000 | 1000 to 3600000 ms. **Required** | How often the client re-reads your committed difficulty from chain state |
 | `stratum.forceConfigDiff` | `false` | `true` or `false` | Mine at `diff` instead of your on-chain commitment. For testing only |
 
@@ -37,8 +37,8 @@ your committed difficulty, but you earn nothing for a block unless you produced 
 
 ### Testing without committing
 
-`diff` is written on chain only while `state.autoCommit` is on, and it ships off. That leaves you free
-to try values first. `forceConfigDiff` makes the client mine at the `diff` in your file rather than at
+Nothing is written on chain until you commit from the web interface or turn on `state.autoCommit`,
+which ships off. That leaves you free to try values first. `forceConfigDiff` makes the client mine at the `diff` in your file rather than at
 whatever it has committed, so with both settings as below you can measure super share rates at several
 difficulties without writing any of them to the blockchain:
 
@@ -47,8 +47,8 @@ stratum.forceConfigDiff = true
 state.autoCommit = false
 ```
 
-When you have chosen a value, set `forceConfigDiff = false` and `autoCommit = true`. The client then
-registers you and commits `diff`, as described in
+When you have chosen a value, set `forceConfigDiff = false` and commit it from the **Commitment** tab,
+or set `autoCommit = true` to have the client commit `diff`. Both are described in
 [Tasks and dispatchers](./runtime.mdx#committing-your-difficulty).
 
 :::warning Turn `forceConfigDiff` off before mining for real

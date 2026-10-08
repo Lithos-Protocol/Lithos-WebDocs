@@ -1,0 +1,33 @@
+---
+id: commitmenttiming
+title: "CommitmentTiming"
+description: "Blocks from the tip a commitment is sent at."
+sidebar_label: "CommitmentTiming"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"servedAfterBlocks":63,"inForceAfterBlocks":125,"replaceableAfterBlocks":845,"windowBlocks":60,"rollupLifetimeBlocks":720}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CommitmentTiming"}
+>
+</Heading>
+
+
+
+Blocks from the tip a commitment is sent at.
+
+<Schema
+  schema={{"description":"Blocks from the tip a commitment is sent at.","type":"object","x-tags":"mining","required":["servedAfterBlocks","inForceAfterBlocks","replaceableAfterBlocks","windowBlocks","rollupLifetimeBlocks"],"properties":{"servedAfterBlocks":{"type":"integer","description":"Until the stratum mines at a first commitment or a raise. A cut is served once it is in force.","example":63},"inForceAfterBlocks":{"type":"integer","description":"Until rollups judge NISPs against it, and this miner can be paid at it.","example":125},"replaceableAfterBlocks":{"type":"integer","description":"Until the next change can be sent.","example":845},"windowBlocks":{"type":"integer","description":"The blocks a NISP's super shares are drawn from.","example":60},"rollupLifetimeBlocks":{"type":"integer","description":"From a rollup opening to its payout.","example":720}},"title":"CommitmentTiming"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

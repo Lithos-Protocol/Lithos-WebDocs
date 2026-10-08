@@ -33,13 +33,16 @@ paid.** This can be useful for testing.
 
 A miner is paid from a rollup only after two things are on chain: a registration in the **Miner
 Dictionary**, the on-chain registry of Lithos miners, and a **difficulty commitment**, the score your
-NISPs are judged against. `autoCommit` makes the client handle both.
+NISPs are judged against. Your first difficulty commitment also registers you.
 
-**It ships off**, so a new client never writes a difficulty you are still testing. While it is off and
-you are not registered, the client mines normally but cannot submit NISPs, and the log says so at
-startup. Turn it on once you have chosen `stratum.diff`.
+You commit from the **Commitment** tab under **Mining**, **Difficulty** in the web interface, or with
+`POST /mining/commitment`. `autoCommit` is the alternative: the client commits `stratum.diff` for you.
+**It ships off**, so a new client never writes a difficulty you are still testing. While it is on, the
+**Commitment** tab and `POST /mining/commitment` refuse to commit, so only one of them ever changes
+your difficulty. While you are not registered, the client mines normally but cannot submit NISPs, and
+the log says so at startup.
 
-With it on, the dictionary task checks every minute, starting about a minute after startup:
+With `autoCommit` on, the dictionary task checks every minute, starting about a minute after startup:
 
 1. If you are not registered, the client registers you with `stratum.diff` as your first commitment.
    Registration waits until the Miner Dictionary has synced.
@@ -49,8 +52,8 @@ With it on, the dictionary task checks every minute, starting about a minute aft
    that block, then checks again.
 4. Once the confirmed commitment equals `stratum.diff`, the loop stops until the next restart.
 
-The contracts decide how fast a commitment moves. The following counts blocks from the moment the
-client sends it:
+The contracts decide how fast a difficulty commitment moves, however it is sent. The following counts
+blocks from the moment it is sent:
 
 | Event | Blocks after sending | Testnet | Mainnet |
 |---|---|---|---|
@@ -64,8 +67,8 @@ While the loop is waiting, it logs the reason once, as `Auto-commit waiting on .
 the reason changes. `autoCommit` does nothing while `disableTransforms` is true or the dictionary task is
 disabled.
 
-:::tip Choose `diff` before you turn this on
-A commitment holds for 845 blocks before it can be replaced. Measure your super share rate first with
+:::tip Choose your difficulty before you commit
+A difficulty commitment holds for 845 blocks before it can be replaced. Measure your super share rate first with
 `stratum.forceConfigDiff = true`, as in
 [Stratum and difficulty](./stratum.mdx#testing-without-committing).
 :::

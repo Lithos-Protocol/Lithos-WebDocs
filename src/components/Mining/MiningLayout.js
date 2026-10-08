@@ -10,6 +10,7 @@ import FlowField, { cubeBetween } from '@site/src/components/FlowField';
 import { Alert, GearIcon } from '../Dex/ui';
 import SettingsPanel from './SettingsPanel';
 import { fmtAge } from './format';
+import { CommitmentBanner } from './commitment';
 
 const MiningContext = createContext(null);
 export const useMining = () => useContext(MiningContext);
@@ -73,13 +74,29 @@ export default function MiningLayout({ title, description, children }) {
   const [workers, setWorkers] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [commitment, setCommitment] = useState(null);
+  const [network, setNetwork] = useState(null);
+
+  /*
+   * Read apart from the statistics: it is a chain read rather than collected data, and a client that
+   * cannot answer it should lose only the banner, not the page. A failed read leaves no banner, since
+   * the unreachable-client alert already covers the usual cause.
+   */
+  const refreshCommitment = useCallback(
+    () =>
+      api
+        .getCommitment()
+        .then(setCommitment)
+        .catch(() => setCommitment(null)),
+    [],
+  );
 
   /** Settles once both reads have landed, so a button can show it is working. Never rejects. */
   const refresh = useCallback(
     () =>
       // Both reads are open endpoints, so neither can fail for a missing key — an error here really
       // does mean the client is unreachable, which is worth saying plainly.
-      Promise.all([api.getStats(), api.getWorkers()])
+      Promise.all([api.getStats(), api.getWorkers(), refreshCommitment()])
         .then(([st, w]) => {
           setStats(st);
           setWorkers(w);
@@ -87,12 +104,22 @@ export default function MiningLayout({ title, description, children }) {
         })
         .catch((e) => setError(e.message))
         .finally(() => setLoading(false)),
+    [refreshCommitment],
+  );
+
+  const readNetwork = useCallback(
+    () =>
+      api
+        .getInfo()
+        .then((i) => setNetwork(i?.network ?? null))
+        .catch(() => {}),
     [],
   );
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+    readNetwork();
+  }, [refresh, readNetwork]);
 
   const [autoSecs, setAutoSecs] = useState(0);
   const [tick, setTick] = useState(0);
@@ -108,8 +135,9 @@ export default function MiningLayout({ title, description, children }) {
   const onSettingsSaved = useCallback(() => {
     setAutoSecs(api.getAutoRefresh());
     refresh();
+    readNetwork();
     setTick((n) => n + 1);
-  }, [refresh]);
+  }, [refresh, readNetwork]);
 
   const mining = stats?.mining;
 
@@ -166,8 +194,22 @@ export default function MiningLayout({ title, description, children }) {
             </Alert>
           )}
 
+          {!error && <CommitmentBanner commitment={commitment} network={network} />}
+
           <MiningContext.Provider
-            value={{ stats, mining, workers, loading, error, refresh, tick, autoSecs }}
+            value={{
+              stats,
+              mining,
+              workers,
+              loading,
+              error,
+              refresh,
+              tick,
+              autoSecs,
+              commitment,
+              network,
+              refreshCommitment,
+            }}
           >
             {children}
           </MiningContext.Provider>

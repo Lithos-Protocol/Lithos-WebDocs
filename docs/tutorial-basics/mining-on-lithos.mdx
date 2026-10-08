@@ -188,9 +188,9 @@ shares are already found at the new value. A super share found at the higher val
 the old one. When you lower `diff`, the client keeps mining at the old value until the new one takes
 effect, because super shares at the old, higher value count toward both.
 
-**Test before you commit.** The client only commits once you turn on `state.autoCommit`, which ships
-off. Until then, `stratum.forceConfigDiff = true` lets you measure super share rates at several values
-without writing any of them on chain. The
+**Test before you commit.** Nothing is committed until you commit from the **Commitment** tab of the
+web panel or turn on `state.autoCommit`, which ships off. Until then, `stratum.forceConfigDiff = true`
+lets you measure super share rates at several values without writing any of them on chain. The
 [startup guide](../startup-intro.mdx#testing-values-without-committing) covers how.
 
 ## What each submission costs

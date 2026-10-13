@@ -36,6 +36,29 @@ first line:
 Anything you set after the `include` overrides the shipped value. Anything you leave out keeps it. The
 start script passes this file to the client automatically, so there is nothing to point at it.
 
+### If you use Lithos Launcher
+
+[Lithos Launcher](../startup-intro.mdx#setting-up-with-lithos-launcher) writes `lithos.conf` for you,
+at `Lithos/mainnet/client/lithos.conf` in your home folder, or under `testnet` for a testnet setup.
+Open it from **Config files** under **Settings**.
+
+The launcher owns a marked block at the top of the file, which already includes `application.conf` and
+sets the node connection, ports, secrets, difficulty and auto-commit. It rewrites that block whenever
+you change those settings in the launcher, so do not edit inside it. Add your own settings below it:
+
+```hocon title="Lithos/mainnet/client/lithos.conf"
+# >>> lithos-launcher (managed, edits here are overwritten)
+...
+# <<< lithos-launcher
+
+# Your settings here override both the launcher's and the shipped defaults.
+stratum.candidate.collateralStrategy = "random"
+```
+
+Settings below the block are kept across launcher updates and win over the launcher's own. If one of
+them overrides a setting the launcher relies on, such as `node.url` or `stratum.diff`, the launcher
+warns you when the client starts. Change those from the launcher instead.
+
 The format is [HOCON](https://github.com/lightbend/config/blob/main/HOCON.md), which is JSON with
 comments, unquoted keys and dotted paths. These three are equivalent:
 
@@ -113,6 +136,9 @@ variables instead, add these lines at the end of the file:
 The `${?NAME}` form overrides the value above it when the variable is set, and is ignored when it is
 not. That means the file still works unchanged if the variables are missing.
 
+Lithos Launcher already works this way. Its block reads all three from these variables, and the
+launcher sets them from secrets the operating system stores encrypted each time it starts the client.
+
 ## Settings you should change before running
 
 Four shipped values are placeholders. Three of them are secrets that are published in this
@@ -126,6 +152,9 @@ documentation, so anyone can reproduce them:
 | `play.http.secret.key` | The literal string `changethissecret` |
 
 `node.storagePath` is also empty and has no sensible default, since it is a path on your machine.
+
+Lithos Launcher sets all five for you, with random keys of its own. You only need to change them when
+setting up yourself.
 
 :::danger Change the two shipped secrets
 The default `lithos.apiKeyHash` is the hash of `hello`. Anyone who reaches your client's API with that

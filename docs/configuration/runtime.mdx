@@ -55,10 +55,10 @@ With `autoCommit` on, the dictionary task checks every minute, starting about a 
 The contracts decide how fast a difficulty commitment moves, however it is sent. The following counts
 blocks from the moment it is sent:
 
-| Event | Blocks after sending | Testnet | Mainnet |
+| Event | Blocks after sending | Mainnet | Testnet |
 |---|---|---|---|
-| The commitment binds, and NISPs are judged against it | 125 | about 1 hour 35 minutes | about 4 hours 10 minutes |
-| The commitment may be replaced by a new one | 845 | about 10 hours 30 minutes | about 28 hours |
+| The commitment binds, and NISPs are judged against it | 125 | about 4 hours 10 minutes | about 1 hour 35 minutes |
+| The commitment may be replaced by a new one | 845 | about 28 hours | about 10 hours 30 minutes |
 
 A registration or change has 5 blocks to be included. If it misses them it becomes invalid, and the
 client sends a new one on a later check.

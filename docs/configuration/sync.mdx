@@ -22,12 +22,16 @@ budget gates and crash campaigns at its shipped setting. Changing one moves you 
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `sync.startHeight` | 567500 | 2 to 2000000000. **Required** | Block height to start synchronizing from |
+| `sync.startHeight` | 1888200 | 2 to 2000000000. **Required** | Block height to start synchronizing from |
 | `sync.pollInterval` | 5 seconds | 1000 to 600000 ms. **Required** | How often the node is polled for new blocks |
 | `sync.catchUpBatchBlocks` | 16 | 1 to 64 | Whole blocks fetched per catch-up request |
 | `sync.revalidationChecks` | 30 seconds | 1000 to 3600000 ms. **Required** | How often the committed header is re-read while idle at the tip |
 | `sync.retriesBeforeAlarm` | 12 | 1 to 10000 | Consecutive failures at one height before a stalled cursor is logged |
 | `sync.cursorWindow` | 200 | 1 to 16000 | Canonical cursors retained for locating a fork |
+
+**The shipped `startHeight` is a mainnet height**, just below block 1,888,247, where the Miner
+Dictionary's genesis box was included. Leave it alone on mainnet. On testnet, override it
+with a testnet height such as `567500`, which is below the testnet deployment.
 
 `pollInterval` is the **largest single term in both node load and block latency**. Raise it for a
 remote or shared node and accept slower tip following.

@@ -24,9 +24,9 @@ This page maps the contract set, its parameters and its trust boundaries. The ro
 transformations are covered in detail in [Rollups](./rollups.mdx). The LithosDex is a separate
 product and is not part of the LFSM.
 
-:::info Values on this page are testnet values
-Token IDs, contract addresses and genesis constants in the current build are placeholders and will
-change before mainnet. Do not record any of them as final.
+:::info Values on this page are mainnet values
+The LFSM was deployed on Ergo mainnet in October 2026. The token IDs that identify each contract's
+boxes are listed in [Mainnet identifiers](#mainnet-identifiers).
 :::
 
 ## The four contract groups
@@ -472,7 +472,7 @@ The following parameters are compiled into contracts or injected at compile time
 | `TARGET_MAX_LITHOS` | `2^256 - 1` | The numerator in every score and tau conversion |
 | `HOLDING_PERIOD` | 360 blocks | Length of the Holding phase. About 12 hours at mainnet's 2-minute blocks, 4.5 hours at testnet's 45-second blocks |
 | `EVAL_PERIOD` | 360 blocks | Length of the Evaluation phase, same durations |
-| `NISP_WINDOW` | 60 blocks | How far before a block a super share may have been mined and still count. The same 60 blocks on both networks, which is about 45 minutes on testnet and 2 hours on mainnet |
+| `NISP_WINDOW` | 60 blocks | How far before a block a super share may have been mined and still count. The same 60 blocks on both networks, which is about 2 hours on mainnet and 45 minutes on testnet |
 | `ROLLUP_LIFETIME` | 720 blocks | `HOLDING_PERIOD + EVAL_PERIOD`. How long a rollup stays challengeable |
 | `NISP_COEFFICIENT` | 10,000 | Divides a miner's tau to give the super-share threshold |
 | `NISP_MAX` | 29,629 bytes | Maximum NISP size, enforced by `Holding_Logic`. Derived, not chosen: `8 + 10 × (4 + 221 + 3 + 2174 + 528 + 32) + 1` |
@@ -495,6 +495,27 @@ There is no separate maximum for the collateral box or the transaction inside a 
 deliberate. A collateral box's size is the proof size minus the transaction size, so `TX_PROOF_MAX` and
 `TX_SIZE_MIN` already bound it from both ends. A redundant cap can only tighten a sound bound, and one
 derived slightly too small would reject honest shares forever.
+
+### Mainnet identifiers
+
+Each singleton and each class of protocol box is authenticated by a token. The following are the
+mainnet token IDs, from `LFSMHelpers.scala`. Use them to find Lithos boxes on an explorer:
+
+| Identifier | Mainnet value |
+|---|---|
+| LIT token | `c1980d829988229516430a47a5eca376060b6ce859616db0936e78ab25cb6de7` |
+| Emission box NFT | `1ddb641b785e9ac9baf455f64932295e48cbbf4aadc9645f74065d58d09cdc47` |
+| Emission config NFT | `34a44f069c15ff92038803c6c21194f2c9a194f3a610c40ee1ef2773bdfc5c35` |
+| Queue box token | `3508c83c692de0ac9dabe1ed6a57a36abe5fed40fba5e497967a848ee423bc08` |
+| Collateral box token | `a8a790e784e93ac0e68649181ae3d251e84fb5c741624100e7e945ae1e82dc98` |
+| `FP_CONTROL` NFT | `0001bb75d59f66c3d563576c51bfaa8ea316ee23b4d52f3f139a4f00df19fe62` |
+| Miner Dictionary NFT | `ff9b0d78e6705b3d55936b22b668761f484524a99fa1a7c6e9f7cd75119a1bbd` |
+| Vote token | `519b9fdeaa91cb5b5b8cca649599534748ee724f07952b2b2f2ba04c399b81b4` |
+
+The Miner Dictionary's genesis box is
+`bab16af4899caf2c4edbf0da1d7de87dac12835a6126df91f6fa99e31952ec5d`, included at block 1,888,247. The client's
+default `sync.startHeight` of 1,888,200 sits just below it. Testnet uses a separate deployment with
+different identifiers.
 
 ## Score and tau
 

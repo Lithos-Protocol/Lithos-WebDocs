@@ -113,9 +113,9 @@ currentBlock - NISP_WINDOW  ≤  share height  ≤  currentBlock
 `currentBlock` is the rollup's own block height, carried in the rollup box. A share outside that range
 is fraud, provable by `FP_NotInWindow`.
 
-At 60 blocks the window is about **45 minutes on testnet** and about **2 hours on mainnet**, because
-testnet blocks arrive roughly every 45 seconds against mainnet's 2 minutes. **The block count is the
-same on both networks**, so testnet gives you less wall-clock time to reach ten super shares.
+At 60 blocks the window is about **2 hours on mainnet**, at Ergo's 2-minute block time. **The block
+count is the same on both networks**, and testnet blocks arrive roughly every 45 seconds, so on
+testnet the window lasts about 45 minutes and gives you less wall-clock time to reach ten super shares.
 
 Those durations are averages. [Measured windows move the range](#measured-windows-move-the-range)
 covers how much a window's length varies, and what that does to the choice of τ.
@@ -341,14 +341,14 @@ The recommended start moves to averaging 17. It pays in 96.2% of mainnet windows
 ones, and a hashrate 29% below the estimate still averages 12, the floor of the measured range. The
 scores at that floor, at the peak and at the start, on both networks:
 
-| Hashrate | Testnet, k = 12 | Testnet, k = 15 | Testnet, k = 17 | Mainnet, k = 12 | Mainnet, k = 15 | Mainnet, k = 17 |
+| Hashrate | Mainnet, k = 12 | Mainnet, k = 15 | Mainnet, k = 17 | Testnet, k = 12 | Testnet, k = 15 | Testnet, k = 17 |
 |---|---|---|---|---|---|---|
-| 100 MH/s | 2.25M | 1.8M | 1.59M | 6M | 4.8M | 4.24M |
-| 500 MH/s | 11.3M | 9M | 7.94M | 30M | 24M | 21.2M |
-| 1 GH/s | 22.5M | 18M | 15.9M | 60M | 48M | 42.4M |
-| 4 GH/s | 90M | 72M | 63.5M | 240M | 192M | 169M |
+| 100 MH/s | 6M | 4.8M | 4.24M | 2.25M | 1.8M | 1.59M |
+| 500 MH/s | 30M | 24M | 21.2M | 11.3M | 9M | 7.94M |
+| 1 GH/s | 60M | 48M | 42.4M | 22.5M | 18M | 15.9M |
+| 4 GH/s | 240M | 192M | 169M | 90M | 72M | 63.5M |
 
-The windows are 2,700 seconds on testnet and 7,200 seconds on mainnet.
+The windows are 7,200 seconds on mainnet and 2,700 seconds on testnet.
 
 :::note Your effective hashrate is lower than your nameplate
 Autolykos 2 rebuilds its lookup table every time the height changes, and a rig stops hashing while it

@@ -14,63 +14,172 @@ import TabItem from '@theme/TabItem';
 
 *For anyone setting up Lithos for the first time. No Ergo or smart contract experience needed.*
 
-This guide takes you from nothing to a Lithos client mining on the Ergo testnet. It covers the
-requirements, the configuration file, starting the client, connecting your mining software, and making
-your first difficulty commitment.
+This guide takes you from nothing to a Lithos client mining on Ergo mainnet. It covers the
+requirements, installing the Ergo node and the Lithos client, connecting your mining software, and
+making your first difficulty commitment.
 
 It does not cover lending collateral or using LithosDex, which both live in the client's web
 interface. LithosDex has its own [section](./lithosdex/overview.mdx). It also does not explain how the
 protocol works internally. For that, read [Lithos Protocol](./intro.mdx).
 
-:::info Testnet only
-The current release runs on the Ergo **testnet**. Contract addresses and token IDs are not final. Use a
-testnet key that is unrelated to any mainnet wallet you own.
-:::
-
 ## Before you begin
 
-You need the following:
+You need the following, whichever way you set up:
 
 | Requirement | Detail |
 |---|---|
-| Java 11 | Required by both the Ergo node and the Lithos client. Later Java versions are not supported |
-| An Ergo node | Version 6.0.4 or later, on testnet, with indexing and mining enabled, fully synced |
-| Mining software | Any miner supporting Ergo's Autolykos 2 algorithm |
-| Testnet ERG | A balance in the node wallet, to cover transaction fees and submission bonds. See [What submitting costs](#what-submitting-costs) |
+| A computer | 64-bit Windows 10 or 11, or Linux on x64. Setting up yourself also works on macOS |
+| Memory | About 8 GB of RAM for the node and the client together |
+| Disk space | 60 GB free, almost all of it for the Ergo node, whose chain keeps growing |
+| Mining software | Any miner supporting Ergo's Autolykos 2 algorithm. The rig does not have to be on the same machine |
+| ERG | At least 0.05 ERG in the node wallet, for your difficulty commitment, submission bonds and fees. See [What submitting costs](#what-submitting-costs) |
 | GPU memory | See the warning below |
 
-**The node must be version 6.0.4 or later.** Lithos sets a specific coinbase recipient on every block
-it builds, and only these node versions expose the API call that allows it. On an older node, no Lithos
-block can be produced.
+Setting up yourself also needs Java 11 and an Ergo node of version 6.0.7 or later, or 6.1.7 or later
+on the 6.1 line. Lithos Launcher installs both for you.
 
 :::warning Check your GPU memory before you start
-Autolykos 2 builds a lookup table in VRAM that grows with the chain height. It reaches about 1.94 GiB
-on testnet at height 479,000, and about 6.56 GiB on mainnet. When the height changes, the table is
-rebuilt while the old copy is still held, so the peak is roughly double.
+Autolykos 2 builds a lookup table in VRAM that grows with the chain height. It is about 6.56 GiB on
+mainnet. When the height changes, the table is rebuilt while the old copy is still held, so the peak is
+roughly double.
 
 Current NVIDIA drivers do not fail when a card runs out of VRAM. They spill the overflow to system
 memory over PCIe, and your rig keeps running at a fraction of its hashrate with nothing in the log to
 say why. If your hashrate is far below what the card should do, this is the first thing to check.
 :::
 
-## Step 1: Set up an Ergo testnet node
+## Choosing how to set up
+
+Lithos needs three programs on your computer: Java 11, an Ergo node and the Lithos client. You can
+install them in either of two ways:
+
+| Aspect | Lithos Launcher (recommended) | Setting up yourself |
+|---|---|---|
+| What it is | A desktop app that installs, configures and runs all three for you | You install each program and write each configuration file by hand |
+| Best for | Anyone, including miners who have never run a node | Operators who want full control, or run Lithos on a headless server |
+| Platforms | Windows 10 or 11, and Linux on x64 | Anywhere Java 11 runs |
+| Secrets | Stored encrypted by the operating system, never in a config file | In `lithos.conf` or environment variables, which you manage |
+| Updates | Offers new node and client releases and switches versions for you | You download and unpack each release yourself |
+
+**Use Lithos Launcher unless you have a reason not to.** Follow
+[Setting up with Lithos Launcher](#setting-up-with-lithos-launcher), then continue from
+[Connecting your mining software](#connecting-your-mining-software). To install each program yourself,
+skip to [Setting up yourself](#setting-up-yourself).
+
+## Setting up with Lithos Launcher
+
+[Lithos Launcher](https://github.com/Lithos-Protocol/Lithos-Launcher) downloads Java, the Ergo node
+and the Lithos client, checks each download against its published SHA-256 checksum, and configures
+them for Lithos. Nothing is installed system-wide. Everything goes into a `Lithos` folder in your home
+directory.
+
+### Install the launcher
+
+Download the installer for your system from the
+[Lithos Launcher releases](https://github.com/Lithos-Protocol/Lithos-Launcher/releases):
+
+<Tabs groupId="os">
+<TabItem value="windows" label="Windows">
+
+Run `Lithos-Launcher-Setup-VERSION.exe`. The installer is not code-signed yet, so Windows SmartScreen
+may say **Windows protected your PC**. Choose **More info**, then **Run anyway**.
+
+</TabItem>
+<TabItem value="linux" label="Linux">
+
+On Ubuntu, Debian and related distributions, install the `.deb`:
+
+```bash
+sudo apt install ./Lithos-Launcher-VERSION.deb
+```
+
+On other distributions, use the `.AppImage`. Mark it executable with `chmod +x` before running it. It
+needs FUSE 2, which is the `libfuse2t64` package on Ubuntu 24.04.
+
+</TabItem>
+</Tabs>
+
+### Run quick setup
+
+The first time you open the launcher, select **Start quick setup** and follow its steps:
+
+1. Choose **Mainnet** to mine for real ERG and LIT, or **Testnet** to practise with coins that have no
+   value.
+2. Review the system check. It reports your memory, free disk space and whether the ports the node and
+   client need are free.
+3. Enter your miner's hashrate, such as `150 MH/s`. The launcher sets your starting difficulty from it,
+   using the same formula as [Choosing a difficulty](#choosing-a-difficulty). Select
+   **I don't know yet** to choose it later.
+4. Select **Install**. The launcher downloads about 230 MB.
+5. Select **Start node**, then **Create wallet**. Write the seed phrase on paper and confirm the three
+   words the launcher asks for. To use a wallet you already have, select **Restore seed phrase** or
+   **Use keystore file** instead.
+6. Select **Go to dashboard**.
+
+The node now syncs, which can take many hours the first time. The dashboard shows its progress. Leave
+the launcher running: it starts the Lithos client by itself once the node is synced and indexed, and it
+keeps the node wallet unlocked. Closing the window keeps mining in the background from the system tray.
+
+:::warning Use a wallet made for mining
+The Lithos client signs transactions with this wallet's keys. Do not restore your savings wallet into
+it. Keep the seed phrase on paper, because the launcher shows it only once and never stores it.
+:::
+
+When the **Lithos Client** card shows the client running, continue from
+[Connecting your mining software](#connecting-your-mining-software).
+
+### If you already run a node
+
+To keep a node you have already synced, select **I already have a node** on the quick setup screen,
+or **Import an existing setup** under **Settings** later. Point the launcher at your node folder, and
+optionally at your `lithos-client` folder. The launcher uses your chain and wallet where they are, so
+nothing re-syncs. It can also bring over your difficulty, auto-commit and port settings, and copy the
+client's `.lithos` data. Stop your old node and client before you import.
+
+### Where the launcher keeps things
+
+Everything lives in `Lithos` in your home folder, `C:\Users\YOU\Lithos` on Windows, unless you choose
+another folder under **Settings**:
+
+| Path | Contents |
+|---|---|
+| `java/temurin-11-jre/` | The Java 11 runtime |
+| `mainnet/node/` | The Ergo node, its `ergo.conf`, and its chain and wallet in `.ergo/` |
+| `mainnet/client/` | The client's `lithos.conf`, its `.lithos/` data, its logs, and each client release |
+
+A testnet setup uses `testnet/` in the same way. The launcher writes a marked block at the top of
+`ergo.conf` and `lithos.conf`. Settings you add below that block are kept, and they override the
+launcher's. **Settings** opens either file, and warns you if one of your settings overrides something
+the launcher relies on. Every setting in [Configuration](./configuration/overview.mdx) can be added
+this way.
+
+## Setting up yourself
+
+This path installs each program by hand. Follow the four steps below in order, then continue from
+[Connecting your mining software](#connecting-your-mining-software).
+
+### Step 1: Set up an Ergo node
 
 Lithos talks to a local Ergo node to read the chain, sign transactions with the node's wallet keystore,
-and receive block candidates. Follow [Setting up an Ergo testnet node](./startup/testnet-node.mdx),
+and receive block candidates. Follow [Setting up an Ergo node](./startup/ergo-node.mdx),
 which covers installation, the `ergo.conf` file, creating a wallet, and verifying the node's API.
 
 Before continuing, confirm three things:
 
-1. The node is **fully synced**. Check the height on the node panel at `http://127.0.0.1:9052/panel`.
+1. The node is **fully synced**. Check the height on the node panel at `http://127.0.0.1:9053/panel`.
 2. The node was started with `extraIndex = true`. Lithos reads boxes by address, token and script, and
    only an indexed node serves those queries.
 3. You have the node's **API key** and **wallet password**, and know the path to the wallet keystore
    file.
 
-## Step 2: Download and unpack the Lithos client
+**Use node version 6.0.7 or later, or 6.1.7 or later.** Lithos sets a specific coinbase recipient on
+every block it builds, and the client's storage rent transactions follow the 6.0.7 security soft fork.
+Older nodes do not support both, so Lithos is not supported on them.
+
+### Step 2: Download and unpack the Lithos client
 
 Download the latest release `.zip` from the
-[Lithos Protocol releases](https://github.com/Lithos-Protocol), then unzip it. The archive expands into
+[Lithos client releases](https://github.com/Lithos-Protocol/Lithos-Client/releases), then unzip it. The archive expands into
 a `lithos-client` folder containing:
 
 | Folder | Contents |
@@ -82,7 +191,7 @@ a `lithos-client` folder containing:
 Do not edit `conf/application.conf`. You override the settings you care about in your own file, which
 keeps your configuration intact when you upgrade.
 
-## Step 3: Create your configuration file
+### Step 3: Create your configuration file
 
 Create a file named `lithos.conf` inside `lithos-client/bin`. The client reads this file at startup and
 pulls in the shipped defaults through the `include` on the first line.
@@ -96,7 +205,7 @@ pulls in the shipped defaults through the `include` on the first line.
     key         = "NODE_API_KEY_HERE"
     storagePath = "path/to/nodefolder/.ergo/wallet/keystore/keyfile.json"
     pass        = "NODE_WALLET_PASS_HERE"
-    networkType = "TESTNET"
+    networkType = "MAINNET"
     explorerURL = "default"
     numAddresses = 32
     mempoolSorting = "bySize"
@@ -117,7 +226,7 @@ pulls in the shipped defaults through the `include` on the first line.
     forceConfigDiff = false     # Leave false unless you are experimenting
   }
 
-  state.autoCommit = false      # Leave off to commit from the web interface. See Step 6
+  state.autoCommit = false      # Leave off to commit from the web interface
 }
 ```
 
@@ -125,11 +234,11 @@ Every setting in that file:
 
 | Setting | What it does |
 |---|---|
-| `node.url` | Your node's address, **including the scheme**. Give a port to use it, or leave it off and Lithos appends the default: `9052` on testnet, `9053` on mainnet |
+| `node.url` | Your node's address, **including the scheme**. Give a port to use it, or leave it off and Lithos appends the default: `9053` on mainnet, `9052` on testnet |
 | `node.key` | The node's REST API key, matching the `apiKeyHash` in your `ergo.conf` |
 | `node.storagePath` | Full path to the node wallet's `keyfile.json`. Lithos signs transactions with it |
 | `node.pass` | The node wallet password, used to unlock that keystore |
-| `node.networkType` | `TESTNET` or `MAINNET`. Decides the node port, address prefixes and contract set |
+| `node.networkType` | `MAINNET` or `TESTNET`. Decides the node port, address prefixes and contract set |
 | `node.explorerURL` | Required by the Ergo SDK the client is built on. The client reads nothing from it, so leave it at `default` |
 | `node.numAddresses` | How many wallet addresses Lithos derives keys for. Leave it at 32. Raising it later is safe; lowering it strands any ERG already paid to the addresses above the new limit |
 | `node.mempoolSorting` | Must match your node's `ergo.node.mempoolSorting`, either `bySize` or `byExecutionCost`. Lithos packs blocks against the rule your node actually applies |
@@ -140,9 +249,9 @@ Every setting in that file:
 | `stratum.reduceShareMessages` | Raises the difficulty your mining software reports at, without changing the difficulty Lithos pays you at |
 | `stratum.reductionMultiplier` | How many times your committed difficulty it raises it to: `10`, `100`, `1000` or `10000`. At `10000` your mining software sends only super shares |
 | `stratum.forceConfigDiff` | Forces Lithos to mine at `diff` instead of your on-chain commitment. For testing only |
-| `state.autoCommit` | Registers you and commits `diff` on the blockchain, then keeps your difficulty commitment equal to `diff`. Ships off, so you commit from the web interface instead. See [Step 6](#step-6-commit-your-difficulty) |
+| `state.autoCommit` | Registers you and commits `diff` on the blockchain, then keeps your difficulty commitment equal to `diff`. Ships off, so you commit from the web interface instead. See [Committing your difficulty](#committing-your-difficulty) |
 
-### Keeping secrets out of the file
+#### Keeping secrets out of the file
 
 `lithos.conf` holds your node API key and wallet password in plain text. To read them from environment
 variables instead, add these lines at the end of the file:
@@ -155,7 +264,7 @@ variables instead, add these lines at the end of the file:
 
 Each line overrides the value above it when the named variable is set, and is ignored when it is not.
 
-## Step 4: Start the client
+### Step 4: Start the client
 
 Start your Ergo node first and wait for it to sync. Then run the start script from the `bin` folder:
 
@@ -187,11 +296,16 @@ The Lithos client holds your node API key and wallet password and can sign trans
 keys. Do not forward port `9000`, and do not expose it beyond your local network.
 :::
 
-## Step 5: Connect your mining software
+## Connecting your mining software
 
 Lithos works with any Autolykos 2 miner. The wallet address and worker name you pass have no effect on
 Lithos, so any valid string works. Payouts are decided by your difficulty commitment, not by what your
 mining software reports.
+
+In Lithos Launcher, select **Connect a miner** on the **Lithos Client** card. It shows the stratum
+address for rigs on this computer and for rigs elsewhere on your network, with a button to copy each.
+On Windows, choose **Allow** for private networks when Windows asks whether Java may use the network,
+or rigs on other computers cannot connect.
 
 <Tabs groupId="miner">
 <TabItem value="soat" label="SOAT Miner (recommended)">
@@ -217,7 +331,7 @@ machine's LAN address instead, such as `stratum+tcp://192.168.1.20:4444`. The st
 from every network by default; to limit it to this machine or to one network, set
 [`stratum.bindAddress`](./configuration/stratum.mdx#which-rigs-can-connect).
 
-## Step 6: Commit your difficulty
+## Committing your difficulty
 
 You cannot be paid until your difficulty is committed on the blockchain. A difficulty commitment is a
 promise to mine at a given difficulty, made in advance, and it is what makes your payouts reflect your
@@ -227,13 +341,32 @@ Nothing is written on chain until you commit. Until then, the client mines norma
 NISPs, so you are not paid from rollups. Every tab of the **Mining** web interface shows a warning while
 no difficulty commitment is in force.
 
-To commit from the web interface, follow these steps:
+<Tabs groupId="setup">
+<TabItem value="launcher" label="Lithos Launcher">
+
+1. On the **Lithos Client** card, select **Choose** or **Change** next to **Difficulty**. Enter your
+   miner's hashrate, pick the option marked **Start · recommended**, and select **Save difficulty**,
+   or **Save and restart client** while the client runs. See
+   [Choosing a difficulty](#choosing-a-difficulty) for what the options mean.
+2. Select **Commit…** under **Commitment**.
+3. Check the block heights the dialog shows, and tick the box that confirms the lock.
+4. Select **Commit**, followed by your difficulty.
+
+The dialog then shows the block to start mining at, the block where the commitment takes effect, and
+the block until which it is locked. Committing from the launcher needs Lithos client 1.0.2 or later.
+
+</TabItem>
+<TabItem value="panel" label="Web interface">
 
 1. Choose your difficulty. See [Choosing a difficulty](#choosing-a-difficulty).
 2. Open **Mining**, then **Difficulty**, then the **Commitment** tab.
 3. Enter your difficulty under **New diff**, written the way `stratum.diff` is, such as `140M`.
 4. Check the block heights the panel shows, then tick the box that confirms the lock.
-5. Enter your API key if the panel asks for it, then select **Register and commit**.
+5. Enter your API key if the panel asks for it, then select **Register and commit**. In Lithos
+   Launcher, copy the key from **API key** on the **Lithos Client** card.
+
+</TabItem>
+</Tabs>
 
 Registering costs 0.002 ERG from the node wallet: 0.001 ERG locked in your data box and a 0.001 ERG
 network fee. Each later change costs the 0.001 ERG fee. To commit without the web interface, send
@@ -243,12 +376,15 @@ is in force. See [Lithos API](category/lithos-api).
 Three waits then stand between you and earning:
 
 1. **Synchronizing.** The client syncs from `sync.startHeight` in `application.conf`, which you can
-   override in your own file with `sync.startHeight = NEW_HEIGHT`. Syncing the miner registry takes
-   about 30 minutes on the current testnet. The **Commitment** tab refuses to commit until it finishes.
+   override in your own file with `sync.startHeight = NEW_HEIGHT`. The client must sync the miner
+   registry before you can commit, and the **Commitment** tab refuses to commit until it finishes.
 2. **Confirming.** Your registration transaction confirms, and the client records your registration.
-3. **The difficulty commitment taking effect.** It binds 125 blocks after you send it: about 1 hour
-   35 minutes on testnet, and about 4 hours 10 minutes on mainnet. Work you do before then is not
-   payable.
+3. **The difficulty commitment taking effect.** It binds 125 blocks after you send it, about 4 hours 10
+   minutes on mainnet. Work you do before then is not payable.
+
+You can start your rigs about 65 blocks after you commit, roughly 2 hours on mainnet, rather than
+waiting the full 125. The first rollups judged against your commitment take super shares from the 60
+blocks before them, so starting then gives you time to build up super shares.
 
 The **Commitment** tab shows each stage. The warning disappears once your difficulty commitment is in
 force.
@@ -256,7 +392,9 @@ force.
 ### Letting the client commit for you
 
 `state.autoCommit` makes the client register you and keep your difficulty commitment equal to
-`stratum.diff`. It ships off. Turn it on if you prefer to set your difficulty in `lithos.conf`:
+`stratum.diff`. It ships off. In Lithos Launcher, turn it on under **Settings** with
+**Auto-commit: let the client commit your difficulty by itself**. When setting up yourself, turn it on
+in `lithos.conf`:
 
 ```hocon title="lithos-client/bin/lithos.conf"
   stratum.diff = "YOUR_DIFF"
@@ -271,14 +409,15 @@ difficulty against each other.
 
 ### Changing your difficulty later costs a day, not an hour
 
-To change your difficulty, enter the new value on the **Commitment** tab. With `autoCommit` on, edit
-`diff` and restart instead. A change can only be sent when the contracts allow it. Two rules decide
+To change your difficulty, save the new value with **Change** next to **Difficulty** in Lithos
+Launcher and select **Commit…** again, or enter it on the **Commitment** tab of the web interface.
+With `autoCommit` on, change `diff` and restart the client instead. A change can only be sent when the contracts allow it. Two rules decide
 when that is, both counted from when you send a difficulty commitment:
 
-| Rule | Blocks | On testnet | On mainnet |
+| Rule | Blocks | On mainnet | On testnet |
 |---|---|---|---|
-| Before the commitment takes effect | 125 | about 1 hour 35 minutes | about 4 hours 10 minutes |
-| Before the commitment may be replaced | 845 | about 10 hours 30 minutes | about 28 hours |
+| Before the commitment takes effect | 125 | about 4 hours 10 minutes | about 1 hour 35 minutes |
+| Before the commitment may be replaced | 845 | about 28 hours | about 10 hours 30 minutes |
 
 The second rule is the expensive one. A rollup stays open to fraud proofs for 720 blocks after the
 block that opened it, and a super share may be 60 blocks older than that block. Your commitment has to
@@ -287,8 +426,8 @@ promised.
 
 :::warning Pick a difficulty you can leave alone
 Once you commit, you are held to that difficulty for 845 blocks before you may change it, and the
-change then takes a further 125 blocks to bind. That is about half a day on testnet and well over a day
-on mainnet. Use the offline method below to find your value before you commit to it.
+change then takes a further 125 blocks to bind. That is well over a day on mainnet. Use the
+[difficulty calculator](#using-the-difficulty-calculator) to find your value before you commit to it.
 :::
 
 ## Choosing a difficulty
@@ -306,9 +445,9 @@ To be paid for a block, you must have produced **10 super shares within the 60 b
 was found**. Those 10 super shares plus your score become one Non-Interactive Share Proof (NISP), which
 the client submits for you.
 
-Sixty blocks is about **45 minutes on testnet** and about **2 hours on mainnet**, because testnet
-blocks arrive roughly every 45 seconds against mainnet's 2 minutes. The window is the same 60 blocks on
-both networks, so testnet gives you less wall-clock time to reach 10 super shares than mainnet will.
+Sixty blocks is about **2 hours on mainnet**, at Ergo's 2-minute block time. The window is also 60
+blocks on testnet, but testnet blocks arrive about every 45 seconds, so there it lasts about 45
+minutes.
 
 Those times are averages. Blocks arrive early or late, so on mainnet about 1 window in 13 lasts under
 100 minutes. A short window costs every miner super shares at the same time, and the recommendations
@@ -330,24 +469,41 @@ in the range. Averaging 17 pays you about 96% of the time at a lower one. Below 
 quickly, because short windows leave you under 10.
 
 **Start at averaging 17, then raise `diff` slowly.** Averaging 17 pays you about 96% of the time on
-mainnet and about 93% on testnet. It still lands inside the range if your hashrate turns out to be
-29% lower than you estimated. Once your payouts arrive steadily, raise `diff` a little at a time
-toward averaging 15, where expected earnings peak. Each change is a new commitment, so steps are at
-least 845 blocks apart, as
-[Changing your difficulty later](#changing-your-difficulty-later-costs-a-day-not-an-hour) explains.
+mainnet. It still lands inside the range if your hashrate turns out to be 29% lower than you
+estimated. Once your payouts arrive steadily, raise `diff` a little at a time toward averaging 15,
+where expected earnings peak. Each change is a new commitment, so steps are at least 845 blocks apart,
+as [Changing your difficulty later](#changing-your-difficulty-later-costs-a-day-not-an-hour) explains.
 
-To find a starting value for your hardware:
+### Using the difficulty calculator
+
+Lithos Launcher and the client's web interface both work out these values for you, with the same
+formulas.
+
+In Lithos Launcher, select **Choose** or **Change** next to **Difficulty** on the **Lithos Client**
+card and enter your hashrate. Once your rigs are connected, **Use measured** fills in the hashrate the
+client has seen. Let it settle for about 10 minutes of mining first. Pick the option marked
+**Start · recommended**.
+
+To use the web interface instead, follow these steps:
+
+1. Open **Mining**, then **Difficulty**, at `http://localhost:9000/assets/mining/difficulty`. In Lithos
+   Launcher, **Lithos panel** on the **Lithos Client** card opens the web interface.
+2. Enter your hashrate.
+3. Leave **Account for network difficulty** ticked. It sizes the values to how long windows actually
+   last on the network, rather than to a flat 2 hours.
+4. Read the `diff` on the row marked **start**. At 100 MH/s on mainnet, that is `4.24M`.
+
+To work out a value by hand instead, use the following formula:
 
 ```text
 diff = (hashrate in H/s × window in seconds) ÷ (10,000 × super shares you want to average)
 ```
 
-The window is 2,700 seconds on testnet and 7,200 seconds on mainnet. So a 1 GH/s rig on testnet
-averages 17 super shares at a `diff` of 15.9M, and 12 at 22.5M.
+The window is 7,200 seconds on mainnet. So a 1 GH/s rig averages 17 super shares at a `diff` of
+42.4M, and 12 at 60M.
 
 [Mining on Lithos](./tutorial-basics/mining-on-lithos.mdx) has the full table of payout chances at
-each average, and starting values for common hashrates. On testnet, try several values and watch how
-many super shares your hardware actually produces.
+each average, and starting values for common hashrates.
 
 ### What submitting costs
 
@@ -373,7 +529,7 @@ Your score is your committed difficulty, and dividing it by 25 gives the bond in
 | 4.0G | 0.16 ERG |
 | 25G | 1.0 ERG |
 
-Keep enough testnet ERG in the node wallet to cover a bond for every rollup you are submitting to at
+Keep enough ERG in the node wallet to cover a bond for every rollup you are submitting to at
 once, plus about 0.001 ERG of transaction fee each. Rollups open on every Lithos block and stay open
 for 360 blocks, so several can be in flight together.
 
@@ -385,8 +541,15 @@ everyone else's share.
 
 ### Testing values without committing
 
-To experiment without writing anything to the blockchain, do not commit, leave `autoCommit` off, and
-force the stratum to use your `diff`:
+You can mine at a difficulty to see how many super shares your rigs produce, without writing anything
+to the blockchain.
+
+In Lithos Launcher, select **Test mining** on the **Lithos Client** card instead of **Start client**.
+The client mines at your chosen difficulty and sends no transactions at all: no commitment, no proofs,
+and nothing extra in any block it finds. Stop the client and select **Start client** to mine for real.
+
+When setting up yourself, do not commit, leave `autoCommit` off, and force the stratum to use your
+`diff`:
 
 ```hocon title="lithos-client/bin/lithos.conf"
 stratum.forceConfigDiff = true
@@ -394,7 +557,8 @@ state.autoCommit = false
 ```
 
 The client then always mines at the `diff` in your config and never commits it. Your experimental
-values stay off-chain.
+values stay off-chain, and so does your pay: without a difficulty commitment, nothing you mine while
+testing is payable. Keep the test short.
 
 :::warning Set `forceConfigDiff` back to `false` before mining for real
 With `forceConfigDiff = true`, mining at a difficulty below your on-chain commitment produces NISPs
@@ -409,47 +573,65 @@ difficulty to `reductionMultiplier` times your committed difficulty. The difficu
 pays you at is unchanged.
 
 At the default `reductionMultiplier = 10000`, your mining software sends only super shares. If that
-leaves it too few shares to show a steady hashrate, lower it to `1000`, `100` or `10`. See
+leaves it too few shares to show a steady hashrate, lower it to `1000`, `100` or `10`. In Lithos
+Launcher, select **Adjust** next to **Share reporting** on the **Lithos Client** card. See
 [Share traffic](./configuration/stratum.mdx#share-traffic).
 
 ## Where Lithos stores its data
 
-The client creates a `.lithos` folder next to the start script the first time it mines a super share.
-It holds your super shares and rollup state. Do not delete it while the client is running.
+The client keeps its data in a `.lithos` folder, created the first time it mines a super share. It
+holds your super shares and rollup state. Do not delete it while the client is running.
+
+The folder is in the client's working directory:
+
+| Setup | Location |
+|---|---|
+| Lithos Launcher | `Lithos/mainnet/client/.lithos` in your home folder, or `testnet` in place of `mainnet` |
+| Setting up yourself | `lithos-client/bin/.lithos`, next to the start script |
 
 ## Common problems
 
-The following table lists the failures reported most often, and what to do about them:
+Start with the logs. Lithos Launcher shows the node's and client's console output in its
+**Ergo node** and **Lithos Client** tabs. The following table lists the failures reported most often, and what to do about
+them:
 
 | What you see | Cause | Fix |
 |---|---|---|
 | The client will not start | The node is not running, or `node.storagePath` or `node.pass` is wrong | Start the node first. Check the keystore path and password |
-| No blocks are ever marked as Lithos blocks | The node is older than 6.0.4 | Upgrade the node |
+| No blocks are ever marked as Lithos blocks | The node is older than 6.0.7, or than 6.1.7 on the 6.1 line | Upgrade the node to 6.0.7 or later, or 6.1.7 or later |
 | Box lookups fail, or the collateral list is empty | The node was started without `extraIndex = true` | Add it to `ergo.conf` and restart the node |
 | Your hashrate is far below normal | The Autolykos 2 table does not fit in VRAM | See the memory warning above |
 | Duplicate or old share errors | `diff` is low enough to flood the stratum | Set `reduceShareMessages = true`, or raise `reductionMultiplier` |
 | Mining works, but you are never paid | No difficulty commitment is in force, or you are producing fewer than 10 super shares per 60 blocks | Check the **Commitment** tab and commit if it says you are not committed, then wait 125 blocks. If that was not it, lower your difficulty |
 | Submissions fail to build | The node wallet cannot cover a bond | Fund the wallet. See [What submitting costs](#what-submitting-costs) |
-| Transactions fail to broadcast | The node wallet has no ERG for fees | Fund the node wallet with testnet ERG |
+| Transactions fail to broadcast | The node wallet has no ERG for fees | Fund the node wallet |
 
 ## Security
 
 Lithos uses your node's wallet and API key to build and sign transactions on your behalf. Two things
 follow from that:
 
-- **Use a fresh testnet key.** The client reads your node's secret keys from its keystore. Generate a
-  key for testnet that is unrelated to any mainnet wallet you own.
+- **Use a wallet dedicated to Lithos.** The client reads your node's secret keys from its keystore.
+  Create a new node wallet for Lithos rather than using one that holds your savings, and keep in it
+  only the ERG and LIT you intend Lithos to use.
 - **Change both default secrets.** The shipped `lithos.apiKeyHash` is the hash of the string `hello`,
   and the shipped `play.http.secret.key` is a placeholder. Anyone who reaches your client with the
   default API key can move funds. Replace both before running.
 
-To generate a new API key hash, use your node's `POST /utils/hash/blake2b` endpoint at
-`http://127.0.0.1:9052/swagger`, then put the resulting hash in `lithos.apiKeyHash` and keep the
+**Lithos Launcher handles the secrets for you.** It generates random API keys for the node and the
+client, stores them and the wallet password encrypted by the operating system, and writes none of them
+to a config file. To replace a key, use **API keys** under **Settings**.
+
+When setting up yourself, generate a new API key hash with your node's `POST /utils/hash/blake2b`
+endpoint at `http://127.0.0.1:9053/swagger`. Put the resulting hash in `lithos.apiKeyHash` and keep the
 original string as your key.
 
 ## Next steps
 
-- [Setting up an Ergo testnet node](./startup/testnet-node.mdx): the full node walkthrough.
+- [Lithos Launcher](https://github.com/Lithos-Protocol/Lithos-Launcher): the launcher's own
+  documentation and releases.
+- [Setting up an Ergo node](./startup/ergo-node.mdx): the full node walkthrough, for setting up
+  yourself.
 - [Lithos Protocol](./intro.mdx): how payouts and collateral work.
 - [Mining on Lithos](./tutorial-basics/mining-on-lithos.mdx): scores, super shares and NISPs in detail.
 - [Lithos API](category/lithos-api): the client's REST endpoints, callable from these docs.

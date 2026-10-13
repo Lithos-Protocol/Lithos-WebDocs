@@ -12,15 +12,15 @@ description: What to include in a problem report so it can be diagnosed without 
 *For anyone running the client. No Ergo or smart contract experience needed.*
 
 An actionable report lets maintainers distinguish failures in the client, the node, the
-configuration, and wallet state. Substantial work should begin with an issue — see the repository's
+configuration, and wallet state. Substantial work should begin with an issue. See the repository's
 contribution guidelines.
 
 ## What to include
 
 | Field | Detail |
 |---|---|
-| Versions | Client version, node version, operating system, Java version |
-| Network | Testnet or mainnet |
+| Versions | Client version, node version, operating system, Java version, and the Lithos Launcher version if you use it |
+| Network | Mainnet or testnet |
 | Timings | Start time, end time, elapsed time, and the relevant configured timeouts |
 | Log excerpt | The complete exception message and the first relevant application or HTTP-client stack frames |
 | Evidence window | A continuous range, for example startup through the first failure, rather than isolated search matches |
@@ -29,10 +29,20 @@ contribution guidelines.
 | Reproduction | Minimal steps, and whether the failure is once, intermittent, or every run |
 | History | Last known working client version, and whether the failure began after an upgrade |
 | Node state | Synchronization height and whether the wallet is unlocked |
-| Wallet shape | Total UTXOs, eligible count, reward-box count — large-wallet failures often do not reproduce at smaller sizes |
+| Wallet shape | Total UTXOs, eligible count and reward-box count. Large-wallet failures often do not reproduce at smaller sizes |
 
 Also note the log file location and the time zone of its timestamps, since these are frequently
 compared against on-chain events.
+
+## If you use Lithos Launcher
+
+Copy log lines from the launcher's **Ergo node** and **Lithos Client** tabs. The client also writes its
+logs to `Lithos/mainnet/client/logs/` in your home folder, or under `testnet` for a testnet setup.
+
+Report a problem in the client or the protocol as described above. Report a problem in the launcher
+itself, such as an install, update or wallet step that fails, at the
+[Lithos Launcher issues page](https://github.com/Lithos-Protocol/Lithos-Launcher/issues). The launcher
+never writes secrets to its config files, but still check pasted log lines for keys and passwords.
 
 ## Timings over adjectives
 

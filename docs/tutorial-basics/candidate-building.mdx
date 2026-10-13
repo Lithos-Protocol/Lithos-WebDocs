@@ -28,14 +28,13 @@ A Lithos candidate is built in layers, in the following order:
    this block opens. It is what makes the block a Lithos block, so it always comes first.
 2. **The block package.** Extra transactions from the client's transaction sources, such as
    Non-Interactive Share Proof (NISP) submissions and order executions. These are optional, and every
-   source except storage rent ships on.
+   source ships on.
 3. **The holding top-up.** One final transaction that moves the revenue the package earned into the
    holding box.
 4. **Your node's own selection.** Your Ergo node fills the space left with fee-paying transactions from
    its mempool, as it would for any block.
 
-With the package off, which is the default, a candidate is the genesis transaction followed by your
-node's selection.
+With the package off, a candidate is the genesis transaction followed by your node's selection.
 
 ## Building the genesis transaction
 
@@ -64,7 +63,7 @@ for work as soon as a new block arrives. The sources, in the order they are aske
 |---|---|---|
 | `rollups` | Your NISP submissions, rollup phase transforms, fraud proofs and payouts | On |
 | `emissions` | Maintenance of the collateral queue | On |
-| `rent` | Collection of boxes old enough to owe storage rent | Off |
+| `rent` | Collection of boxes old enough to owe storage rent | On |
 | `lithosdex` | LithosDex order executions and the fee flush | On |
 | `ergodex` | ErgoDEX order executions | On |
 

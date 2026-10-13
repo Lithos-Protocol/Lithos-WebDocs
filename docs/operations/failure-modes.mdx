@@ -15,15 +15,14 @@ Start with the first relevant log line. Similar symptoms can have different caus
 status endpoints and effective settings all help separate them.
 
 :::info Verified against
-Client 5.4.0 and 5.5.0 (testnet) and 1.0.0 pre-release (mainnet), September 2026. Exact log text is
-version-sensitive.
+Client 1.0.3 on mainnet, October 2026. Exact log text is version-sensitive.
 :::
 
 ## Startup
 
 | Log text | Meaning | Operator action |
 |---|---|---|
-| `InaccessibleObjectException: module java.base does not "opens java.lang"` | Running on a JDK newer than 11; Guice performs reflection later JDKs refuse | Set `JAVA_HOME` to Java 11 in the launcher and put its `bin` first on `PATH`. Invoking the start script directly inherits the system default |
+| `InaccessibleObjectException: module java.base does not "opens java.lang"` | Running on a JDK newer than 11; Guice performs reflection later JDKs refuse | Lithos Launcher runs its own Java 11 and is not affected. When setting up yourself, set `JAVA_HOME` to Java 11 and put its `bin` first on `PATH` before running the start script, which otherwise uses the system default |
 
 For validation errors, see [Configuration overview](../configuration/overview.mdx); it explains how
 startup reports invalid and contradictory settings.
@@ -39,8 +38,7 @@ expected.
 
 | Log text | Meaning | Operator action |
 |---|---|---|
-| `WalletManager could not cover <n> nanoERG` | The wallet could not fund a transaction | Query the **Ergo node's** `/wallet/status` endpoint, not the Lithos API. If the wallet is unlocked, inspect the preceding wallet-refresh line for the available, reserved, reward and partial counts, and report those with the requested amount |
-| `N wallet box(es) are at addresses this client cannot sign for and are unspendable` | At least one box belongs to an address index outside the keys derived by this client | Increase `node.numAddresses` far enough to cover that index; its accepted maximum is 1000. For lending, keep `emission.maxLenderKeys` at or below `node.numAddresses` |
+| `EngineWalletState could not cover <n> nanoERG` | The wallet could not fund a transaction | Query the **Ergo node's** `/wallet/status` endpoint, not the Lithos API. If the wallet is unlocked, inspect the preceding wallet-refresh line for the available, reserved, reward and partial counts, and report those with the requested amount |
 
 Do not compare a consolidation target with the raw UTXO total. Check the reward-box count
 separately, using the **Lithos client's** `/collateral/rewards` endpoint, because reward boxes are
@@ -73,9 +71,10 @@ not eligible consolidation inputs.
 | `Only N of M pinned input(s) can be set aside` | The wallet has too few plain boxes of at least 0.001 ERG to fund fraud proofs inside your own block | Add a plain wallet box of 0.001 ERG or more, or lower `stratum.candidate.pinnedInputs`. Fraud proofs still reach the chain through the mempool |
 
 :::danger A fallback that is logged but not fatal
-**`Collateral retrieval failed ... falling back to solo-mining`** means the client could not obtain
-collateral and is mining solo. Mining continues and the hardware stays busy, so nothing looks wrong,
-but pooled rewards are not being earned.
+**`Candidate request failed: ...; falling back to solo`** means the node refused the Lithos candidate
+and your rigs are mining a solo block. **`Super share from ... but miner was solo-mining (no
+collateral)`** means a super share was found while no collateral box was in use. Mining continues and
+the hardware stays busy, so nothing looks wrong, but pooled rewards are not being earned.
 
 Confirm pooled mining from the stratum-job log line by checking `usesCollateral=true`. Do not infer
 pooled operation from the absence of an error.

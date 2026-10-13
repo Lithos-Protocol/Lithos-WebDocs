@@ -15,7 +15,7 @@ Everything under `stratum.candidate` controls the blocks this client builds: whi
 draws, how long it waits for the genesis transaction, and what other transactions it inserts. This page
 covers that block and the five transaction sources beneath it.
 
-Inserting transactions is **on by default**, from every source except storage rent. The settings that
+Inserting transactions is **on by default**, from every source. The settings that
 control it are in [Transaction sources](#transaction-sources). What the client does with them, and where the revenue they
 earn goes, is explained in [Candidate building](../tutorial-basics/candidate-building.mdx).
 
@@ -167,9 +167,10 @@ The five sources and what they ship as:
 | `emissions` | on | 20 | Clear and Activate on the collateral queue. Activates alone stop at [`emission.candidateActivates`](./emission.mdx#queue-work-in-your-own-blocks) |
 | `lithosdex` | on | 20 | LithosDex order executions, their placements and the closing flush |
 | `ergodex` | on | 20 | Native ErgoDEX swaps, deposits and redemptions, including ancestors |
-| `rent` | **off** | 1 | Storage rent collection |
+| `rent` | on | 2 | Storage rent collection |
 
-`maxBytes` and `maxCost` ship at 262144 and 1000000 for all five.
+`maxBytes` ships at 262144 for all five. `maxCost` ships at 1000000 for all but `rent`, which ships at
+2000000.
 
 :::warning Every slot is block space not earning a fee
 Transactions you insert pay no transaction fee, because they are yours. That is the point for rollups
@@ -249,11 +250,11 @@ the client logs a warning once.
 ### Storage rent
 
 Storage rent collects boxes nobody has touched for four years, which Ergo permits anyone to spend. It
-ships off, and it has three settings of its own:
+ships on, and it has three settings of its own:
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `stratum.candidate.sources.rent.startHeight` | 800000 | 0 to 100000000 | Inclusion height the walk begins at |
+| `stratum.candidate.sources.rent.startHeight` | 837000 | 0 to 100000000 | Inclusion height the walk begins at |
 | `stratum.candidate.sources.rent.scanIntervalMs` | 30000 | 1000 to 3600000 ms | Gap between scan passes |
 | `stratum.candidate.sources.rent.blocksPerScan` | 200 | 1 to 10000 | Blocks one pass reads. Two node calls each |
 
@@ -264,9 +265,17 @@ box it meets there is old enough by construction.
 **Set `startHeight` to roughly where collection has already caught up**, not to zero. The early chain
 was swept long ago and walking it costs node reads for nothing.
 
+A collection is two transactions: the sweep, and one that folds what it took into a single box of
+yours. That is why the source needs `maxTxs` of at least 2 while it is on. Its `maxCost` is twice the
+other sources' because each claimed box can cost two inputs, one in each transaction.
+
+The ERG a collection takes joins the rest of the package revenue. Tokens on a claimed box cannot enter
+the holding box, so they go to your own wallet, on outputs of 0.001 ERG holding up to 20 token types
+each.
+
 :::note Storage rent cannot be tested on testnet
-Testnet tops out well under a storage period, so no box on it is ever collectable. Exercising this
-source at all needs a private devnet with a shortened storage period.
+Testnet tops out well under a storage period, so no box on it is ever collectable. On testnet the
+source scans and finds nothing.
 :::
 
 ## Intermediate outputs

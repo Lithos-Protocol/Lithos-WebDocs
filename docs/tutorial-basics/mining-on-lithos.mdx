@@ -58,11 +58,11 @@ where you produced none. Your `diff` is not a target to maximize; it is a bet yo
 ## The window
 
 You have **60 blocks** to find your ten super shares, counted back from the block you are being paid
-for. That is about **45 minutes on testnet** and about **2 hours on mainnet**, because testnet blocks
-arrive roughly every 45 seconds against mainnet's 2 minutes.
+for. That is about **2 hours on mainnet**, at Ergo's 2-minute block time.
 
-The block count is the same on both networks, so **testnet gives you less real time** than mainnet
-will. A `diff` that works on testnet is conservative for mainnet at the same hardware.
+The block count is the same on testnet, but testnet blocks arrive roughly every 45 seconds, so there
+the window lasts about 45 minutes. **A `diff` you tuned on testnet is conservative for mainnet** at
+the same hardware, because mainnet gives you more real time.
 
 **Sixty blocks is an average length, not a fixed one.** Blocks arrive early or late around Ergo's
 target time, so some windows give you far less time than others. The following shows how long windows
@@ -153,23 +153,28 @@ To find the `diff` that averages a given number of super shares:
 diff = (hashrate in H/s × window in seconds) ÷ (10,000 × super shares you want to average)
 ```
 
-The window is 60 blocks: **2,700 seconds on testnet** and **7,200 seconds on mainnet**. The following
+The window is 60 blocks: **7,200 seconds on mainnet** and 2,700 seconds on testnet. The following
 gives the floor of the ideal range at averaging 12, the peak at averaging 15, and the recommended start
 at averaging 17:
 
-| Hashrate | Testnet, 12 | Testnet, 15 | Testnet, 17 | Mainnet, 12 | Mainnet, 15 | Mainnet, 17 |
+| Hashrate | Mainnet, 12 | Mainnet, 15 | Mainnet, 17 | Testnet, 12 | Testnet, 15 | Testnet, 17 |
 |---|---|---|---|---|---|---|
-| 100 MH/s | 2.25M | 1.8M | 1.59M | 6M | 4.8M | 4.24M |
-| 250 MH/s | 5.63M | 4.5M | 3.97M | 15M | 12M | 10.6M |
-| 500 MH/s | 11.3M | 9M | 7.94M | 30M | 24M | 21.2M |
-| 1 GH/s | 22.5M | 18M | 15.9M | 60M | 48M | 42.4M |
-| 4 GH/s | 90M | 72M | 63.5M | 240M | 192M | 169M |
+| 100 MH/s | 6M | 4.8M | 4.24M | 2.25M | 1.8M | 1.59M |
+| 250 MH/s | 15M | 12M | 10.6M | 5.63M | 4.5M | 3.97M |
+| 500 MH/s | 30M | 24M | 21.2M | 11.3M | 9M | 7.94M |
+| 1 GH/s | 60M | 48M | 42.4M | 22.5M | 18M | 15.9M |
+| 4 GH/s | 240M | 192M | 169M | 90M | 72M | 63.5M |
 
 **A lower `diff` averages more super shares**, so the averaging-17 column is always the smaller number.
 
+The **Difficulty** page of the client's web panel works out these values from your hashrate. Leave
+**Account for network difficulty** ticked, so the values are sized to how long windows actually last
+on the network. The [startup guide](../startup-intro.mdx#using-the-difficulty-calculator) walks
+through it.
+
 **Start at the averaging-17 value, then raise `diff` slowly.** Averaging 17 pays in about 96% of
-mainnet windows and about 93% of testnet windows, and a hashrate up to 29% lower than you estimated
-still averages 12. Follow these steps:
+mainnet windows, and a hashrate up to 29% lower than you estimated still averages 12. Follow these
+steps:
 
 1. Commit the averaging-17 `diff` for your hashrate.
 2. Watch how many super shares you produce per window until the commitment may be replaced, 845 blocks
@@ -179,9 +184,8 @@ still averages 12. Follow these steps:
 4. Repeat, and stop at averaging 15 or wherever payouts start to skip windows.
 
 Each step is a new difficulty commitment. It binds 125 blocks after the client sends it, and the next
-step can follow 845 blocks after that send, about 10 hours 30 minutes on testnet and about 28 hours on
-mainnet. The next section explains both rules. The **Difficulty** page of the client's web panel
-works out these values from your hashrate.
+step can follow 845 blocks after that send, about 28 hours on mainnet. The next section explains both
+rules.
 
 :::warning Use the hashrate you sustain, not the one your miner reports
 Autolykos 2 rebuilds its lookup table every time the block height changes, and your rig stops hashing
@@ -198,10 +202,10 @@ which shares they found and then claiming whatever difficulty those shares happe
 It also means you cannot tune it freely. Both rules below count from when the client sends a
 commitment:
 
-| Rule | Blocks | On testnet | On mainnet |
+| Rule | Blocks | On mainnet | On testnet |
 |---|---|---|---|
-| Before the commitment takes effect | 125 | about 1 hour 35 minutes | about 4 hours 10 minutes |
-| Before you may replace the commitment | 845 | about 10 hours 30 minutes | about 28 hours |
+| Before the commitment takes effect | 125 | about 4 hours 10 minutes | about 1 hour 35 minutes |
+| Before you may replace the commitment | 845 | about 28 hours | about 10 hours 30 minutes |
 
 When you raise `diff`, the client starts mining at the new value 62 blocks before it takes effect. The
 first rollups judged against the new value take super shares from the 60 blocks before them, so those

@@ -16,7 +16,15 @@ settings guard the client's own HTTP API. This page covers both, and it is the o
 where every setting is required.
 
 It does not cover setting up the node itself. For that, read
-[Setting up an Ergo testnet node](../startup/testnet-node.mdx).
+[Setting up an Ergo node](../startup/ergo-node.mdx).
+
+:::info Lithos Launcher sets these for you
+If you use [Lithos Launcher](../startup-intro.mdx#setting-up-with-lithos-launcher), it writes
+`node.url`, `node.key`, `node.storagePath`, `node.pass`, `node.networkType`, `node.mempoolSorting` and
+both API secrets itself. The keys and the wallet password are stored encrypted by the operating system
+and never written to the file. Change the node or Lithos API key with **API keys** under **Settings**,
+not in `lithos.conf`.
+:::
 
 ## Node connection
 
@@ -42,11 +50,11 @@ through the node's own index.
 ### The port is appended, not required
 
 The client parses `node.url` and appends a default port only when the URL does not already name one:
-`9052` on testnet, `9053` on mainnet. Both of these work and mean the same thing on testnet:
+`9053` on mainnet, `9052` on testnet. Both of these work and mean the same thing on mainnet:
 
 ```hocon
 node.url = "http://127.0.0.1"
-node.url = "http://127.0.0.1:9052"
+node.url = "http://127.0.0.1:9053"
 ```
 
 A URL without a scheme does not work. `127.0.0.1` alone is rejected at startup, because the client
@@ -98,7 +106,7 @@ about.
 The value in the file is the **hash**, not the key. The key is what you send with a request. To
 generate a hash, use your node's own hashing endpoint:
 
-1. Open your node's Swagger panel at `http://127.0.0.1:9052/swagger` on testnet.
+1. Open your node's Swagger panel at `http://127.0.0.1:9053/swagger`, or port `9052` on testnet.
 2. Under `/utils`, call `POST /utils/hash/blake2b` with your chosen key as the request body.
 3. Copy the returned hash into `lithos.apiKeyHash`.
 4. Keep the original string. That is what you authenticate with.
@@ -114,8 +122,8 @@ defence, not the first.
 
 ## Mainnet node settings
 
-Two settings belong in your **node's** configuration rather than the client's, and only for mainnet
-mining:
+Two settings belong in your **node's** configuration rather than the client's. Mining on mainnet
+requires both:
 
 ```hocon title="ergo.conf"
 ergo.chain.reemission.checkReemissionRules = true
@@ -123,9 +131,9 @@ ergo.wallet.checkEIP27 = true
 ```
 
 The first validates consensus. The second handles payments made by the node wallet. Neither applies on
-testnet.
+testnet. The `ergo.conf` in [Setting up an Ergo node](../startup/ergo-node.mdx) already includes them.
 
 ## Next steps
 
 - [Stratum and difficulty](./stratum.mdx): connecting your mining software and choosing `diff`.
-- [Setting up an Ergo testnet node](../startup/testnet-node.mdx): the node side of this page.
+- [Setting up an Ergo node](../startup/ergo-node.mdx): the node side of this page.

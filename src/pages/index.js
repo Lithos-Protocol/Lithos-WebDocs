@@ -122,7 +122,7 @@ const FEATURES = [
     Icon: IconRocket,
     accent: 'cyan',
     title: 'Startup guide',
-    body: 'Spin up an Ergo testnet node and configure your Lithos client from scratch, step by step.',
+    body: 'Install the Ergo node and Lithos client with Lithos Launcher, or set each one up yourself, step by step.',
     link: '/docs/startup-intro',
     label: 'Get started →',
   },

@@ -72,7 +72,7 @@ const sidebars: SidebarsConfig = {
       label: "Startup guide",
       link: { type: "doc", id: "startup-intro" },
       items: [
-        { type: "doc", id: "startup/testnet-node" },
+        { type: "doc", id: "startup/ergo-node" },
       ],
     },
     {

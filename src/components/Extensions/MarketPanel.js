@@ -143,8 +143,8 @@ export default function MarketPanel() {
             )}
           </div>
           <p className={m.cardNote} style={{ marginTop: 10 }}>
-            Ergo resets its difficulty every {fmtInt(EPOCH_LENGTH)} blocks, about {fmtSpan(EPOCH_LENGTH)}, from how fast
-            the last blocks came. Every bet here is on the average of those settings over a window.{' '}
+            Ergo resets its difficulty every {fmtInt(EPOCH_LENGTH)} blocks, about {fmtSpan(EPOCH_LENGTH)}, based on block times from the last epoch.
+             Every bet here is on the average of those difficulties over a window.{' '}
             {next
               ? next.exact
                 ? 'Final: the current epoch has ended, so this is the difficulty the next blocks carry.'

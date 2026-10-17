@@ -314,8 +314,8 @@ export default function OfferForm() {
             ))}
           </div>
           <p className={m.cardNote} style={{ marginTop: 6 }}>
-            The most you can win, and the most you can lose before the 1.5 LIT of fees. Your taker puts up the same. Each
-            1% the window's average ends from the strike moves 5% of it, so a 20% move takes all of it. On chain the bet is
+            The most you can win, and the most you can lose before the 1.5 LIT of fees. The counterparty who fills your offer puts up the same amount.
+            On chain the bet is 
             recorded as a notional of {notionalUnits ? fmtLit(notionalUnits, 0) : '—'} LIT, five times the margin.
           </p>
           {capped && (

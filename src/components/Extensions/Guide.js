@@ -31,7 +31,7 @@ const STEPS = [
   {
     n: 2,
     title: 'Fill',
-    text: 'A taker takes the other side and locks the same margin. The window starts at least 2 epochs after the fill, so nobody can bet on a difficulty the chain already gives away.',
+    text: 'A taker takes the other side and locks the same margin. The window starts at least 2 epochs after the fill to prevent manipulation.',
   },
   {
     n: 3,
@@ -41,17 +41,17 @@ const STEPS = [
   {
     n: 4,
     title: 'Settle',
-    text: 'Once the window’s last epoch is recorded, anyone settles. Each 1% the window’s average ended above the strike moves 5% of the margin from short to long, and below it from long to short. Whoever settles keeps 1 LIT.',
+    text: 'Once the window’s last epoch is recorded, anyone may settle the contract for 1 LIT. Each 1% difference between the window’s average and the strike results in a 5% profit or loss for each party.',
   },
 ];
 
 /** The words the rest of the section uses, for someone new to this kind of bet. */
 const TERMS = [
   ['Epoch', 'Ergo sets a new difficulty every 128 blocks, about 4.3 hours. Each stretch of 128 blocks is an epoch. Tick Block heights at the top to see blocks instead.'],
-  ['Window', 'The run of epochs a bet is about. Their average difficulty decides it.'],
+  ['Window', 'How many epochs to bet over. The average difficulty over the total window of epochs decides the bet.'],
   ['Strike', 'The difficulty the window’s average is measured against.'],
-  ['Long and short', 'Long wins if the average ends above the strike, short if it ends below. Each bet has one of each.'],
-  ['Margin', 'Each side’s stake, and the most either can win or lose. Every 1% the average lands from the strike moves 5% of it.'],
+  ['Long and short', 'Going long wins if Ergo\'s network difficulty ends above the strike, while going short wins if it ends below the strike.'],
+  ['Margin', 'Each side’s stake, and the most either can win or lose. A 1% change in average network difficulty results in a 5% gain or loss.'],
   ['Fees', '1.5 LIT from each side: 1 LIT keeps the difficulty record going, 0.5 LIT pays whoever settles. They are not returned.'],
 ];
 
@@ -149,8 +149,7 @@ function Explorer({ base }) {
           </div>
           <p className={m.cardNote}>
             {fmtLit(perPercent(margin), 2)} LIT for each 1% move, {fmtMove(Math.max(-0.2, Math.min(0.2, outcome)), 1)} here
-            {Math.abs(outcome) > 0.2 ? ', held at the 20% limit where the whole margin has moved' : ''}. The other side pays
-            exactly what you win.
+            {Math.abs(outcome) > 0.2 ? ', held at the 20% limit where the whole margin has moved' : ''}.
           </p>
         </div>
       </div>
@@ -178,9 +177,9 @@ export default function Guide() {
         <h3 className={m.cardTitle}>A bet on Ergo's average difficulty</h3>
         <p className={s.lede}>
           Two people agree on a strike difficulty and a window of time. When the window ends, Ergo's average difficulty
-          over it decides the bet: the side it moved toward takes part or all of the other side's margin. Everything is in
+          over the window decides the result of the bet. Everything is in
           LIT and on chain, and there is no pool and no price oracle. The difficulty comes straight from Ergo's block
-          headers.
+          headers. All profits and losses come only from the two parties involved in the forwards contract.
         </p>
         <div className={s.steps}>
           {STEPS.map((st) => (
@@ -223,11 +222,12 @@ export default function Guide() {
         <div className={m.card}>
           <h3 className={m.cardTitle}>Who it is for</h3>
           <p className={s.lede}>
-            <b style={{ color: COLORS.long }}>Miners hedging income.</b> Income per hash falls as difficulty rises, and a
-            long position pays when it rises. A miner expecting 10,000 LIT over 80 epochs who goes long with 2,000 LIT of
-            margin at the strike nets out roughly like this. To size a hedge, match the income: 2,000 LIT of margin is a
-            10,000 LIT notional, so each 1% move pays 100 LIT, about what a 1% change in difficulty does to 10,000 LIT of
-            income.
+            <b style={{ color: COLORS.next }}>Miners hedging income.</b> When network difficulty rises, mining rewards fall. Miners who wish to hedge
+            against this risk can go long on difficulty, allowing them to soften their losses. 
+            <br/><b style={{ color: COLORS.long }}>Miners looking to multiply profits.</b> When network difficulty drops, mining rewards grow. Miners with greater risk appetites 
+            can go short on difficulty, potentially gaining more profits than normal from counterparties looking to hedge.
+            <br/><b style={{ color: COLORS.difficulty }}>Traders.</b> Price and difficulty are often correlated, but traders and other market participants may find difficulty forwards preferable to bets
+            on Ergo's price alone. 
           </p>
           <div className={s.table}>
             <div className={`${s.tr} ${s.hedgeTr} ${s.th}`}>
@@ -248,8 +248,9 @@ export default function Guide() {
             ))}
           </div>
           <p className={m.cardNote} style={{ marginTop: 8 }}>
-            Beyond a 20% move the limit stops the hedge. <b style={{ color: COLORS.short }}>Anyone with a view</b> can take
-            either side: short windows are a near-term market, long ones the hedge.
+            To size a hedge, match the income over the window: 2,000 LIT of margin is a
+            10,000 LIT notional, so each 1% move pays 100 LIT, about what a 1% change in difficulty does to 10,000 LIT of
+            income.
           </p>
         </div>
 

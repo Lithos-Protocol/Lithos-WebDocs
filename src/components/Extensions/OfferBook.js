@@ -7,6 +7,7 @@ import { useExtensions } from './ExtensionsLayout';
 import { PayoutCurve, StrikeLadder } from './charts';
 import { KeyGate, PageSize, Pager, SideChip, usePaged, WindowText } from './ui';
 import { Alert, Spinner, TxResult } from '../Dex/ui';
+import Link from '@docusaurus/Link';
 import {
   big,
   COLORS,
@@ -199,10 +200,10 @@ function FillDrawer({ offer, acc, onDone, onFilled }) {
             </div>
           </div>
           <p className={m.cardNote}>
-            Your margin is your stake: the most you can win and, with 1.5 LIT on top, the most you can lose. For every 1%
-            the window's average difficulty ends away from the strike, 5% of the margin moves from one side to the other,
-            so a 20% move takes all of it. The 1.5 LIT pays whoever settles and the difficulty record, and does not come
-            back. Everything is in LIT, so the LIT price is not hedged.
+            Your margin is your stake: the maximum amount you can win or lose. Every 1%
+            difference between the window's average difficulty and the strike is a 5% profit or loss for each party.
+            A 1.5 LIT fee pays whoever settles and the difficulty record, and does not come
+            back. 
           </p>
           <p className={m.cardNote}>
             On chain this bet is sized as a notional of {fmtLitFull(view.notional, 0)} LIT, five times the margin.
@@ -220,8 +221,8 @@ function FillDrawer({ offer, acc, onDone, onFilled }) {
             ].filter(Boolean)}
           />
           <p className={m.cardNote} style={{ marginTop: 6 }}>
-            Your gain or loss against where the window's mean difficulty lands, before rewards. It stops at the margin, a
-            20% move either way.
+            Your gain or loss against where the window's mean difficulty lands, before rewards. It stops at the margin, which amounts to a 
+            20% move in either direction.
           </p>
         </div>
       </div>
@@ -399,14 +400,13 @@ export default function OfferBook() {
 
       <p className={m.cardNote} style={{ marginTop: 0, marginBottom: 10 }}>
         Each row is someone's open bet on Ergo's average difficulty over a window of time. Filling one puts you on the
-        other side. Long wins if the window's average ends above the strike, short wins if it ends below. The margin is
-        each side's stake: every 1% the average lands from the strike moves 5% of it, up to all of it at 20%.
+        other side. Long wins if the window's average ends above the strike, short wins if it ends below. Read <Link to="/assets/extensions/forwards/guide">how it works</Link> for more info.
       </p>
       <StrikeLadder bins={bins} show={show} selected={bin} onSelect={setBin} width={1120} />
       <p className={m.cardNote} style={{ marginTop: 6 }}>
         Margin on offer by strike, against the {acc?.nextDifficulty ? "next epoch's" : 'current'} difficulty
         {acc?.nextDifficulty ? `, ${fmtDifficulty(acc.nextDifficulty.difficulty)}` : ''}. Going long at a strike below
-        it starts you ahead; going short at a strike above it does too. Click a column to filter the book.
+        it starts you in profit; going short at a strike above it does too. Click a column to filter the book.
       </p>
 
       <div className={s.filters}>

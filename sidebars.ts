@@ -47,6 +47,11 @@ const sidebars: SidebarsConfig = {
         { type: "doc", id: "lithosdex/liquidity" },
       ],
     },
+    {
+      type: "category",
+      label: "Extensions",
+      items: [{ type: "doc", id: "extensions/difficulty-forwards" }],
+    },
   ],
   openApiSidebar: [
     {

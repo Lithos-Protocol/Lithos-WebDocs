@@ -1,0 +1,221 @@
+---
+sidebar_position: 1
+sidebar_label: Difficulty forwards
+tags:
+  - extensions
+description: How a difficulty forward is offered, filled, recorded and settled, what it pays, and how to trade one from the web panel.
+---
+
+# Difficulty forwards
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you know what Ergo's mining difficulty is and have mined before. Start with [Mining on Lithos](../tutorial-basics/mining-on-lithos.mdx) if not.*
+
+A difficulty forward is a bet between two people on Ergo's average mining difficulty over a window of
+epochs. Both sides post LIT, and when the window ends the side the difficulty moved toward is paid out
+of the other side's margin. This page explains how a forward runs, what it pays, how to make and fill
+one in the web panel, and what can go wrong.
+
+It does not cover the API endpoints behind the panel, which are in the [API reference](/api) under
+**Difficulty Forwards**, or the batching settings your client uses to record and settle forwards, which
+are in [Batching and orders](../configuration/batching.mdx).
+
+## What a forward is
+
+A forward is a single on-chain position with two sides:
+
+| Side | Is paid when | Suits |
+|---|---|---|
+| Long | The window's average difficulty ends above the strike | A miner hedging income, since income per hash falls as difficulty rises |
+| Short | The window's average difficulty ends below the strike | Anyone expecting difficulty to fall |
+
+Every forward has these terms:
+
+| Term | Meaning |
+|---|---|
+| Strike | The difficulty the window's average is measured against |
+| Window | A run of 1 to 120 consecutive difficulty epochs, about 4 hours to 3 weeks |
+| Margin | Each side's stake, in LIT. It is the most either side can win or lose |
+
+On chain the size is stored as a **notional** of five times the margin. You only meet it in the API and
+in one setting; the web panel works in margin throughout.
+
+A difficulty epoch is 128 blocks, about 4.3 hours at Ergo's 2-minute block time. Ergo only changes
+difficulty at the first block of each epoch, so every block in an epoch has the same difficulty.
+
+There is no pool and no price oracle. The difficulty comes from Ergo's own block headers, and the two
+sides are always two people.
+
+## How a forward runs
+
+A forward goes through four steps:
+
+1. **Offer.** A maker picks a side and the terms, and locks their margin plus 1.5 LIT of fees in an
+   offer.
+2. **Fill.** A taker takes the other side and locks the same margin and fees. The offer becomes a
+   position holding both margins.
+3. **Record.** Once per epoch, a transaction writes that epoch's difficulty into the **difficulty
+   accumulator**, a single on-chain box holding the last 128 epochs. Whoever records earns 1 LIT from
+   the accumulator's balance.
+4. **Settle.** Once the window's last epoch is recorded, anyone can settle the position. Each side is
+   paid in the same transaction, and whoever settles keeps 1 LIT.
+
+Lithos clients record each epoch and settle finished positions on their own, so you do not need to do
+steps 3 or 4 yourself. Each side's 1.5 LIT of fees funds this work and is not returned:
+
+| Part of the 1.5 LIT | Goes to |
+|---|---|
+| 0.5 LIT | Whoever settles the position |
+| 1 LIT | The accumulator's balance, which pays 1 LIT for each recorded epoch |
+
+## What a position pays
+
+Every 1% the window's average ends above the strike moves 5% of the margin from the short side to the
+long side. Every 1% below it moves 5% the other way. At a 20% move the whole margin has moved, and a
+bigger move pays the same:
+
+```text
+average = average difficulty over the window's epochs
+move    = average / strike - 1
+payout  = 5 x margin x move, held between -margin and +margin
+```
+
+The long side receives its margin plus the payout, and the short side its margin minus it. The most
+either side can lose is its own margin plus the 1.5 LIT of fees.
+
+For a 2,000 LIT margin, each 1% move is worth 100 LIT, and a position pays the following:
+
+| Window average vs strike | Long receives | Short receives |
+|---|---|---|
+| +8% | 2,800 LIT | 1,200 LIT |
+| 0% | 2,000 LIT | 2,000 LIT |
+| -8% | 1,200 LIT | 2,800 LIT |
+| +30% | 4,000 LIT | 0 LIT |
+
+## Choosing a window
+
+A window must start between 2 and 120 epochs after the epoch of the block before the fill. The next
+epoch is never allowed in a window, because its difficulty can already be computed from block
+timestamps before it starts. The web panel shows that computed figure, labelled **Next epoch**, so
+nobody trades against it with information the other side lacks.
+
+Two consequences for you:
+
+- **A fill has a deadline.** A window starting at epoch `E` can only be filled while the chain is at
+  least 2 epochs before it. The panel shows each offer's last fill height as **Fill by**.
+- **Offers expire with the epoch.** An offer's strike goes stale once the next epoch's difficulty is
+  final, so the panel sets each new offer to expire at the last block of the epoch you post it in. You
+  can set a later expiry yourself.
+
+Short windows are cheap to move. A miner with a tenth of Ergo's hashrate who mines elsewhere for one
+epoch lowers that epoch's difficulty by about 7.5%, which can decide a 1-epoch window. Your client
+therefore refuses to make or fill a window shorter than 8 epochs with more than 200 LIT of margin. The
+limit is a setting, described in [Settings](#settings).
+
+## Hedging mining income
+
+Mining income per hash is proportional to `1 / difficulty`, so a long position pays out when your
+income falls. Suppose you expect 10,000 LIT from mining over the next 80 epochs, and go long with
+2,000 LIT of margin at the strike. Each 1% move then pays 100 LIT, about what a 1% change in difficulty
+does to 10,000 LIT of income. In other words, size the hedge so its notional, five times the margin,
+matches the income you expect. Your combined result is roughly the following:
+
+| Window average vs strike | Position | Mining income vs expected | Net |
+|---|---|---|---|
+| +8% | +800 LIT | about -740 LIT | about +60 LIT |
+| -8% | -800 LIT | about +870 LIT | about +70 LIT |
+| +30% | +2,000 LIT | about -2,310 LIT | about -310 LIT |
+
+Beyond a 20% move the payout stops growing, so the hedge stops covering the loss.
+
+## Trading from the web panel
+
+Open **Extensions** in the top bar and choose **Difficulty Forwards**. The section has four views:
+
+| View | What it shows |
+|---|---|
+| **Market** | Difficulty by epoch with the next epoch's computed figure, the margin at stake, and the order book |
+| **Make an offer** | A form that quotes your offer as you edit it, with its payout curve and what each outcome pays |
+| **Portfolio** | Your open positions, your offers, and every settled position with what it paid |
+| **How it works** | The lifecycle and a payout calculator |
+
+Reading the market needs no API key. Filling, offering, cancelling, settling and your portfolio all need
+it. The panel holds the key in memory only, so you enter it again after a page refresh.
+
+The panel counts time in epochs. Tick **Block heights** next to **Settings** to see every window, start
+and deadline as block heights instead. The panel remembers the choice in this browser.
+
+### Filling an offer
+
+To take the other side of an offer:
+
+1. Open **Market** and filter the order book. **You go long** and **You go short** pick the side you
+   would take, and clicking a column of the strike chart narrows the book to that range of strikes.
+2. Click an offer to open its quote. Check **Your margin**, **Most you can lose** and the payout curve.
+3. Enter your API key if asked, then click **Fill**.
+
+The fill locks your margin and 1.5 LIT, plus 0.002 ERG for the position and a 0.001 ERG network fee. The
+quote is read again when you open it, so the amounts you confirm are the offer's current ones.
+
+### Making an offer
+
+To post your own offer:
+
+1. Open **Make an offer** and pick **Long** or **Short**.
+2. Set the window start, the window length, the strike and your margin. The chips next to the strike
+   set it relative to the next epoch's difficulty.
+3. Read the quote on the right, including any warnings, then click **Post offer**.
+
+Your offer locks its margin, 1.5 LIT and 0.002 ERG until a taker fills it or you cancel it from
+**Portfolio**. An expired offer stays locked until you cancel it.
+
+## Settlement and refunds
+
+Lithos clients settle a finished position on their own, either in a Lithos block or by broadcast later
+in the epoch. You can also settle any finished position yourself from **Portfolio**, which pays the
+0.001 ERG fee out of the position and gives you the 1 LIT the settler keeps, or 2 LIT if the same
+transaction records the current epoch.
+
+The accumulator only holds the last 128 epochs. If nobody settles a position before its window's first
+epoch is 128 epochs old, the window can no longer be read, and settling returns each side's margin
+instead. Because clients settle finished positions automatically, this only happens if no client does
+for weeks.
+
+## Risks
+
+Read these before you trade:
+
+- **LIT price.** Margins and payouts are LIT, so a position's value in ERG moves with the LIT price.
+- **Short windows.** Hashrate that can move away for an epoch can decide a short window. Keep short
+  windows small.
+- **Whole fills only.** An offer is filled in full or not at all.
+- **Fixed fees.** The 1.5 LIT each side pays is a constant, whatever the margin.
+
+## Settings
+
+The size limit on short windows is a client setting. It is shipped as follows in
+`conf/application.conf`:
+
+```hocon title="application.conf"
+forwards {
+  offers {
+    shortWindowEpochs = 8
+    shortWindowMaxNotionalLit = 1000
+  }
+}
+```
+
+The two keys mean the following:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `forwards.offers.shortWindowEpochs` | `8` | Windows shorter than this many epochs are limited |
+| `forwards.offers.shortWindowMaxNotionalLit` | `1000` | The largest notional, in whole LIT, your client offers or fills for such a window. The default is 200 LIT of margin. `0` refuses short windows entirely |
+
+## Next steps
+
+- [Mining on Lithos](../tutorial-basics/mining-on-lithos.mdx): how difficulty shapes what you earn.
+- [Batching and orders](../configuration/batching.mdx): the settings your client uses to record and
+  settle forwards.
+- [API reference](/api): the endpoints behind the web panel.

@@ -1,0 +1,33 @@
+---
+id: dffillresult
+title: "DFFillResult"
+description: ""
+sidebar_label: "DFFillResult"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"txId":"string","outcome":"accepted","positionBoxId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFFillResult"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["txId","outcome","positionBoxId"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"positionBoxId":{"type":"string"}},"title":"DFFillResult"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

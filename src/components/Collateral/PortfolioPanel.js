@@ -4,6 +4,7 @@ import * as api from './api';
 import { useCollateral } from './CollarLayout';
 import { big, fmtErgAmount, fmtTokenAmount, fmtInt, shortId } from './format';
 import { Alert, Row, Spinner, CubeGlyph, IdText, GearIcon } from './ui';
+import LendingCard from './LendingCard';
 
 const TABLE_PAGE = 30;
 
@@ -513,6 +514,9 @@ export default function PortfolioPanel() {
 
         <RewardsCard rewards={w.rewards} onChanged={afterMutation} />
       </div>
+
+      {/* ---- EARNINGS: what spent collateral paid back ---- */}
+      <LendingCard />
 
       {/* ---- SECOND ROW: CONFIG ---- */}
       <div style={{ marginTop: '1.25rem' }}>

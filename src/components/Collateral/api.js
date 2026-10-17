@@ -279,6 +279,16 @@ export const getWallet = async () => {
 export const getRewards = () => req('/collateral/rewards', { auth: true });
 
 /**
+ * GET /stats/collateral/earnings — this wallet's collateral that Lithos blocks spent, newest first, with
+ * what each put in and got back. Covers the statistics' retained window only.
+ */
+export const getLendingEarnings = ({ offset, limit } = {}) =>
+  req('/stats/collateral/earnings', { auth: true, query: { offset, limit } });
+
+/** The most positions one earnings request returns. */
+export const MAX_LENDING_PAGE = 500;
+
+/**
  * POST /collateral/rewards/claim — sweeps ALL unlocked coinbases to EIP-3 index 0.
  * Dust is consolidated, never dropped. 400 means nothing unlocked or a claim is
  * already running; nothing was lost either way.

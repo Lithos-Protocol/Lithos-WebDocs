@@ -1,0 +1,33 @@
+---
+id: dfnextdifficulty
+title: "DFNextDifficulty"
+description: "The next epoch's difficulty, computed with Ergo's retarget rule from the last 9 epochs' final block timestamps."
+sidebar_label: "DFNextDifficulty"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"epoch":0,"difficulty":"63980371640320","exact":true,"fromHeight":0,"change":-0.0045}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFNextDifficulty"}
+>
+</Heading>
+
+
+
+The next epoch's difficulty, computed with Ergo's retarget rule from the last 9 epochs' final block timestamps.
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","description":"The next epoch's difficulty, computed with Ergo's retarget rule from the last 9 epochs' final block timestamps.","required":["epoch","difficulty","exact","fromHeight","change"],"properties":{"epoch":{"type":"integer","format":"int32","description":"The epoch it applies to, the one after the current epoch."},"difficulty":{"type":"string","example":"63980371640320"},"exact":{"type":"boolean","description":"True once the current epoch has ended, so this is the value the next blocks carry. Otherwise the current epoch's end is projected at its pace so far, which is close only late in the epoch."},"fromHeight":{"type":"integer","format":"int32","description":"The newest block it was computed from."},"change":{"type":"number","format":"double","description":"Move from the current difficulty, as a fraction.","example":-0.0045}},"title":"DFNextDifficulty"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

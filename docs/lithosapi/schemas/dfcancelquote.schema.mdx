@@ -1,0 +1,33 @@
+---
+id: dfcancelquote
+title: "DFCancelQuote"
+description: ""
+sidebar_label: "DFCancelQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"string","returnedLit":"string","returnedNanoErgs":"string","networkFee":"string","feeFromOffer":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFCancelQuote"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["boxId","returnedLit","returnedNanoErgs","networkFee","feeFromOffer"],"properties":{"boxId":{"type":"string"},"returnedLit":{"type":"string"},"returnedNanoErgs":{"type":"string"},"networkFee":{"type":"string"},"feeFromOffer":{"type":"boolean","description":"Whether the fee comes out of the offer's own ERG rather than the wallet."}},"title":"DFCancelQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

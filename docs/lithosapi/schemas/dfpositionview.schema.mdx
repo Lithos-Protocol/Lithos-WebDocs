@@ -1,0 +1,33 @@
+---
+id: dfpositionview
+title: "DFPositionView"
+description: ""
+sidebar_label: "DFPositionView"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"string","side":"long","long":"string","short":"string","strike":"string","notional":"string","margin":"string","windowStart":0,"windowLength":0,"windowEnd":0,"status":"waiting","epochsKnown":0,"markDifficulty":"string","markMove":0,"markPayout":"string","pnl":"string","owedLong":"string","owedShort":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFPositionView"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["boxId","side","long","short","strike","notional","margin","windowStart","windowLength","windowEnd","status","epochsKnown"],"properties":{"boxId":{"type":"string"},"side":{"type":"string","enum":["long","short","both"],"description":"This wallet's side; `both` when it holds both keys."},"long":{"type":"string","description":"Address the long side is paid to."},"short":{"type":"string"},"strike":{"type":"string"},"notional":{"type":"string"},"margin":{"type":"string"},"windowStart":{"type":"integer","format":"int32"},"windowLength":{"type":"integer","format":"int32"},"windowEnd":{"type":"integer","format":"int32"},"status":{"type":"string","enum":["waiting","in_window","settleable","refundable"],"description":"`waiting` before the window starts, `in_window` until its last epoch is recorded, `settleable` once it is, and `refundable` once its first epoch has left the accumulator, when each side gets its margin back."},"epochsKnown":{"type":"integer","format":"int32","description":"Window epochs whose difficulty is known, recorded or current."},"markDifficulty":{"type":"string","description":"The window's mean with every unknown epoch at the newest difficulty known. Absent when refundable."},"markMove":{"type":"number","format":"double","description":"`markDifficulty` against the strike, as a fraction."},"markPayout":{"type":"string","description":"LIT base units the long side would receive on top of its margin at the mark, negative when the short side is paid; at most the margin either way. Exact once settleable."},"pnl":{"type":"string","description":"`markPayout` from this wallet's side; zero when it holds both."},"owedLong":{"type":"string","description":"LIT base units a settlement now pays the long side, margin included. Present once settleable or refundable."},"owedShort":{"type":"string"}},"title":"DFPositionView"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

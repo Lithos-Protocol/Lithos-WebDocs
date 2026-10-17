@@ -1,0 +1,22 @@
+---
+id: forwards
+title: "Difficulty Forwards"
+description: "Difficulty Forwards"
+custom_edit_url: null
+---
+
+
+
+Difficulty forwards: peer-to-peer bets on Ergo's mean difficulty over a window of 1 to 120 epochs of 128 blocks, margined in LIT. A maker posts an offer, a taker fills it, and once the window is recorded anyone settles it. The long side is paid when the window's mean is above the strike, the short side when it is below, up to each side's margin of a fifth of the notional.
+
+Reads and every `check` are open; your positions and everything that signs need an `api_key`. **All amounts and difficulties are decimal strings, not JSON numbers.** LIT amounts are base units (9 decimals). A 409 means a box you named is already being spent: re-read and resend.
+
+
+
+
+```mdx-code-block
+import ApiCategoryPage from '@site/src/components/ApiCategoryPage';
+
+<ApiCategoryPage />
+```
+      

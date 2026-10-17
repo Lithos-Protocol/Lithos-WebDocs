@@ -3221,3 +3221,177 @@
     gap: 8px;
   }
 }
+
+/* ===== CLEARANCE: live boxes by age ===== */
+
+.clStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.clStat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.08);
+  min-width: 0;
+}
+
+.clStatLabel {
+  font-family: var(--cur-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cur-dim);
+}
+
+.clStatValue {
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--cur-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clStatSub {
+  font-size: 11px;
+  color: var(--cur-faint);
+}
+
+.clLineText {
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.clTable {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 12px;
+}
+
+.clTr {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(130px, 1fr) minmax(100px, 0.8fr) minmax(200px, 1.6fr);
+  gap: 10px;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12.5px;
+  color: var(--cur-body);
+}
+
+.clTr:not(.clTh):hover {
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.clTh {
+  font-family: var(--cur-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cur-fainter);
+}
+
+.clNum {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.clId {
+  font-family: var(--cur-font-mono);
+  font-size: 11.5px;
+  color: var(--cur-muted);
+}
+
+.clFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--cur-faint);
+}
+
+.clPager {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--cur-font-mono);
+  font-size: 10px;
+  color: var(--cur-dim);
+}
+
+.clPager button {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 6px;
+  color: var(--cur-dim);
+  cursor: pointer;
+}
+
+.clPager button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+@media (max-width: 900px) {
+  .clStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .clTr {
+    grid-template-columns: minmax(110px, 1fr) minmax(110px, 1fr) minmax(90px, 0.8fr);
+  }
+  .clTr > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ===== LENDING EARNINGS: one row per spent position ===== */
+
+.lnTr {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.3fr) repeat(6, minmax(72px, 0.8fr)) minmax(110px, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 12.5px;
+  color: var(--cur-body);
+}
+
+.lnTr:not(.clTh):hover {
+  background: rgba(56, 189, 248, 0.05);
+}
+
+@media (max-width: 900px) {
+  .lnTr {
+    grid-template-columns: minmax(120px, 1.4fr) repeat(2, minmax(80px, 1fr));
+  }
+  /* Block, net and return stay; the rest is in the hover titles and the wider layout */
+  .lnTr > :nth-child(2),
+  .lnTr > :nth-child(3),
+  .lnTr > :nth-child(4),
+  .lnTr > :nth-child(7),
+  .lnTr > :nth-child(8) {
+    display: none;
+  }
+}

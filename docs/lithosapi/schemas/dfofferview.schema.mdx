@@ -1,0 +1,33 @@
+---
+id: dfofferview
+title: "DFOfferView"
+description: ""
+sidebar_label: "DFOfferView"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"string","maker":"string","makerSide":"long","strike":"string","notional":"string","margin":"string","windowStart":0,"windowLength":0,"windowEnd":0,"expiry":0,"lastFillHeight":0,"lit":"string","nanoErgs":"string","takerLit":"string","takerNanoErgs":"string","impliedMove":0,"impliedMoveNext":0,"mine":true,"fillable":true,"refusal":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFOfferView"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["boxId","maker","makerSide","strike","notional","margin","windowStart","windowLength","windowEnd","expiry","lastFillHeight","lit","nanoErgs","takerLit","takerNanoErgs","mine","fillable"],"properties":{"boxId":{"type":"string"},"maker":{"type":"string","description":"Address the maker is paid to."},"makerSide":{"type":"string","enum":["long","short"],"description":"`long` is paid when the window's mean difficulty is above the strike, `short` when below."},"strike":{"type":"string","description":"Difficulty the window's mean is measured against."},"notional":{"type":"string","description":"LIT base units."},"margin":{"type":"string","description":"Each side's margin, a fifth of the notional, and the most either side can lose of it."},"windowStart":{"type":"integer","format":"int32"},"windowLength":{"type":"integer","format":"int32"},"windowEnd":{"type":"integer","format":"int32","description":"The window's last epoch."},"expiry":{"type":"integer","format":"int32","description":"The last height a fill can be mined at."},"lastFillHeight":{"type":"integer","format":"int32","description":"The last height a fill can actually be mined at: the expiry, or earlier when the window would start less than 2 epochs after the fill."},"lit":{"type":"string","description":"LIT base units the offer holds."},"nanoErgs":{"type":"string"},"takerLit":{"type":"string","description":"LIT base units a fill takes from the taker."},"takerNanoErgs":{"type":"string","description":"nanoERG a fill takes from the taker, network fee included."},"impliedMove":{"type":"number","format":"double","description":"The strike against the current difficulty, as a fraction."},"impliedMoveNext":{"type":"number","format":"double","description":"The strike against `nextDifficulty`, when known."},"mine":{"type":"boolean","description":"Whether this wallet made the offer."},"fillable":{"type":"boolean","description":"Whether this wallet's fill sent now would be accepted."},"refusal":{"type":"string","description":"Why not, when `fillable` is false."}},"title":"DFOfferView"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

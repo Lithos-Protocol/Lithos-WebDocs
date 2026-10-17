@@ -12,8 +12,9 @@ description: Filling other people's DEX orders for their executor fee, and the f
 *Assumes you know what a DEX order box is and how mempool chaining works. Start with [Block packages](./candidate.mdx) if not.*
 
 A batcher finds orders that other people have placed, executes them correctly, and keeps the executor
-fee the order's own script pays. This page covers the `batching` block, which configures the two
-batchers, and `lithosdex.orders`, which sets the fees on orders **you** place.
+fee the order's own script pays. This page covers the `batching` block, which configures the two DEX
+batchers and the difficulty forwards batcher, and `lithosdex.orders`, which sets the fees on orders
+**you** place.
 
 ## How a batcher earns
 
@@ -157,6 +158,36 @@ that fails the check is ignored, so a look-alike box cannot draw your executions
 passes, add its NFT id to `batching.lithosdex.deniedPools`. For what LithosDex is and how its orders
 work, see [LithosDex](../lithosdex/overview.mdx).
 
+## Difficulty forwards
+
+The `batching.forwards` block runs the work that keeps [difficulty forwards](../extensions/difficulty-forwards.mdx)
+going. Once per difficulty epoch it records Ergo's difficulty into the forwards accumulator, and it
+settles every position whose window has been recorded. Each recording and each settlement pays you
+1 LIT. It does nothing on a network where no accumulator is deployed.
+
+Each epoch of 128 blocks is split in two. Before `broadcastAfterBlocks`, the work is left to Lithos
+blocks, yours included, which carry it fee-less. From then on your client broadcasts it with a
+0.001 ERG fee, and your own block offers none of it, so the two never compete:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `batching.forwards.enabled` | `true` | `true` or `false` | Record and settle at all |
+| `batching.forwards.scanIntervalMs` | 30000 | 5000 to 3600000 ms | Milliseconds between scans of the accumulator and the open positions |
+| `batching.forwards.maxTrackedOrders` | 512 | 1 to 4096 | Due positions held between scans. Boxes are reloaded before settling |
+| `batching.forwards.maxOrdersPerBlock` | 10 | 1 to 100 | Transactions one broadcast pass sends, the recording included |
+| `batching.forwards.broadcast` | `true` | `true` or `false` | Broadcast recordings and settlements from `broadcastAfterBlocks` onward |
+| `batching.forwards.broadcastAfterBlocks` | 96 | 0 to 120 | Blocks into each epoch before broadcasting starts |
+| `batching.forwards.skippedOrderTtlMs` | 3600000 | 60000 to 86400000 ms | How long a position that could not be built is left out |
+| `batching.forwards.maxSkippedOrders` | 4096 | 0 to 100000 | Such positions remembered at once, oldest forgotten first |
+
+A settlement pays its broadcast fee out of the position's own ERG. A recording that no settlement
+carries pays its 0.001 ERG fee from your wallet, at most once an epoch, which is about 0.006 ERG a day.
+
+In your own blocks the work also needs `stratum.candidate.sources.forwards`, which ships on. A recording
+in your block with no settlement to carry it holds one confirmed wallet box of yours, at least
+0.001 ERG, for that block. The box comes back to you whole with the reward, whether or not the block is
+found.
+
 ## Fees on orders you place
 
 The `lithosdex.orders` block sets the fees carried by orders **you** place through the API or web
@@ -180,3 +211,4 @@ indefinitely rather than failing.
 
 - [Block packages](./candidate.mdx): the source budgets that gate candidate execution.
 - [Collateral and emission](./emission.mdx): the other thing the client spends on your behalf.
+- [Difficulty forwards](../extensions/difficulty-forwards.mdx): what the forwards batcher records and settles.

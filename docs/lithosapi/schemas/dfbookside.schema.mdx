@@ -1,0 +1,33 @@
+---
+id: dfbookside
+title: "DFBookSide"
+description: ""
+sidebar_label: "DFBookSide"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"offers":0,"notional":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFBookSide"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["offers","notional"],"properties":{"offers":{"type":"integer"},"notional":{"type":"string","description":"LIT base units across those offers."}},"title":"DFBookSide"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

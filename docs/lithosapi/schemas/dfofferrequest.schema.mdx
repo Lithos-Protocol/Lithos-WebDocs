@@ -1,0 +1,33 @@
+---
+id: dfofferrequest
+title: "DFOfferRequest"
+description: ""
+sidebar_label: "DFOfferRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"makerSide":"long","strike":"64000000000000","notional":"10000000000000","windowStart":0,"windowLength":0,"expiry":0}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFOfferRequest"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["makerSide","strike","notional","windowStart","windowLength"],"properties":{"makerSide":{"type":"string","enum":["long","short"],"description":"The side this wallet takes."},"strike":{"type":"string","description":"Difficulty the window's mean is measured against.","example":"64000000000000"},"notional":{"type":"string","description":"LIT base units. Each side's margin is a fifth of it.","example":"10000000000000"},"windowStart":{"type":"integer","format":"int32","description":"First epoch of the window, 2 to 120 epochs after the current one."},"windowLength":{"type":"integer","format":"int32","minimum":1,"maximum":120},"expiry":{"type":"integer","format":"int32","description":"Last height a fill can be mined at. Defaults to the last block of the current epoch."}},"title":"DFOfferRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -1,0 +1,33 @@
+---
+id: dfsettledview
+title: "DFSettledView"
+description: ""
+sidebar_label: "DFSettledView"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"string","side":"long","strike":"string","notional":"string","margin":"string","windowStart":0,"windowLength":0,"windowEnd":0,"txId":"string","settledHeight":0,"settledAt":0,"refund":true,"windowMean":"string","payout":"string","received":"string","net":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFSettledView"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["boxId","side","strike","notional","margin","windowStart","windowLength","windowEnd","txId","settledHeight","settledAt","refund","payout","received","net"],"properties":{"boxId":{"type":"string"},"side":{"type":"string","enum":["long","short","both"]},"strike":{"type":"string"},"notional":{"type":"string"},"margin":{"type":"string"},"windowStart":{"type":"integer","format":"int32"},"windowLength":{"type":"integer","format":"int32"},"windowEnd":{"type":"integer","format":"int32"},"txId":{"type":"string","description":"The settlement transaction."},"settledHeight":{"type":"integer","format":"int32"},"settledAt":{"type":"integer","format":"int64","description":"Unix milliseconds of the block that confirmed the settlement."},"refund":{"type":"boolean","description":"Whether each side got its margin back because the window had left the accumulator."},"windowMean":{"type":"string","description":"The window's mean difficulty as the settlement read it. Absent for a refund."},"payout":{"type":"string","description":"LIT base units the long side received on top of its margin, negative when the short side was paid."},"received":{"type":"string","description":"LIT base units this wallet's side or sides received, margins included."},"net":{"type":"string","description":"`received` less what this wallet put in: each side's margin and its 1.5 LIT of rewards."}},"title":"DFSettledView"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

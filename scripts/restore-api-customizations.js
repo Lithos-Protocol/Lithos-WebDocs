@@ -42,6 +42,7 @@ const CATEGORY_DESCRIPTIONS = {
   // so wallet data is its own tag rather than living under either consumer.
   Wallet: "Balances and lending status for the client's own wallet",
   'Lithos Dex': 'Swap, provide liquidity, and collect permanent fees on the LithosDex pool',
+  'Difficulty Forwards': "Offer, fill and settle peer-to-peer bets on Ergo's average difficulty, margined in LIT",
 };
 
 const DOC_CARD_LIST_BLOCK =

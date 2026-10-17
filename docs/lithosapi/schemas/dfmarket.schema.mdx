@@ -1,0 +1,33 @@
+---
+id: dfmarket
+title: "DFMarket"
+description: ""
+sidebar_label: "DFMarket"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"height":0,"currentEpoch":0,"longs":{"offers":0,"notional":"string"},"shorts":{"offers":0,"notional":"string"},"positions":0,"openInterest":"string","waiting":0,"inWindow":0,"settleable":0,"refundable":0,"epochsFunded":0,"truncated":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFMarket"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["height","currentEpoch","longs","shorts","positions","openInterest","waiting","inWindow","settleable","refundable","truncated"],"properties":{"height":{"type":"integer","format":"int32"},"currentEpoch":{"type":"integer","format":"int32"},"longs":{"description":"Open offers whose maker is long, so a taker goes short.","allOf":[{"type":"object","x-tags":"forwards","required":["offers","notional"],"properties":{"offers":{"type":"integer"},"notional":{"type":"string","description":"LIT base units across those offers."}},"title":"DFBookSide"}]},"shorts":{"description":"Open offers whose maker is short, so a taker goes long.","allOf":[{"type":"object","x-tags":"forwards","required":["offers","notional"],"properties":{"offers":{"type":"integer"},"notional":{"type":"string","description":"LIT base units across those offers."}},"title":"DFBookSide"}]},"positions":{"type":"integer","description":"Unsettled positions."},"openInterest":{"type":"string","description":"Notional of every unsettled position, in LIT base units."},"waiting":{"type":"integer"},"inWindow":{"type":"integer"},"settleable":{"type":"integer"},"refundable":{"type":"integer"},"epochsFunded":{"type":"integer","format":"int64","description":"Epochs the accumulator's balance pays a recording for, at 1 LIT each."},"truncated":{"type":"boolean","description":"Whether a scan stopped at 2,000 boxes, so the counts are lower bounds."}},"title":"DFMarket"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

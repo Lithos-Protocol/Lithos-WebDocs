@@ -1,0 +1,72 @@
+---
+id: cancel-df-offer
+title: "Cancel an offer"
+description: "Return one of this wallet's offers, its LIT and ERG, to its maker address. A fill sent before the cancel can still confirm first, and the cancel is then dropped. No body."
+sidebar_label: "Cancel an offer"
+hide_title: true
+hide_table_of_contents: true
+api: eJztWFFv2zYQ/isHYsA2QLG9rB1QvRlN0gVL06DNsAfXm8/iyWIjkSpJxfEM/ffhSNlWYvVhwF4W5MWWRB55d993R95thSSXWVV7ZbRIxUfyjdVgNIHJwRfKwRrLkvz3Dkyek3UJKO/g6vIWUEs4//guAW/CtwrvyAJKacm5EUwhV2UJjrSHJeXGEviCIEOdUcl/4DxPyIzOla0gV9b5JKzam6ccv2mQ1tQ1yRFcG1gauRl91iIRpiaLrPqlFKmIImcXH1hRkQhHWWOV34h0thXTWv1Gm2njC5HO5u08ER5XTqQzkRu7RiudmCeiRosVebIuCGmsSKRiaR4upUiEYhfV6AuRCEtfG2VJitTbhpInfgwqwNI8gJIJoINSOU8SlhtYvDu/hfFu03H06gKMfTpSG6d4ObcYsTFZQRWKdCv8pmalnLdKrwTr7D1Z3vXP2eTkDZ7k05OL+faXV+13omVDLbnaaEeOpU8nE/57CrtrSh8h37veW9QOszAlEZnRnrRnWazrUmXB7+MvjhfYHqtnll8o8yIRDyfR0Qc/9503Ez761jQ+MxWFQeYgySvle2/XqM25XbG0Jr829u6CKEBmmQVeRfPCakdOag/rDziQdFOxJphlVHuSYVfWPjw2OiPrUWkxbx8rN7TNkbpDk3oGHA+3ifDKl/zp7OJtgCLCI9qWB19Nfj4G8L1yTukVs2htjV4B1uqvO9r8G+Aer3hurbGwow7k1lQwvbkUyRHAfTCJpcI3dIE2kjyq8hinOPFgvdKeViFqh9TIjGRm0ANWNXvm9WTS7jcZQHRojYqcwxUBPdQlKs3eYrLHRXbU3+m/30lcag4u5ERm78l2M9q9ZQO766YsccnSQ6nhLMiRjCtBf7CP/bRW53GrDvVXxxhdG2i0qznDhjQCFUriHNNL3FAgp1D0oOTohQ7Phg5vjjGaamh0d5yS7OdvwNISyg0wWWQ4UiNjXhjxbBhxejqQIEj5guwBb9AmvnXJga9hmbnvpnTnEuREL8R4LsR4PXRfuDaSkh0JmBK9XEF6pTRBo/EeVVAngY41DBg5DxY1mCZeGFVFI7gtaO8mhxsH64IC81BvfMEeW6MLtcAI/uD7vPJxXmBmvJrxXb/Rd9qsdQJZQdndYAESKoT93XhXWljydqP06oW3z4W3knLkW+8wTi8wPwuY20RU5AvD5XttnI/lbCFS8bRCHm9DFd6OY3UaynvWOxbqjS1FKgrv63Q8Lk2GZWGcT99MJpMjr10pXxgHb0vFF2eGnovkXbPgE9MmQtlvGRzdtWoFd7QBbHxhrPo7cA8aF2v8uEVMiwW6Yt9MYZGqcdwRgbrEjCQoDRvT2NgHWSXQaEkWFmVcAoMOv6IrFnG5LizgHssmpMxFQWVpFrEh0iEWpRix2MA4VIOhhVEQSrIBFaVzM2DdzSWcmaypSPtoWd6dAJ3zsuC8Ebw3kkoX7P6sC7IEaAMTQ/XMnaElsWWO2x/aA2bWOE7hGzDhfFDMxv02bkfXx9sE0xjrqN1Po8mIYd0x6hjQmBwwC8nhwA2Xjscr5YtmOcpMNY5yJzfWeJOZMviDSVhhiL3Od7EEBz7xur7SI19tD3no/9Y968ji6cGPQ+rg6A/e2nZROOs3baIFIhHprh/WheI8ERxtPH27XaKj323Ztvz5a0OW22/zRNyjVTF3zLZCKsfPUqQ5lu5pJum79IePXRL+Ef77ntqgA3YhpDlcQpSJVIhEcPzsWoEtt4K6KGJ74tg09I96UkfHEieafb67+fDpViQCu/xyCN0Yqd0DLz+o0iGm4+782ybfmLzdxpTQtvv5ceibEp11u9nsm3nbtv8APHG4yA==
+sidebar_class_name: "post api-method"
+info_path: docs/lithosapi/lithos-client-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Cancel an offer"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/forwards/offers/{boxId}/cancel"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Return one of this wallet's offers, its LIT and ERG, to its maker address. A fill sent before the cancel can still confirm first, and the cancel is then dropped. No body.
+
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"boxId","in":"path","required":true,"description":"Offer box id, as listed by `GET /forwards/offers` or `GET /forwards/positions`.","schema":{"type":"string","pattern":"^[0-9a-fA-F]{64}$"}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Result of the cancel transaction","content":{"application/json":{"schema":{"type":"object","x-tags":"forwards","required":["txId","outcome","returnedLit","returnedNanoErgs","networkFee"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"returnedLit":{"type":"string"},"returnedNanoErgs":{"type":"string"},"networkFee":{"type":"string"}},"title":"DFCancelResult"}}}},"403":{"description":"Missing or wrong api_key","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"404":{"description":"No unspent offer made by this wallet has that id.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"409":{"description":"An unconfirmed transaction already spends the offer.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"422":{"description":"Neither the offer nor the wallet can cover the network fee.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"503":{"description":"Node, wallet or transaction engine unavailable, or the request ran out of time. The message says whether anything was sent. When it says the outcome is unknown, check this wallet's offers and positions before retrying.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"default":{"description":"Error","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

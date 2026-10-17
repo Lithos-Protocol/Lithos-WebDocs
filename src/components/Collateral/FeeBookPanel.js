@@ -5,6 +5,7 @@ import { useCollateral } from './CollarLayout';
 import { big, fmtErgAmount, fmtInt, shortId } from './format';
 import { Alert, Spinner } from './ui';
 import { BID, BID_DIM, BREAK_EVEN_NANO } from './feeMarket';
+import ClearanceCard from './ClearanceCard';
 
 const W = 520;
 const H = 230;
@@ -209,7 +210,7 @@ function Kpi({ label, value, unit, sub, accent = false, muted = false }) {
 }
 
 export default function FeeBookPanel({ stats, statsError, loading, settled }) {
-  const { tick } = useCollateral();
+  const { tick, market } = useCollateral();
   const [active, setActive] = useState(null);
   const [queue, setQueue] = useState(null);
   const [error, setError] = useState(null);
@@ -246,10 +247,13 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
         .map((b) => ({
           boxId: b.boxId,
           bid: big(b.priorityFeeNanoErgs ?? '0'),
-          caption: `${fmtErgAmount(b.valueNanoErgs, 3)} ERG box`,
+          caption:
+            b.inclusionHeight != null && market?.syncHeight != null
+              ? `${fmtErgAmount(b.valueNanoErgs, 3)} ERG box · ${fmtInt(market.syncHeight + 1 - b.inclusionHeight)} blocks old`
+              : `${fmtErgAmount(b.valueNanoErgs, 3)} ERG box`,
         }))
         .sort((x, y) => (y.bid > x.bid ? 1 : y.bid < x.bid ? -1 : 0)),
-    [active],
+    [active, market?.syncHeight],
   );
 
   const queuedRows = useMemo(
@@ -322,8 +326,8 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
         <p className={s.cardDesc}>
           A miner spends whichever collateral box pays it most, so these bids are an order book.
           On the left is what a miner can take right now; on the right is what the queue will
-          release, in the order the protocol activates it. Boxes past a certain age may be
-          prioritized in order to ensure proper clearance.
+          release, in the order the protocol activates it. Old boxes are taken first whatever they
+          bid, as the clearance card below shows.
         </p>
 
         {statsError && (
@@ -426,6 +430,8 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
           </div>
         )}
       </div>
+
+      <ClearanceCard active={active} />
     </>
   );
 }

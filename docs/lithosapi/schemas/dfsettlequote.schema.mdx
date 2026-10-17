@@ -1,0 +1,33 @@
+---
+id: dfsettlequote
+title: "DFSettleQuote"
+description: ""
+sidebar_label: "DFSettleQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"string","refund":true,"records":true,"owedLong":"string","owedShort":"string","rewardLit":"string","networkFee":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFSettleQuote"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["boxId","refund","records","owedLong","owedShort","rewardLit","networkFee"],"properties":{"boxId":{"type":"string"},"refund":{"type":"boolean","description":"Whether the window has left the accumulator, so each side gets its margin back."},"records":{"type":"boolean","description":"Whether the settlement also records the current epoch, which adds 1 LIT to the reward."},"owedLong":{"type":"string"},"owedShort":{"type":"string"},"rewardLit":{"type":"string","description":"LIT base units this wallet receives for building the settlement."},"networkFee":{"type":"string"}},"title":"DFSettleQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

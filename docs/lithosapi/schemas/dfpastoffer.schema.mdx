@@ -1,0 +1,33 @@
+---
+id: dfpastoffer
+title: "DFPastOffer"
+description: ""
+sidebar_label: "DFPastOffer"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"string","makerSide":"long","strike":"string","notional":"string","windowStart":0,"windowLength":0,"expiry":0,"outcome":"filled","txId":"string","height":0,"timestamp":0,"positionBoxId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFPastOffer"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["boxId","makerSide","strike","notional","windowStart","windowLength","expiry","outcome","txId","height","timestamp"],"properties":{"boxId":{"type":"string"},"makerSide":{"type":"string","enum":["long","short"]},"strike":{"type":"string"},"notional":{"type":"string"},"windowStart":{"type":"integer","format":"int32"},"windowLength":{"type":"integer","format":"int32"},"expiry":{"type":"integer","format":"int32"},"outcome":{"type":"string","enum":["filled","cancelled"]},"txId":{"type":"string","description":"The transaction that filled or cancelled it."},"height":{"type":"integer","format":"int32"},"timestamp":{"type":"integer","format":"int64"},"positionBoxId":{"type":"string","description":"The position a fill created."}},"title":"DFPastOffer"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -1,0 +1,33 @@
+---
+id: dfofferresult
+title: "DFOfferResult"
+description: ""
+sidebar_label: "DFOfferResult"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"txId":"string","outcome":"accepted","offerBoxId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFOfferResult"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["txId","outcome","offerBoxId"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"offerBoxId":{"type":"string"}},"title":"DFOfferResult"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

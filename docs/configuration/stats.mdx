@@ -42,8 +42,8 @@ These readings come from the stratum itself, so they cost no node reads.
 
 ## Mining and collateral history
 
-The Mining and Collateral panels read your Lithos blocks, payments and difficulty epochs from the chain.
-The client walks the chain a few blocks at a time and keeps what it found:
+The Mining and Collateral panels read your Lithos blocks, payments, difficulty epochs and lending
+earnings from the chain. The client walks the chain a few blocks at a time and keeps what it found:
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
@@ -55,9 +55,10 @@ The client walks the chain a few blocks at a time and keeps what it found:
 | `stats.mining.readTimeoutMs` | 3000 | 100 to 30000 ms | Deadline on one node read |
 | `stats.mining.readBudgetMs` | 20000 | 1000 to 120000 ms | Deadline on one whole refresh |
 
-**Totals on the Mining panel cover retained history only.** A payment older than `historyDays` is
-pruned and no longer counted. Raise `historyDays` before the first start if you want a longer record,
-because the first walk only reaches that far back.
+**Totals cover retained history only.** A payment, or a collateral box of yours that a Lithos block
+spent, older than `historyDays` is pruned and no longer counted on the Mining panel or under **Lending
+earnings** on the Collateral panel. Raise `historyDays` before the first start if you want a longer
+record, because the first walk only reaches that far back.
 
 On a fresh start the client walks `historyDays` of chain at `blocksPerRefresh` blocks per refresh, so
 the panels fill in over the first minutes rather than at once.
@@ -94,14 +95,18 @@ History is kept in a LevelDB store under your client folder:
 | `stats.storage.pruning.retentionDays` | 30 | 1 to 36500 days | How long stored LithosDex observations are kept |
 | `stats.storage.pruning.intervalMs` | 60000 | 1000 to 3600000 ms | Gap between pruning passes |
 | `stats.storage.pruning.batchSize` | 256 | 1 to 1440 | Observations removed per pruning pass |
+| `stats.storage.pruneOldSchemas` | `true` | `true` or `false` | Delete mining history an older client version wrote, once this one has carried over what it needs |
 
 Mining history is stored under the same path, in its own database, and pruned by
 `stats.mining.historyDays`. Deleting `.lithos/stats` while the client is stopped is safe: the client
 rebuilds the history from the chain on its next start.
 
 :::note A client upgrade can start the mining history over
-The mining history database is versioned. When an upgrade changes its layout, the client leaves the old
-database untouched and rebuilds a new one from the chain, which takes the first walk described above.
+The mining history database is versioned. When an upgrade changes its layout, the client rebuilds a new
+one from the chain, which takes the first walk described above. Before that, it copies over what the
+chain cannot give back: your workers' local readings and the difficulty epoch table. With
+`pruneOldSchemas` on, it then deletes the old database. Set it to `false` to keep the old one, for
+example to go back to the previous client version.
 :::
 
 ## Next steps

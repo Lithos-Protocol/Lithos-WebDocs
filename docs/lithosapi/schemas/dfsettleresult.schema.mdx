@@ -1,0 +1,33 @@
+---
+id: dfsettleresult
+title: "DFSettleResult"
+description: ""
+sidebar_label: "DFSettleResult"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"txId":"string","outcome":"accepted","refund":true,"owedLong":"string","owedShort":"string","rewardLit":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DFSettleResult"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"forwards","required":["txId","outcome","refund","owedLong","owedShort","rewardLit"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"refund":{"type":"boolean"},"owedLong":{"type":"string"},"owedShort":{"type":"string"},"rewardLit":{"type":"string"}},"title":"DFSettleResult"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

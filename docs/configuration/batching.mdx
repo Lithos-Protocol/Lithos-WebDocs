@@ -13,8 +13,8 @@ description: Filling other people's DEX orders for their executor fee, and the f
 
 A batcher finds orders that other people have placed, executes them correctly, and keeps the executor
 fee the order's own script pays. This page covers the `batching` block, which configures the two DEX
-batchers and the difficulty forwards batcher, and `lithosdex.orders`, which sets the fees on orders
-**you** place.
+batchers and the difficulty forwards batcher, `lithosdex.orders`, which sets the fees on orders
+**you** place, and `forwards.offers`, which limits the difficulty forwards you offer or fill.
 
 ## How a batcher earns
 
@@ -206,6 +206,23 @@ refusing to start the client.
 **The default executor fee is set to clear the shipped floor of every miner running this client.**
 Miners skip orders paying less than their `minRevenueNanoErg`, so an order priced below that waits
 indefinitely rather than failing.
+
+## Difficulty forwards you offer or fill
+
+The `forwards.offers` block limits how large a short-window [difficulty forward](../extensions/difficulty-forwards.mdx)
+**you** offer or fill can be. Over a few epochs, a miner with a tenth of Ergo's hashrate can move the
+window's average difficulty by about 7.5%, so short windows are kept small:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `forwards.offers.shortWindowEpochs` | 8 | 1 to 121 | Windows shorter than this many epochs are limited. 121 limits every window |
+| `forwards.offers.shortWindowMaxNotionalLit` | 1000 | 0 or more | The largest notional, in whole LIT, such a window may carry. The default is 200 LIT of margin, a fifth of it. `0` refuses short windows entirely |
+
+The limit binds only your client. Other clients can still offer or fill larger short windows, and your
+client shows them in the order book but will not fill them.
+
+These are validated per request rather than at startup, so a bad value refuses forwards requests
+rather than refusing to start the client.
 
 ## Next steps
 

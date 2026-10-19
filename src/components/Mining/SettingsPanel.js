@@ -7,14 +7,15 @@ import s from './styles.module.css';
  */
 import f from '../Collateral/styles.module.css';
 import * as api from './api';
-import { Alert } from '../Dex/ui';
+import { Alert, RememberKeySetting } from '../Dex/ui';
 import { fmtInt } from './format';
 
 /**
  * API host, key and refresh period for the Mining page.
  *
  * The base URL is shared with the DEX and Collateral panels and persists in localStorage; the key
- * is held in memory for the life of the page and has to be re-entered after a refresh.
+ * is held in memory for the life of the page, and is stored only if the reader turns on
+ * remembering it.
  *
  * Nothing on this page needs the key — every statistics endpoint it reads is open. It is offered
  * anyway because it is the same key the other two panels use, so someone who lands here first can
@@ -133,10 +134,12 @@ export default function SettingsPanel({ onClose, onSaved }) {
           </div>
           <span className={f.settingHint}>
             Every statistic here is an open read, so this page never sends it. It is the same key
-            the DEX and Collateral panels use for wallet-scoped calls, and must be re-entered after
-            a refresh.
+            the DEX and Collateral panels use for wallet-scoped calls, and is re-entered after a
+            refresh unless remembered below.
           </span>
         </div>
+
+        <RememberKeySetting />
 
         <div className={f.settingRow}>
           <label className={f.settingCheck}>

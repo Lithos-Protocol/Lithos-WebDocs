@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import s from './styles.module.css';
 import * as api from './api';
 import { fmtErg, parseErg } from './format';
-import { Alert } from './ui';
+import { Alert, RememberKeySetting } from './ui';
 
 /**
  * API key + base URL.
  *
- * The base URL is persisted to localStorage. The key deliberately is not — it is
- * held in memory for the life of the page and has to be re-entered after a
- * refresh. It is only ever sent as the `api_key` header on mutating endpoints,
- * and is masked here so it isn't left on screen. Nothing is stored server-side.
+ * The base URL is persisted to localStorage. The key is held in memory for the
+ * life of the page, and is stored only if the reader turns on remembering it.
+ * It is only ever sent as the `api_key` header on mutating endpoints, and is
+ * masked here so it isn't left on screen. Nothing is stored server-side.
  */
 export default function SettingsPanel({ onClose, onSaved }) {
   const [key, setKey] = useState('');
@@ -161,9 +161,11 @@ export default function SettingsPanel({ onClose, onSaved }) {
             </button>
           </div>
           <span className={s.settingHint}>
-            Sent as the <code>api_key</code> header. Must be re-entered after a refresh.
+            Sent as the <code>api_key</code> header. Re-entered after a refresh unless remembered below.
           </span>
         </div>
+
+        <RememberKeySetting />
 
         <div className={s.settingRow}>
           <label className={s.settingCheck}>

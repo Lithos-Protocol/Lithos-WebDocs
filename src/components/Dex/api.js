@@ -63,11 +63,36 @@ function migrateBaseUrl() {
 migrateBaseUrl();
 
 /**
- * The API key lives in memory for the life of the page, never in storage.
+ * The API key lives in memory for the life of the page. Storing it is an opt-in: while "remember"
+ * is on, the key is also written to localStorage and loaded from there when the page loads.
+ * Every storage call is guarded, so a browser that blocks storage keeps the key in memory only.
  *
  * The base URL below is not a secret and stays in localStorage.
  */
-let apiKey = '';
+const API_KEY_KEY = 'lithos.apiKey';
+const REMEMBER_KEY = 'lithos.rememberApiKey';
+
+function readStored(name) {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(name);
+  } catch {
+    return null;
+  }
+}
+
+/** Writes `value`, or removes the entry when it is empty. */
+function writeStored(name, value) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (value) window.localStorage.setItem(name, value);
+    else window.localStorage.removeItem(name);
+  } catch {
+    /* storage unavailable: the key stays in memory only */
+  }
+}
+
+let apiKey = (readStored(REMEMBER_KEY) === '1' && readStored(API_KEY_KEY)) || '';
 
 export function getBaseUrl() {
   if (typeof window === 'undefined') return '';
@@ -191,10 +216,22 @@ export function getApiKey() {
 
 export function setApiKey(key) {
   apiKey = String(key ?? '').trim();
+  if (getRememberApiKey()) writeStored(API_KEY_KEY, apiKey);
 }
 
 export function hasApiKey() {
   return !!apiKey;
+}
+
+/** Whether the key is kept in this browser's storage. Off unless the reader turned it on. */
+export function getRememberApiKey() {
+  return readStored(REMEMBER_KEY) === '1';
+}
+
+/** On stores the key held now; off deletes the stored key at once. */
+export function setRememberApiKey(on) {
+  writeStored(REMEMBER_KEY, on ? '1' : '');
+  writeStored(API_KEY_KEY, on ? apiKey : '');
 }
 
 export class ApiError extends Error {

@@ -329,7 +329,7 @@ export default function PortfolioPanel() {
    * `hasApiKey()` is a plain module read, not reactive state, so an effect that
    * only depends on `load` never learns that a key arrived — the gate below
    * lifts on the next render but the fetch never fires, leaving this page
-   * stuck on "could not load". Keys now live in memory and have to be
+   * stuck on "could not load". Unless remembered, keys live in memory and are
    * re-entered after every refresh, so that is the common path, not an edge
    * case. The layout re-reads the wallet whenever Settings are saved; keying
    * off whether that succeeded gives this panel the trigger it needs, and the

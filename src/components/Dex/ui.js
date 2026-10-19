@@ -1,6 +1,44 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import s from './styles.module.css';
 import { shortId } from './format';
+import { getRememberApiKey, setRememberApiKey } from './api';
+
+/**
+ * "Remember API key in this browser", shown in every section's Settings panel. It acts when
+ * ticked rather than on Save, so turning it off deletes the stored key at once.
+ */
+export function RememberKeySetting() {
+  const [on, setOn] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+
+  useEffect(() => setOn(getRememberApiKey()), []);
+
+  const toggle = (want) => {
+    setRememberApiKey(want);
+    const now = getRememberApiKey();
+    setOn(now);
+    setBlocked(want && !now);
+  };
+
+  return (
+    <div className={s.settingRow}>
+      <label className={s.settingCheck}>
+        <input type="checkbox" checked={on} onChange={(e) => toggle(e.target.checked)} />
+        Remember API key in this browser
+      </label>
+      <span className={s.settingHint}>
+        Once enabled, the key is stored in this browser's localStorage, where any script running on this
+        page, a malicious extension included, can read it. Leave it off on shared machines. Turning it off
+        deletes the stored key.
+      </span>
+      {blocked && (
+        <Alert kind="warn" title="Not remembered">
+          This browser blocks storage for this page, so the key stays in memory only.
+        </Alert>
+      )}
+    </div>
+  );
+}
 
 export function Spinner() {
   return <span className={s.spinner} aria-label="loading" />;

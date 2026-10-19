@@ -22,7 +22,7 @@ and whether you are paid at all.
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `stratum.diff` | `4.0G` | A parseable difficulty above zero. **Required** | The difficulty the stratum serves until your difficulty commitment takes effect, and the one `state.autoCommit` commits |
+| `stratum.diff` | `4.0M` | A parseable difficulty above zero. **Required** | The difficulty the stratum serves until your difficulty commitment takes effect, and the one `state.autoCommit` commits |
 | `stratum.diffRefreshInterval` | 60000 | 1000 to 3600000 ms. **Required** | How often the client re-reads your committed difficulty from chain state |
 | `stratum.forceConfigDiff` | `false` | `true` or `false` | Mine at `diff` instead of your on-chain commitment. For testing only |
 

@@ -123,11 +123,25 @@ so a typo here fails silently rather than refusing to start. Check the spelling 
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `lithos.apiKeyHash` | hash of `hello` | Exactly 64 hexadecimal characters | BLAKE2b-256 hash of the key that guards the client's authenticated endpoints |
+| `lithos.apiKeyHash` | hash of `hello` | Exactly 64 hexadecimal characters. Not the hash of `hello` on mainnet | BLAKE2b-256 hash of the key that guards the client's authenticated endpoints |
 | `play.http.secret.key` | `changethissecret` | Any string, not validated | Signs the client's own web session cookies |
 
 Both ship with published placeholder values and both should change before you run anything you care
 about.
+
+**On mainnet, the client refuses to start while `lithos.apiKeyHash` is still the hash of `hello`.**
+The client's API listens on every network interface, so the published key would open your wallet
+endpoints to anyone who can reach the port. Testnet still starts on the shipped hash. Lithos Launcher
+sets a random key of its own, so this check never stops a launcher install. Startup names the
+setting:
+
+```text
+lithos.apiKeyHash
+    is still the shipped hash of "hello". Choose your own api key and set its BLAKE2b-256
+    here before running on mainnet
+```
+
+Set your own hash as described below, then start the client again.
 
 ### Setting your own API key hash
 

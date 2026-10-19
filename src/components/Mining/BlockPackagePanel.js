@@ -37,8 +37,12 @@ const KIND_COLORS = {
   activate: '#c084fc',
   clear: '#e879f9',
   'lithosdex-batch': '#2dd4bf',
+  // The batch's teal, darker, so a pool flush reads as LithosDex work without passing for a batch.
+  'lithosdex-flush': '#0d9488',
   'ergodex-batch': '#f472b6',
   'storage-rent': '#fb923c',
+  // The Extensions section's indigo, the one hue free between NISP blue and activate violet.
+  'difficulty-forward': '#818cf8',
   'mempool-ancestor': '#64748b',
 };
 const FALLBACK = '#475569';
@@ -56,8 +60,10 @@ const KIND_LABELS = {
   activate: 'activate',
   clear: 'clear',
   'lithosdex-batch': 'LithosDex batch',
+  'lithosdex-flush': 'LithosDex flush',
   'ergodex-batch': 'ErgoDEX batch',
   'storage-rent': 'storage rent',
+  'difficulty-forward': 'difficulty forward',
   'mempool-ancestor': 'mempool ancestor',
 };
 const labelOf = (kind) => KIND_LABELS[kind] ?? kind;

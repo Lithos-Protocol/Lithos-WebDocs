@@ -163,7 +163,7 @@ work, see [LithosDex](../lithosdex/overview.mdx).
 The `batching.forwards` block runs the work that keeps [difficulty forwards](../extensions/difficulty-forwards.mdx)
 going. Once per difficulty epoch it records Ergo's difficulty into the forwards accumulator, and it
 settles every position whose window has been recorded. Each recording and each settlement pays you
-1 LIT. It does nothing on a network where no accumulator is deployed.
+5 LIT. It does nothing on a network where no accumulator is deployed.
 
 Each epoch of 128 blocks is split in two. Before `broadcastAfterBlocks`, the work is left to Lithos
 blocks, yours included, which carry it fee-less. From then on your client broadcasts it with a

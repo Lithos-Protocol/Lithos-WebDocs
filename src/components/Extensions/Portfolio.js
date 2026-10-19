@@ -18,8 +18,10 @@ import {
   fmtMove,
   fmtSpan,
   fmtWindowRange,
+  litText,
   moveOf,
   shortId,
+  SIDE_REWARD,
 } from './format';
 
 /** A LIT amount as a share of the margin it was won or lost against: "+38% of margin". */
@@ -212,7 +214,7 @@ function PositionsCard({ list }) {
         <span className={m.cardNote}>
           Until the window ends, the average uses the newest difficulty known for every epoch not yet recorded, so it
           moves as epochs are recorded. "If settled now" is what your side would win or lose at that average, before the
-          1.5 LIT of fees each side paid in. Positions settle on their own once the window ends.
+          {litText(SIDE_REWARD)} of fees each side paid in. Positions settle on their own once the window ends.
         </span>
         {paged.pages > 1 && <Pager page={paged.page} pages={paged.pages} onPage={paged.setPage} />}
       </div>
@@ -416,7 +418,7 @@ function HistoryCard({ history, error }) {
       )}
       <div className={s.tableFoot}>
         <span className={m.cardNote}>
-          Net is what your side got back less what it put in: its margin and its 1.5 LIT of fees.
+          Net is what your side got back less what it put in: its margin and its {litText(SIDE_REWARD)} of fees.
           {history?.truncated && ' Older history is past the scan cap and not shown.'}
         </span>
         {paged.pages > 1 && <Pager page={paged.page} pages={paged.pages} onPage={paged.setPage} />}

@@ -399,7 +399,7 @@ export function StrikeLadder({ bins, show, selected, onSelect, height = 200, wid
 }
 
 /**
- * What one side gains or pays against where the window's mean lands, before the 1.5 LIT of rewards each side
+ * What one side gains or pays against where the window's mean lands, before the rewards each side
  * puts in. The payout is linear in the move and stops at the margin, a 20% move either way.
  *
  * @param marks vertical markers, `{ move, label, color }`, where `move` is a mean against the strike

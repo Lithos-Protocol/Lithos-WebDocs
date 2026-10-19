@@ -27,6 +27,7 @@ import {
   fmtSpan,
   fmtWindowRange,
   heightTime,
+  litText,
   marginOf,
   moveOf,
   notionalFor,
@@ -35,6 +36,7 @@ import {
   perPercent,
   scaleDifficulty,
   shortId,
+  SIDE_REWARD,
   sidePayout,
 } from './format';
 
@@ -173,7 +175,7 @@ export default function OfferForm() {
   }
 
   const margin = marginUnits ?? 0n;
-  const locked = margin + 1_500_000_000n;
+  const locked = margin + SIDE_REWARD;
   const nextMove = strike ? moveOf(strike, base) : null;
   const defaultExpiry = limits.defaultExpiry;
 
@@ -314,7 +316,7 @@ export default function OfferForm() {
             ))}
           </div>
           <p className={m.cardNote} style={{ marginTop: 6 }}>
-            The most you can win, and the most you can lose before the 1.5 LIT of fees. The counterparty who fills your offer puts up the same amount.
+            The most you can win, and the most you can lose before the {litText(SIDE_REWARD)} of fees. The counterparty who fills your offer puts up the same amount.
             On chain the bet is 
             recorded as a notional of {notionalUnits ? fmtLit(notionalUnits, 0) : '—'} LIT, five times the margin.
           </p>
@@ -376,7 +378,7 @@ export default function OfferForm() {
             </div>
             <div className={m.kv}>
               <span className={m.kvKey}>Fees, not returned</span>
-              <span className={m.kvVal}>1.5 LIT</span>
+              <span className={m.kvVal}>{litText(SIDE_REWARD)}</span>
             </div>
             <div className={m.kv}>
               <span className={m.kvKey}>Most you can lose</span>
@@ -410,7 +412,7 @@ export default function OfferForm() {
             />
           )}
           <p className={m.cardNote} style={{ marginTop: 6 }}>
-            What you win or lose against where the window's average difficulty ends, before the 1.5 LIT of fees.
+            What you win or lose against where the window's average difficulty ends, before the {litText(SIDE_REWARD)} of fees.
           </p>
           {strike && margin > 0n && <Outcomes long={long} strike={strike} notional={notionalUnits} />}
 

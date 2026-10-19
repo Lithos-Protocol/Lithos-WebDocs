@@ -23,8 +23,17 @@ export const BLOCK_MS = 120_000;
 /** Each side's margin is a fifth of the notional, and the payout is clamped to it: a 20% move. */
 export const CLAMP = 0.2;
 
-/** LIT each side adds on top of its margin: 0.5 to whoever settles, 1 to the accumulator. */
-export const SIDE_REWARD = 1_500_000_000n;
+/** LIT each side adds on top of its margin and does not get back. */
+export const SIDE_REWARD = 7_500_000_000n;
+
+/** LIT a position adds to the accumulator's balance, half from each side. */
+export const ACC_DEPOSIT = 10_000_000_000n;
+
+/** LIT the accumulator pays whoever records a new epoch. */
+export const RECORD_REWARD = 5_000_000_000n;
+
+/** LIT whoever settles a position keeps: both sides' rewards less the deposit. */
+export const SETTLE_REWARD = 2n * SIDE_REWARD - ACC_DEPOSIT;
 
 export const epochOf = (height) => Math.floor((Number(height) - 1) / EPOCH_LENGTH);
 export const epochStart = (epoch) => epoch * EPOCH_LENGTH + 1;
@@ -75,6 +84,9 @@ export function fmtLit(raw, dp = 2) {
 
 /** A LIT amount with every whole digit, for forms and quotes. */
 export const fmtLitFull = (raw, dp = 4) => fmtUnits(raw, LIT_DECIMALS, dp);
+
+/** A fixed amount for prose: "7.5 LIT". */
+export const litText = (raw) => `${fmtLitFull(raw)} LIT`;
 
 /** A signed LIT amount: "+12.5" or "-3". */
 export function fmtLitSigned(raw, dp = 2) {

@@ -6,19 +6,24 @@ import { useExtensions } from './ExtensionsLayout';
 import { PayoutCurve } from './charts';
 import { Kpi, SideChip } from './ui';
 import {
+  ACC_DEPOSIT,
   COLORS,
   fmtDifficulty,
   fmtInt,
   fmtLit,
+  fmtLitFull,
   fmtLitSigned,
   fmtMove,
   fmtSpan,
+  litText,
   marginOf,
   notionalFor,
   parseLit,
   payoutAt,
   perPercent,
+  RECORD_REWARD,
   scaleDifficulty,
+  SETTLE_REWARD,
   SIDE_REWARD,
 } from './format';
 
@@ -26,7 +31,7 @@ const STEPS = [
   {
     n: 1,
     title: 'Offer',
-    text: 'A maker picks a side, a strike difficulty, a window of 1 to 120 epochs (about 4 hours to 3 weeks) and a margin, and locks the margin plus 1.5 LIT of fees.',
+    text: `A maker picks a side, a strike difficulty, a window of 1 to 120 epochs (about 4 hours to 3 weeks) and a margin, and locks the margin plus ${litText(SIDE_REWARD)} of fees.`,
   },
   {
     n: 2,
@@ -36,12 +41,12 @@ const STEPS = [
   {
     n: 3,
     title: 'Record',
-    text: 'Once per epoch, anyone writes the difficulty into the accumulator, a shared on-chain record of the last 128 epochs, and earns 1 LIT for it. Lithos clients do this on their own.',
+    text: `Once per epoch, anyone writes the difficulty into the accumulator, a shared on-chain record of the last 128 epochs, and earns ${litText(RECORD_REWARD)} for it. Lithos clients do this on their own.`,
   },
   {
     n: 4,
     title: 'Settle',
-    text: 'Once the window’s last epoch is recorded, anyone may settle the contract for 1 LIT. Each 1% difference between the window’s average and the strike results in a 5% profit or loss for each party.',
+    text: `Once the window’s last epoch is recorded, anyone may settle the contract for ${litText(SETTLE_REWARD)}. Each 1% difference between the window’s average and the strike results in a 5% profit or loss for each party.`,
   },
 ];
 
@@ -52,7 +57,7 @@ const TERMS = [
   ['Strike', 'The difficulty the window’s average is measured against.'],
   ['Long and short', 'Going long wins if Ergo\'s network difficulty ends above the strike, while going short wins if it ends below the strike.'],
   ['Margin', 'Each side’s stake, and the most either can win or lose. A 1% change in average network difficulty results in a 5% gain or loss.'],
-  ['Fees', '1.5 LIT from each side: 1 LIT keeps the difficulty record going, 0.5 LIT pays whoever settles. They are not returned.'],
+  ['Fees', `${litText(SIDE_REWARD)} from each side: ${litText(ACC_DEPOSIT / 2n)} keeps the difficulty record going, ${litText(SETTLE_REWARD / 2n)} pays whoever settles. They are not returned.`],
 ];
 
 const HEDGE = [
@@ -141,7 +146,7 @@ function Explorer({ base }) {
               <span className={m.kvVal}>{fmtLit(margin + mine, 2)} LIT</span>
             </div>
             <div className={m.kv}>
-              <span className={m.kvKey}>Net, after 1.5 LIT of fees</span>
+              <span className={m.kvKey}>Net, after {litText(SIDE_REWARD)} of fees</span>
               <span className={m.kvVal} style={{ color: mine - SIDE_REWARD >= 0n ? COLORS.gain : COLORS.loss }}>
                 {fmtLitSigned(mine - SIDE_REWARD)} LIT
               </span>
@@ -201,7 +206,12 @@ export default function Guide() {
           unit={heights ? 'blocks' : 'epochs'}
           sub={`about ${fmtSpan(128)} to ${fmtSpan(120 * 128)}`}
         />
-        <Kpi label="Fees per side" value="1.5" unit="LIT" sub="0.5 to the settler, 1 to the difficulty record" />
+        <Kpi
+          label="Fees per side"
+          value={fmtLitFull(SIDE_REWARD)}
+          unit="LIT"
+          sub={`${fmtLitFull(SETTLE_REWARD / 2n)} to the settler, ${fmtLitFull(ACC_DEPOSIT / 2n)} to the difficulty record`}
+        />
       </div>
 
       <div className={m.card} style={{ marginTop: 16 }}>
@@ -272,7 +282,7 @@ export default function Guide() {
             <li>
               <b>Settlement is automatic, but open to anyone.</b> Lithos clients record each epoch and settle finished
               positions. If nobody did for 128 epochs after a window began, each side would get its margin back instead.
-              You can also settle a finished position yourself from Portfolio, and keep the settler's 0.5 LIT.
+              You can also settle a finished position yourself from Portfolio, and keep the settler's {litText(SETTLE_REWARD)}.
             </li>
             <li>
               <b>Offers fill whole.</b> There are no partial fills.

@@ -24,10 +24,12 @@ import {
   fmtStartsIn,
   fmtWindowRange,
   heightTime,
+  litText,
   moveOf,
   parseLit,
   perPercent,
   shortId,
+  SIDE_REWARD,
   sidePayout,
   scaleDifficulty,
 } from './format';
@@ -202,7 +204,7 @@ function FillDrawer({ offer, acc, onDone, onFilled }) {
           <p className={m.cardNote}>
             Your margin is your stake: the maximum amount you can win or lose. Every 1%
             difference between the window's average difficulty and the strike is a 5% profit or loss for each party.
-            A 1.5 LIT fee pays whoever settles and the difficulty record, and does not come
+            A {litText(SIDE_REWARD)} fee pays whoever settles and the difficulty record, and does not come
             back. 
           </p>
           <p className={m.cardNote}>
@@ -548,7 +550,7 @@ export default function OfferBook() {
                 <span className={m.num} style={{ color: o.implied == null ? undefined : (o.implied > 0) === (o.takerSide === 'short') ? COLORS.gain : 'var(--cur-muted)' }}>
                   {fmtMove(o.implied, 1)}
                 </span>
-                <span className={m.num} title={`You lock ${fmtLitFull(o.takerLit, 2)} LIT: the margin and 1.5 LIT toward settling`}>
+                <span className={m.num} title={`You lock ${fmtLitFull(o.takerLit, 2)} LIT: the margin and ${litText(SIDE_REWARD)} toward settling`}>
                   {fmtLit(o.margin, 1)}
                 </span>
                 <span className={m.num} title={`Block ${fmtInt(o.lastFillHeight)}, about ${fmtSpan(Math.max(0, o.lastFillHeight - tip))}`}>

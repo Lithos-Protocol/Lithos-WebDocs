@@ -51,23 +51,23 @@ sides are always two people.
 
 A forward goes through four steps:
 
-1. **Offer.** A maker picks a side and the terms, and locks their margin plus 1.5 LIT of fees in an
+1. **Offer.** A maker picks a side and the terms, and locks their margin plus 7.5 LIT of fees in an
    offer.
 2. **Fill.** A taker takes the other side and locks the same margin and fees. The offer becomes a
    position holding both margins.
 3. **Record.** Once per epoch, a transaction writes that epoch's difficulty into the **difficulty
-   accumulator**, a single on-chain box holding the last 128 epochs. Whoever records earns 1 LIT from
+   accumulator**, a single on-chain box holding the last 128 epochs. Whoever records earns 5 LIT from
    the accumulator's balance.
 4. **Settle.** Once the window's last epoch is recorded, anyone can settle the position. Each side is
-   paid in the same transaction, and whoever settles keeps 1 LIT.
+   paid in the same transaction, and whoever settles keeps 5 LIT.
 
 Lithos clients record each epoch and settle finished positions on their own, so you do not need to do
-steps 3 or 4 yourself. Each side's 1.5 LIT of fees funds this work and is not returned:
+steps 3 or 4 yourself. Each side's 7.5 LIT of fees funds this work and is not returned:
 
-| Part of the 1.5 LIT | Goes to |
+| Part of the 7.5 LIT | Goes to |
 |---|---|
-| 0.5 LIT | Whoever settles the position |
-| 1 LIT | The accumulator's balance, which pays 1 LIT for each recorded epoch |
+| 2.5 LIT | Whoever settles the position |
+| 5 LIT | The accumulator's balance, which pays 5 LIT for each recorded epoch |
 
 ## What a position pays
 
@@ -82,7 +82,7 @@ payout  = 5 x margin x move, held between -margin and +margin
 ```
 
 The long side receives its margin plus the payout, and the short side its margin minus it. The most
-either side can lose is its own margin plus the 1.5 LIT of fees.
+either side can lose is its own margin plus the 7.5 LIT of fees.
 
 For a 2,000 LIT margin, each 1% move is worth 100 LIT, and a position pays the following:
 
@@ -155,7 +155,7 @@ To take the other side of an offer:
 2. Click an offer to open its quote. Check **Your margin**, **Most you can lose** and the payout curve.
 3. Enter your API key if asked, then click **Fill**.
 
-The fill locks your margin and 1.5 LIT, plus 0.002 ERG for the position and a 0.001 ERG network fee. The
+The fill locks your margin and 7.5 LIT, plus 0.002 ERG for the position and a 0.001 ERG network fee. The
 quote is read again when you open it, so the amounts you confirm are the offer's current ones.
 
 ### Making an offer
@@ -167,14 +167,14 @@ To post your own offer:
    set it relative to the next epoch's difficulty.
 3. Read the quote on the right, including any warnings, then click **Post offer**.
 
-Your offer locks its margin, 1.5 LIT and 0.002 ERG until a taker fills it or you cancel it from
+Your offer locks its margin, 7.5 LIT and 0.002 ERG until a taker fills it or you cancel it from
 **Portfolio**. An expired offer stays locked until you cancel it.
 
 ## Settlement and refunds
 
 Lithos clients settle a finished position on their own, either in a Lithos block or by broadcast later
 in the epoch. You can also settle any finished position yourself from **Portfolio**, which pays the
-0.001 ERG fee out of the position and gives you the 1 LIT the settler keeps, or 2 LIT if the same
+0.001 ERG fee out of the position and gives you the 5 LIT the settler keeps, or 10 LIT if the same
 transaction records the current epoch.
 
 The accumulator only holds the last 128 epochs. If nobody settles a position before its window's first
@@ -190,7 +190,7 @@ Read these before you trade:
 - **Short windows.** Hashrate that can move away for an epoch can decide a short window. Keep short
   windows small.
 - **Whole fills only.** An offer is filled in full or not at all.
-- **Fixed fees.** The 1.5 LIT each side pays is a constant, whatever the margin.
+- **Fixed fees.** The 7.5 LIT each side pays is a constant, whatever the margin.
 
 ## Settings
 

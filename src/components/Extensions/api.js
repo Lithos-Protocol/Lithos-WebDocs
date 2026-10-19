@@ -128,6 +128,9 @@ export const getMarket = () => req('/forwards/market');
 /** GET /forwards/offers: offers a coming block could fill, by window start, then length, then strike. */
 export const getOffers = ({ offset, limit } = {}) => req('/forwards/offers', { query: { offset, limit } });
 
+/** GET /stats: read here only for the collection status the section banner shows. */
+export const getStats = () => req('/stats');
+
 /** GET /stats/mining/difficulty: the difficulty table, for history older than the accumulator's ring. */
 export const getDifficultyEpochs = ({ limit } = {}) => req('/stats/mining/difficulty', { query: { limit } });
 

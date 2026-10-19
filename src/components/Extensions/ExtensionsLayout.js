@@ -10,6 +10,7 @@ import useAutoRefresh from '../Dex/useAutoRefresh';
 import FlowField, { cubeBetween } from '@site/src/components/FlowField';
 import { Alert, GearIcon } from '../Dex/ui';
 import SettingsPanel from './SettingsPanel';
+import StatsBanner from '../Mining/StatsBanner';
 import { fmtInt } from './format';
 
 const ExtensionsContext = createContext(null);
@@ -117,19 +118,21 @@ export default function ExtensionsLayout({ title, description, children }) {
   const [autoSecs, setAutoSecs] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [heights, setHeightsState] = useState(false);
+  const [statsMining, setStatsMining] = useState(null);
 
   const setHeights = useCallback((on) => {
     api.setShowHeights(on);
     setHeightsState(on);
   }, []);
 
-  /** Settles once both reads land. Both are open, so a failure means the client did not answer. */
+  /** Settles once the reads land. All are open, so a failure means the client did not answer. */
   const refresh = useCallback(
     () =>
-      Promise.all([api.getAccumulator(), api.getMarket().catch(() => null)])
-        .then(([a, mk]) => {
+      Promise.all([api.getAccumulator(), api.getMarket().catch(() => null), api.getStats().catch(() => null)])
+        .then(([a, mk, st]) => {
           setAcc(a);
           setMarket(mk);
+          setStatsMining(st?.mining ?? null);
           setError(null);
         })
         .catch((e) => setError(e.message))
@@ -217,6 +220,8 @@ export default function ExtensionsLayout({ title, description, children }) {
               </div>
             </Alert>
           )}
+
+          {!error && <StatsBanner mining={statsMining} />}
 
           {acc && !acc.deployed && (
             <div className={s.previewBanner}>

@@ -11,6 +11,7 @@ import { Alert, GearIcon } from '../Dex/ui';
 import SettingsPanel from './SettingsPanel';
 import { fmtAge } from './format';
 import { CommitmentBanner } from './commitment';
+import StatsBanner from './StatsBanner';
 
 const MiningContext = createContext(null);
 export const useMining = () => useContext(MiningContext);
@@ -195,6 +196,7 @@ export default function MiningLayout({ title, description, children }) {
           )}
 
           {!error && <CommitmentBanner commitment={commitment} network={network} />}
+          {!error && <StatsBanner mining={mining} />}
 
           <MiningContext.Provider
             value={{

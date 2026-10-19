@@ -1512,7 +1512,6 @@ export default function PaymentsPanel() {
       { poolOrders: 0n, poolGross: 0n, directOrders: 0n, directGross: 0n, directFee: 0n, directNet: 0n, allGross: 0n },
     ]),
   );
-  const collecting = ledger && ledger.status !== 'ready';
   // A week of hours labelled by clock time alone would not say which day a tick is.
   const xLabel = (t) => timeLabel(t, rangeId === '24H' ? 'hour' : 'day');
   const emptyLabel =
@@ -1524,13 +1523,6 @@ export default function PaymentsPanel() {
 
   return (
     <>
-      {collecting && (
-        <div className={s.warnNote} style={{ marginTop: 0, marginBottom: 14 }}>
-          History is {ledger.status}. Payouts and claims below reach block {fmtInt(ledger.source?.height ?? 0)} and
-          may be missing anything newer.
-        </div>
-      )}
-
       {/* ---- Hero ---- */}
       <div className={s.payHero}>
         <EarnedCard totals={totals} rangeId={rangeId} perDay={perDay} busy={busy} />

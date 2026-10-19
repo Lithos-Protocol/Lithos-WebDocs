@@ -10,6 +10,7 @@ import { fmtErgAmount, fmtTokenAmount, fmtInt, big } from './format';
 import { Spinner, Alert, GearIcon } from './ui';
 import SettingsPanel from './SettingsPanel';
 import useAutoRefresh from '../Dex/useAutoRefresh';
+import StatsBanner from '../Mining/StatsBanner';
 
 const CollateralContext = createContext(null);
 export const useCollateral = () => useContext(CollateralContext);
@@ -224,6 +225,7 @@ export default function CollarLayout({ title, description, children }) {
   // Distinguishes "no key, never tried" from "tried and failed" in the pills.
   const [walletTried, setWalletTried] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [statsMining, setStatsMining] = useState(null);
 
   /** Silent-refreshable: only the very first load flips the loading flag. */
   const refresh = useCallback(async () => {
@@ -245,6 +247,11 @@ export default function CollarLayout({ title, description, children }) {
         setLastPermitLit(pts.length ? pts[pts.length - 1].permitLit : null);
       })
       .catch(() => setLastPermitLit(null));
+
+    api
+      .getStats()
+      .then((st) => setStatsMining(st?.mining ?? null))
+      .catch(() => setStatsMining(null));
   }, []);
 
   useEffect(() => {
@@ -335,6 +342,8 @@ export default function CollarLayout({ title, description, children }) {
               </button>
             </div>
           </div>
+
+          <StatsBanner mining={statsMining} />
 
           <StatStrip
             market={market}

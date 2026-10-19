@@ -209,6 +209,9 @@ export const getPermitHistory = ({ limit } = {}) =>
  */
 export const getCollateralStats = () => req('/stats/collateral');
 
+/** GET /stats — read here only for the collection status the section banner shows. */
+export const getStats = () => req('/stats');
+
 /**
  * GET /stats/mining/buckets — the accounting map per UTC hour or day.
  *

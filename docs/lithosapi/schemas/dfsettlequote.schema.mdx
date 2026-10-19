@@ -25,7 +25,7 @@ import Heading from "@theme/Heading";
 
 
 <Schema
-  schema={{"type":"object","x-tags":"forwards","required":["boxId","refund","records","owedLong","owedShort","rewardLit","networkFee"],"properties":{"boxId":{"type":"string"},"refund":{"type":"boolean","description":"Whether the window has left the accumulator, so each side gets its margin back."},"records":{"type":"boolean","description":"Whether the settlement also records the current epoch, which adds 1 LIT to the reward."},"owedLong":{"type":"string"},"owedShort":{"type":"string"},"rewardLit":{"type":"string","description":"LIT base units this wallet receives for building the settlement."},"networkFee":{"type":"string"}},"title":"DFSettleQuote"}}
+  schema={{"type":"object","x-tags":"forwards","required":["boxId","refund","records","owedLong","owedShort","rewardLit","networkFee"],"properties":{"boxId":{"type":"string"},"refund":{"type":"boolean","description":"Whether the window has left the accumulator, so each side gets its margin back."},"records":{"type":"boolean","description":"Whether the settlement also records the current epoch, which adds 5 LIT to the reward."},"owedLong":{"type":"string"},"owedShort":{"type":"string"},"rewardLit":{"type":"string","description":"LIT base units this wallet receives for building the settlement."},"networkFee":{"type":"string"}},"title":"DFSettleQuote"}}
   schemaType={"response"}
 >
   

@@ -2560,7 +2560,7 @@ paths:
     post:
       summary: Create an offer
       description: >
-        Lock this wallet's side of a forward, its margin plus 1.5 LIT of rewards, in an offer any taker
+        Lock this wallet's side of a forward, its margin plus 7.5 LIT of rewards, in an offer any taker
         can fill. Cancel it with `POST /forwards/offers/{boxId}/cancel` while it is unfilled.
       operationId: createDFOffer
       security:
@@ -2716,7 +2716,7 @@ paths:
     post:
       summary: Fill an offer
       description: >
-        Take the other side of an offer: this wallet adds its margin plus 1.5 LIT and the position's ERG,
+        Take the other side of an offer: this wallet adds its margin plus 7.5 LIT and the position's ERG,
         and a position holding both sides is created. Refused when the fill would not be accepted in
         the next block. No body.
       operationId: fillDFOffer
@@ -3030,7 +3030,7 @@ paths:
       description: >
         Pay both sides of a position whose window has been recorded, recording the current epoch in the
         same transaction when it is due. The network fee comes out of the position; this wallet keeps the
-        rewards, 1 LIT, or 2 LIT when the settlement also records. No body.
+        rewards, 5 LIT, or 10 LIT when the settlement also records. No body.
       operationId: settleDFPosition
       security:
         - ApiKeyAuth: []
@@ -3399,8 +3399,10 @@ paths:
 
 
         Also reports whether the join would be accepted: check `manualJoinAllowed` and
-        `blockedReason` before enabling a send control. Requires an `api_key`, since the quote
-        names this wallet's lender addresses and its shortfall.
+        `blockedReason` before enabling a send control, and send no more than `fitting` positions.
+        While `emission.autoCollateralize` is on, every quote is blocked with `AUTO_COLLATERALIZE`:
+        the client's own pass owns joining, so turn it off to join by hand. Requires an `api_key`,
+        since the quote names this wallet's lender addresses and its shortfall.
       operationId: checkCollateralJoin
       tags:
         - collateral-market
@@ -3498,8 +3500,10 @@ paths:
                 $ref: '#/components/schemas/ApiError'
         '422':
           description: >
-            The wallet cannot cover it, a permit exceeds `maxPermitEachLit`, fewer free lender keys
-            remain than positions requested, or the run created no position at all.
+            The wallet cannot cover it, a permit exceeds `maxPermitEachLit`, fewer positions fit than
+            were requested, or the run created no position at all. A join is all or nothing: when
+            fewer fit, nothing is sent, and the detail ends with `fitting=N`, the count a retry may
+            ask for. The quote reports the same number as `fitting`.
           content:
             application/json:
               schema:
@@ -5941,6 +5945,8 @@ components:
         - lenderKeys
         - positions
         - rewards
+        - reservedBoxes
+        - reservedNanoErgs
       properties:
         autoCollateralize:
           type: boolean
@@ -6007,6 +6013,17 @@ components:
             $ref: '#/components/schemas/CollateralPositionSummary'
         rewards:
           $ref: '#/components/schemas/CollateralRewardSummary'
+        reservedBoxes:
+          type: integer
+          format: int32
+          description: >
+            Wallet boxes held for transactions in flight or for this miner's own blocks. They are left
+            out of the spendable balance a join quote is priced against.
+          example: 2
+        reservedNanoErgs:
+          type: string
+          description: Value of the held boxes this client has descriptors for, in nanoERG
+          example: '18000000000'
 
     CollateralJoinCheckRequest:
       description: How many positions to price, and what each bids for priority. Omitted fields default.
@@ -6055,6 +6072,8 @@ components:
         - lenderAddresses
         - freeLenderKeys
         - keysRequired
+        - keysDerivable
+        - fitting
       properties:
         count:
           type: integer
@@ -6140,7 +6159,7 @@ components:
           example: true
         blockedReason:
           type: string
-          enum: ['AUTO_COLLATERALIZE', 'NO_LENDER_KEYS', 'BUDGET_EXHAUSTED', 'INSUFFICIENT_FUNDS']
+          enum: ['AUTO_COLLATERALIZE', 'BUDGET_EXHAUSTED', 'WALLET_LOCKED', 'NO_LENDER_KEYS', 'INSUFFICIENT_FUNDS']
           description: >
             Why `manualJoinAllowed` is false; absent when it is true. Only the first applicable
             reason is reported, in the order listed above.
@@ -6148,7 +6167,8 @@ components:
 
             `AUTO_COLLATERALIZE` — the client joins on its own timer and refuses manual joins.
             `BUDGET_EXHAUSTED` — `maxOwnCollateral` leaves room for fewer positions than requested.
-            `NO_LENDER_KEYS` — `freeLenderKeys + keysDerivable` is below `keysRequired`.
+            `WALLET_LOCKED` — new keys are needed, but the node wallet could not be unlocked to derive them.
+            `NO_LENDER_KEYS` — `fitting` is below `keysRequired`.
             `INSUFFICIENT_FUNDS` — the wallet cannot cover `totalNanoErgs`.
           example: 'AUTO_COLLATERALIZE'
         lenderAddresses:
@@ -6170,6 +6190,20 @@ components:
           type: integer
           format: int32
           description: Keys this join consumes — one per position, so equal to `count`
+          example: 3
+        keysDerivable:
+          type: integer
+          format: int32
+          description: >
+            Keys the join may still derive through the node wallet, below `emission.maxLenderKeys`.
+            The client unlocks the node wallet itself when a derivation needs it.
+          example: 28
+        fitting:
+          type: integer
+          format: int32
+          description: >
+            Positions a join would accept right now: the smaller of the room under `maxOwnCollateral`
+            and the free keys plus those that can be derived. A join asking for more is refused whole.
           example: 3
 
     CollateralJoinExecuteRequest:
@@ -8261,7 +8295,7 @@ components:
           description: The newest epoch the accumulator has recorded.
         balance:
           type: string
-          description: LIT base units left to pay 1 LIT for each recorded epoch.
+          description: LIT base units left to pay 5 LIT for each recorded epoch.
         recent:
           type: array
           description: The 128 epochs the accumulator holds, oldest first. Empty without an accumulator.
@@ -8431,7 +8465,7 @@ components:
           format: int32
         lit:
           type: string
-          description: LIT base units locked in the offer, the margin plus 1.5 LIT of rewards.
+          description: LIT base units locked in the offer, the margin plus 7.5 LIT of rewards.
         nanoErgs:
           type: string
           description: nanoERG locked in the offer.
@@ -8439,7 +8473,7 @@ components:
           type: string
         maxLoss:
           type: string
-          description: The most this wallet can lose once the offer is filled, its margin plus 1.5 LIT.
+          description: The most this wallet can lose once the offer is filled, its margin plus 7.5 LIT.
         impliedMove:
           type: number
           format: double
@@ -8482,7 +8516,7 @@ components:
           type: string
         maxLoss:
           type: string
-          description: The most this wallet can lose, its margin plus 1.5 LIT.
+          description: The most this wallet can lose, its margin plus 7.5 LIT.
         warnings:
           type: array
           items:
@@ -8629,7 +8663,7 @@ components:
           description: Whether the window has left the accumulator, so each side gets its margin back.
         records:
           type: boolean
-          description: Whether the settlement also records the current epoch, which adds 1 LIT to the reward.
+          description: Whether the settlement also records the current epoch, which adds 5 LIT to the reward.
         owedLong:
           type: string
         owedShort:
@@ -8686,7 +8720,7 @@ components:
         epochsFunded:
           type: integer
           format: int64
-          description: Epochs the accumulator's balance pays a recording for, at 1 LIT each.
+          description: Epochs the accumulator's balance pays a recording for, at 5 LIT each.
         truncated:
           type: boolean
           description: Whether a scan stopped at 2,000 boxes, so the counts are lower bounds.
@@ -8740,7 +8774,7 @@ components:
           description: LIT base units this wallet's side or sides received, margins included.
         net:
           type: string
-          description: '`received` less what this wallet put in: each side''s margin and its 1.5 LIT of rewards.'
+          description: '`received` less what this wallet put in: each side''s margin and its 7.5 LIT of rewards.'
     DFPastOffer:
       type: object
       x-tags: forwards

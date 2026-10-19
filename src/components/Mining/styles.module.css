@@ -1968,6 +1968,40 @@
   pointer-events: none;
 }
 
+.calcInputUnitPick {
+  padding-right: 92px;
+}
+
+/* Inside the input's right edge, as the fixed ms unit is. 16px keeps iOS from zooming on tap. */
+.calcUnitSelect {
+  position: absolute;
+  right: 8px;
+  appearance: none;
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2364748b'/%3E%3C/svg%3E")
+    no-repeat right 10px center;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 6px 26px 6px 10px;
+  font-family: var(--cur-font-mono);
+  font-size: 16px;
+  color: var(--cur-dim);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.calcUnitSelect:hover,
+.calcUnitSelect:focus {
+  border-color: rgba(125, 211, 252, 0.3);
+  color: var(--cur-text);
+  outline: none;
+}
+
+.calcUnitSelect option {
+  background: #0a0f1e;
+  color: var(--cur-text);
+}
+
 .calcHelp {
   display: flex;
   flex-direction: column;

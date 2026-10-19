@@ -10,6 +10,7 @@ import {
   NETWORKS,
   NISP_COEFFICIENT,
   NISP_SHARES,
+  RATE_UNITS,
   WINDOW_BLOCKS,
   ROLLUP_MINERS,
   diffFor,
@@ -189,6 +190,7 @@ function DifficultiesPanel({ configDiff, difficulty }) {
 export default function DifficultyPanel() {
   const { stats } = useMining();
   const [text, setText] = useState('');
+  const [unit, setUnit] = useState('M');
   const [genText, setGenText] = useState('');
   const [picked, setPicked] = useState(null);
   const [clientNetwork, setClientNetwork] = useState(null);
@@ -206,7 +208,7 @@ export default function DifficultyPanel() {
   const genMs = parseMs(genText);
   const seconds = miningSeconds(network, genMs ?? 0);
   const lost = windowSecs - seconds;
-  const hashrate = parseHashrate(text);
+  const hashrate = parseHashrate(text, unit);
   const typed = text.trim() !== '';
 
   const canMeasure = Boolean(MEASURED[network]);
@@ -258,21 +260,35 @@ export default function DifficultyPanel() {
         <div className={s.calcRow}>
           <label className={s.calcField}>
             <span className={s.label}>Your hashrate</span>
-            <input
-              className={`${s.calcInput} ${typed && !hashrate ? s.calcInputBad : ''}`}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="e.g. 150 MH/s"
-              spellCheck={false}
-              autoComplete="off"
-              inputMode="decimal"
-            />
+            <div className={s.calcUnitWrap}>
+              <input
+                className={`${s.calcInput} ${s.calcInputUnitPick} ${typed && !hashrate ? s.calcInputBad : ''}`}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="e.g. 150"
+                spellCheck={false}
+                autoComplete="off"
+                inputMode="decimal"
+              />
+              <select
+                className={s.calcUnitSelect}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                aria-label="Hashrate unit"
+              >
+                {RATE_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {u}H/s
+                  </option>
+                ))}
+              </select>
+            </div>
             <span className={s.calcEcho}>
               {hashrate
                 ? `${fmtInt(Math.round(hashrate))} H/s`
                 : typed
-                  ? 'Needs a unit letter — try 150 MH/s, 150M or 1.2 GH/s'
-                  : 'Needs a unit: K, M, G, T or P. H/s is optional.'}
+                  ? 'Needs a number, e.g. 150 or 1.2G'
+                  : `In ${unit}H/s, or type a unit: 150M, 1.2 GH/s`}
             </span>
           </label>
 

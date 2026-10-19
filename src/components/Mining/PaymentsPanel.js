@@ -365,12 +365,17 @@ const STEPS = [
   { id: 'paid', label: 'Paid' },
 ];
 
-function Claim({ claim, height, pace }) {
+function Claim({ claim, height, pace, holdingBlocks }) {
   const slashed = claim.phase === 'slashed';
+  const holding = claim.phase === 'holding';
   const at = STEPS.findIndex((st) => st.id === claim.phase);
   const share = shareOf(claim.score, claim.rollupScore);
   const age = height != null ? height - claim.submittedHeight : null;
   const left = claim.payoutReadyFrom != null && height != null ? claim.payoutReadyFrom - height : null;
+  // The earliest height evaluation can start; holding can run past it.
+  const toEval = holding && holdingBlocks > 0 && height != null ? Number(claim.minedHeight) + holdingBlocks - height : null;
+  const countdown = (n, earliest) =>
+    n <= 0 ? <b>any block now</b> : <>in <b>{aboutBlocks(n, pace)}</b>{earliest && ' at the earliest'}</>;
 
   return (
     <div className={`${s.claim} ${slashed ? s.claimSlashed : claim.phase === 'payout' ? s.claimReady : ''}`}>
@@ -433,12 +438,10 @@ function Claim({ claim, height, pace }) {
             submitted {age <= 0 ? <b>this block</b> : <><b>{fmtBlocks(age)}</b> ago</>}
           </span>
         )}
-        {!slashed && claim.phase !== 'payout' && left != null && (
-          <span>
-            ready {left <= 0 ? <b>any block now</b> : <>in <b>{aboutBlocks(left, pace)}</b></>}
-            {claim.phase === 'holding' && ' at the earliest'}
-          </span>
+        {toEval != null && (
+          <span>evaluation {countdown(toEval, true)}</span>
         )}
+        {!slashed && claim.phase !== 'payout' && left != null && <span>payout ready {countdown(left, holding)}</span>}
         {claim.phase === 'payout' && height != null && (
           <span>
             {height - claim.phaseHeight <= 0 ? (
@@ -628,7 +631,7 @@ function ClaimsCard({ claims, height, pace, holdingBlocks, evaluationBlocks }) {
               ) : (
                 <div className={s.claimList}>
                   {shown.map((c) => (
-                    <Claim key={c.rollupNft} claim={c} height={height} pace={pace} />
+                    <Claim key={c.rollupNft} claim={c} height={height} pace={pace} holdingBlocks={holdingBlocks} />
                   ))}
                 </div>
               )}

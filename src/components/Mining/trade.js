@@ -198,6 +198,9 @@ export function fmtConfigDiff(value) {
 
 const RATE_PREFIXES = { K: 1e3, M: 1e6, G: 1e9, T: 1e12, P: 1e15 };
 
+/** The hashrate units a miner can pick, smallest first. */
+export const RATE_UNITS = Object.keys(RATE_PREFIXES);
+
 /** A `stratum.diff` string such as "0.14M" as a number, or null when it is not one. */
 export function parseConfigDiff(text) {
   const m = String(text ?? '').trim().match(/^(\d+(?:\.\d+)?|\.\d+)([KMGTP])$/);
@@ -207,17 +210,20 @@ export function parseConfigDiff(text) {
 }
 
 /**
- * Hashes per second from what a miner types: "150 MH/s", "150M", "1.2 gh". The unit letter is
- * required — a bare number is almost always a hashrate typed without its unit, not a rig hashing a
- * few hundred times a second. Returns null for anything else, so a half-typed value shows as
- * unparsed rather than as a wrong table.
+ * Hashes per second from what a miner types: "150 MH/s", "150M", "1.2 gh". A typed unit letter wins;
+ * a bare number takes `defaultUnit`, and without one it is refused, since it is almost always a
+ * hashrate typed without its unit rather than a rig hashing a few hundred times a second. Returns
+ * null for anything else, so a half-typed value shows as unparsed rather than as a wrong table.
  */
-export function parseHashrate(text) {
-  const m = String(text ?? '')
-    .trim()
+export function parseHashrate(text, defaultUnit) {
+  let t = String(text ?? '').trim();
+  // A lone comma not grouping thousands is a decimal comma, as some locales' decimal keypads type it.
+  if (!t.includes('.') && /^\d+,\d+(?!\d)/.test(t) && !/^\d{1,3}(,\d{3})+(?!\d)/.test(t)) t = t.replace(',', '.');
+  const m = t
     .replace(/,/g, '')
-    .match(/^(\d+(?:\.\d+)?|\.\d+)\s*([kKmMgGtTpP])\s*(?:h(?:\/s)?|hash(?:es)?(?:\/s)?)?$/i);
-  if (!m) return null;
-  const value = Number(m[1]) * RATE_PREFIXES[m[2].toUpperCase()];
+    .match(/^(\d+(?:\.\d+)?|\.\d+)\s*(?:([kmgtp])\s*(?:h(?:\/s)?|hash(?:es)?(?:\/s)?)?)?$/i);
+  const unit = m && (m[2] ?? defaultUnit)?.toUpperCase();
+  if (!RATE_PREFIXES[unit]) return null;
+  const value = Number(m[1]) * RATE_PREFIXES[unit];
   return value > 0 && Number.isFinite(value) ? value : null;
 }

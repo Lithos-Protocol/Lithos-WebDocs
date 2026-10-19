@@ -12,11 +12,12 @@ description: How the client selects and bounds its own UTXOs, and when it merges
 *Assumes you know what a UTXO is and why a fragmented wallet is a problem.*
 
 The `wallet` block controls how the client reads your node wallet, how many boxes it may hold in
-flight, and whether it merges small boxes back together. These knobs help control how your wallet is used in the client,
+flight, whether it merges small boxes back together, and when it moves your lending rewards. These knobs help control how your wallet is used in the client,
 and how to deal with UTXO growth inside of it. A miner with a fragmented wallet wants
 different behaviour from one with a handful of large boxes.
 
-**Every default reproduces the constant it replaced**, so leaving the block out changes nothing.
+**Every default except the reward sweep's reproduces the constant it replaced**, so leaving the block
+out changes nothing else. The [reward sweep](#sweeping-lending-rewards) is new, and it ships on.
 
 ## Selection and paging
 
@@ -74,6 +75,21 @@ Startup refuses `max-optional-inputs` above `max-wallet-inputs` and says so. Rai
 is what lets a big consolidation pass hold more boxes at once, so raise `max-wallet-inputs` alongside
 it or the reserve for critical work shrinks.
 
+### Seeing which boxes are held
+
+A box the client has taken for a transaction in flight, or for a transaction carried in your own
+blocks, is held: nothing else can spend it until that work confirms or fails. `GET /wallet/balances`
+reports the held boxes under `collateral`, in the following fields:
+
+| Field | What it reports |
+|---|---|
+| `reservedBoxes` | Wallet boxes held for transactions in flight or for your own blocks |
+| `reservedNanoErgs` | The value of the held boxes, in nanoERG. Counts only boxes whose details the client has cached, so it can read low |
+
+The spendable balance, `nanoErgs` on the same response, leaves held boxes out, and a join quote is
+priced against it. If a quote reports a shortfall while your node wallet shows enough ERG, these two
+fields show how much is held. See [Wallet balances and lending status](../lithosapi/get-wallet-balances.api.mdx).
+
 ## Consolidation
 
 Consolidation merges your own wallet boxes back together. It ships **off**, because a miner who never
@@ -116,6 +132,31 @@ wallet.consolidation.attempt-timeout-ms
     wallet walk takes that long expires before it can send
 ```
 :::
+
+## Sweeping lending rewards
+
+When a block spends one of your collateral boxes, the coinbase pays you 3 ERG plus that block's
+transaction fees. The coinbase is locked for 720 blocks, about a day at Ergo's 2-minute block time.
+Once it unlocks, it still pays for nothing until it is moved, because the client never funds a
+transaction from a reward box directly. The reward sweep moves every unlocked reward to your first
+address, EIP-3 index 0, where it becomes spendable ERG:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `wallet.reward-sweep.enabled` | `true` | `true` or `false` | Sweep unlocked rewards on a timer |
+| `wallet.reward-sweep.interval-ms` | 1800000 | 60000 to 86400000 ms | Shortest gap between sweeps |
+
+The client considers a sweep each time it refreshes its view of the wallet, about every ten minutes,
+so `interval-ms` is a floor rather than a schedule. A sweep starts when the interval has passed, no
+other sweep is running, and at least one reward has unlocked. The client logs each sweep at `INFO`
+with the box count.
+
+A sweep takes the smallest rewards first, up to `max-inputs` per transaction, so dust merges into the
+early transactions. Each transaction pays the 0.001 ERG minimum fee.
+
+**Claim** in the Collateral web panel, or `POST /collateral/rewards/claim`, sweeps at once whatever
+`interval-ms` says. With the sweep off, unlocked rewards stay where they are until you claim them. See
+[Claim unlocked block rewards](../lithosapi/claim-collateral-rewards.api.mdx).
 
 ## Next steps
 

@@ -211,9 +211,9 @@ function RewardsCard({ rewards, onChanged }) {
     <div className={s.card}>
       <h3 className={s.cardTitle}>Lending rewards</h3>
       <p className={s.cardDesc}>
-        Your coinbases sit at the reward script for 720 blocks (~a day) until they mature. Claiming
-        sweeps every unlocked one back into spendable ERG at your first address, consolidating dust
-        rather than dropping it.
+        Your coinbases sit at the reward script for 720 blocks (~a day) until they mature. The client
+        sweeps unlocked ones into spendable ERG at your first address, every 30 min by default
+        (<code>wallet.reward-sweep</code>). Claim runs a sweep now.
       </p>
 
       {!rewards ? (

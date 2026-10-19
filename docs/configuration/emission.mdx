@@ -145,8 +145,9 @@ produces a box nobody can activate.
 :::danger A reused lender key forfeits the whole box
 A queue box whose key is already active can only be cleared, and clearing forfeits both the principal
 and the permit to whoever builds the clearing transaction. This is why `maxLenderKeys` may not exceed
-`node.numAddresses`, and why the client refuses a manual join while `autoCollateralize` is on: the
-automated pass owns key selection and a manual join could take a key it is already using.
+`node.numAddresses`, and why the client
+[refuses a manual join while `autoCollateralize` is on](#why-a-join-answers-409):
+the automated pass owns key selection and a manual join could take a key it is already using.
 :::
 
 Startup checks the pair and names the value to raise:
@@ -156,6 +157,57 @@ emission.maxLenderKeys
     64 exceeds node.numAddresses (32). Addresses past index 31 would receive funds this
     client cannot sign for. Raise node.numAddresses to at least 64
 ```
+
+### Where lender keys come from
+
+Each lender key is an address in your Ergo node's wallet. After startup, the client creates addresses
+through the node wallet until the wallet holds `maxLenderKeys` of them, and logs how many it created.
+If that fails, each later queue pass tries again until the wallet holds them all.
+
+Creating a key needs the node wallet unlocked. The client unlocks it with `node.pass`, so you do not
+unlock it by hand after a node restart. See
+[The client unlocks the node wallet itself](./node.mdx#the-client-unlocks-the-node-wallet-itself).
+
+## Joining by hand
+
+You can join the queue yourself from the **Join** tab of the Collateral web panel, or with
+`POST /collateral/join`. Quote the join first, which the panel does as you edit it, or with
+`POST /collateral/join/check`. The quote reports whether the client accepts the join, in the following
+fields:
+
+| Field | What it reports |
+|---|---|
+| `manualJoinAllowed` | Whether `POST /collateral/join` accepts this join now |
+| `blockedReason` | Why not, when `manualJoinAllowed` is `false` |
+| `fitting` | The most positions a join accepts right now |
+| `freeLenderKeys` | Lender keys free to take a position without creating a new one |
+| `keysDerivable` | Lender keys the client may still create, up to `maxLenderKeys` |
+
+**A join is all or nothing.** If fewer positions fit than you ask for, the client sends nothing and
+answers `422`, with the error detail ending in `fitting=N`. Ask again for at most N positions.
+
+When more than one reason applies, the quote reports the first in the following order:
+
+| `blockedReason` | Cause | What to do |
+|---|---|---|
+| `AUTO_COLLATERALIZE` | `autoCollateralize` is on | Set it to `false` and restart the client |
+| `BUDGET_EXHAUSTED` | `maxOwnCollateral` leaves room for fewer positions than you asked for | Ask for fewer, or raise `maxOwnCollateral` |
+| `WALLET_LOCKED` | The join needs new lender keys, and the client could not unlock the node wallet to create them | Read the warning in the client log, and check `node.pass` |
+| `NO_LENDER_KEYS` | Free and creatable keys together cover fewer positions than you asked for | Ask for fewer, or raise `maxLenderKeys` |
+| `INSUFFICIENT_FUNDS` | The spendable balance cannot cover the join | Top up the wallet, or wait for [held boxes](./wallet.mdx#seeing-which-boxes-are-held) to clear |
+
+See [Quote joining the queue](../lithosapi/check-collateral-join.api.mdx) and
+[Join the collateral queue](../lithosapi/join-collateral-queue.api.mdx) for every field.
+
+### Why a join answers 409
+
+While `emission.autoCollateralize` is `true`, `POST /collateral/join` answers `409` and sends nothing,
+and every quote reports `AUTO_COLLATERALIZE`. The automated pass owns lender-key selection, and a join
+made by hand could take a key it is already using. To join by hand, set `autoCollateralize = false`
+and restart the client.
+
+With `autoCollateralize` off, a `409` means the emission box moved between the quote and the send.
+Quote again and resend.
 
 ## Next steps
 

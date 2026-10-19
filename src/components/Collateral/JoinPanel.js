@@ -173,7 +173,11 @@ export default function JoinPanel() {
   const BLOCK_COPY = {
     AUTO_COLLATERALIZE: {
       title: 'Manual joins are disabled',
-      body: 'Manual joins cannot be performed while autoCollateralize is set to true in your config. The automated pass picks the lender keys, and a join made by hand can take one it is already using.',
+      body: 'Manual joins cannot be performed while autoCollateralize is set to true in your config. The automated pass picks the lender keys, and a join made by hand can take one it is already using. Set it to false and restart the client to join by hand.',
+    },
+    WALLET_LOCKED: {
+      title: 'Node wallet locked',
+      body: 'This join needs new lender keys, and the client could not unlock the node wallet to create them. The client log names the reason; check node.pass in the client config.',
     },
     NO_LENDER_KEYS: {
       title: 'Not enough lender keys',

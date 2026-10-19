@@ -3,7 +3,7 @@
  * `/forwards`.
  *
  * Reads and every `check` are open, so the market loads without a key. This wallet's positions, its
- * history, and every call that signs send the API key, which lives in memory only (see ../Dex/api).
+ * history, and every call that signs send the API key, which lives in memory unless remembered (see ../Dex/api).
  *
  * Every amount and difficulty crosses the wire as a decimal string. Nothing here coerces one through
  * Number; ./format.js parses them to BigInt.
@@ -84,7 +84,7 @@ async function req(path, { method = 'GET', query, body, keyed = false } = {}) {
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (keyed) {
     const key = getApiKey();
-    if (!key) throw new ApiError('Enter your API key to continue. It is held for this page only.', 401);
+    if (!key) throw new ApiError('Enter your API key to continue.', 401);
     headers.api_key = key;
   }
   let res;

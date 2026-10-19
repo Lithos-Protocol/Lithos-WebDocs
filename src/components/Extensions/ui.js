@@ -141,8 +141,8 @@ export function usePaged(rows, initialSize = PAGE_SIZES[0]) {
 }
 
 /**
- * Asks for the API key in place, for a view that cannot show anything without it. The key is held for this
- * page only, like everywhere else on the site.
+ * Asks for the API key in place, for a view that cannot show anything without it. The key is held as it is
+ * everywhere else on the site: in memory, unless the reader turned on remembering it.
  */
 export function KeyGate({ what }) {
   const { unlock } = useExtensions();
@@ -155,7 +155,8 @@ export function KeyGate({ what }) {
       <div className={s.keyGateBody}>
         <div className={m.cardTitle}>Your API key unlocks {what}</div>
         <p className={m.cardNote}>
-          It stays in this page's memory and is never stored, so it is asked for again after a refresh.
+          It stays in this page's memory, so it is asked for again after a refresh, unless you turn on
+          remembering it under Settings.
         </p>
         <form
           className={s.keyForm}

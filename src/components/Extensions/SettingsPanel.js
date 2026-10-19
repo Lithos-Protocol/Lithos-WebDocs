@@ -2,14 +2,15 @@ import React, { useEffect, useState } from 'react';
 import m from '../Mining/styles.module.css';
 import f from '../Collateral/styles.module.css';
 import * as api from './api';
-import { Alert } from '../Dex/ui';
+import { Alert, RememberKeySetting } from '../Dex/ui';
 import { fmtInt } from './format';
 
 /**
  * API host, key and refresh period for the Extensions pages.
  *
  * The base URL is shared with every other panel and persists in localStorage. The key is held in memory for
- * the life of the page: the market reads without it, while your positions and every transaction need it.
+ * the life of the page, and stored only if the reader turns on remembering it: the market reads without it,
+ * while your positions and every transaction need it.
  */
 export default function SettingsPanel({ onClose, onSaved }) {
   const [key, setKey] = useState('');
@@ -118,9 +119,11 @@ export default function SettingsPanel({ onClose, onSaved }) {
           </div>
           <span className={f.settingHint}>
             The market, the order book and every quote read without it. Your positions, your history, and every offer,
-            fill, cancel or settlement send it. Held for this page only and re-entered after a refresh.
+            fill, cancel or settlement send it. Re-entered after a refresh unless remembered below.
           </span>
         </div>
+
+        <RememberKeySetting />
 
         <div className={f.settingRow}>
           <label className={f.settingCheck}>

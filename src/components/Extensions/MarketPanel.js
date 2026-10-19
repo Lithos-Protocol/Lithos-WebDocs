@@ -20,9 +20,16 @@ import {
   fmtSpan,
   marginOf,
   moveOf,
+  trailingMeans,
 } from './format';
 
 const DEPTHS = [32, 64, 128];
+/** Moving-average lengths, in epochs. */
+const SPANS = [4, 8, 16, 40, 80, 120];
+const VIEWS = [
+  { id: 'epoch', label: 'Per epoch', color: COLORS.difficulty },
+  { id: 'mean', label: 'Moving average', color: COLORS.average },
+];
 
 /** The current epoch as a ring, with when the earliest window opens. */
 function EpochRing({ acc, heights }) {
@@ -88,33 +95,42 @@ function BookBar({ longs, shorts }) {
 export default function MarketPanel() {
   const { acc, market, tick, heights } = useExtensions();
   const [depth, setDepth] = useState(64);
+  const [view, setView] = useState('epoch');
+  const [span, setSpan] = useState(8);
   const [table, setTable] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  // Before genesis there is no ring, so the chart falls back to the client's difficulty table
+  const ring = acc?.deployed && acc.recent?.length ? acc.recent : null;
+  // A mean over the first bar needs the span - 1 epochs before it as well
+  const need = depth + (view === 'mean' ? span - 1 : 0);
+  // The client's difficulty table serves what the ring does not: everything before genesis, and older epochs
+  const tableLimit = !acc ? 0 : !ring ? Math.max(128, need) : need > ring.length ? need : 0;
+
   useEffect(() => {
-    if (!acc || (acc.deployed && acc.recent?.length)) return;
+    if (!tableLimit) return;
     setBusy(true);
     api
-      .getDifficultyEpochs({ limit: 128 })
+      .getDifficultyEpochs({ limit: tableLimit })
       .then(setTable)
       .catch(() => setTable(null))
       .finally(() => setBusy(false));
-  }, [acc?.deployed, acc?.recent?.length, tick]);
+  }, [tableLimit, tick]);
 
-  const epochs = useMemo(() => {
+  const history = useMemo(() => {
     if (!acc) return [];
-    let list;
-    if (acc.deployed && acc.recent?.length) list = acc.recent.map((e) => ({ epoch: e.epoch, difficulty: e.difficulty }));
-    else {
-      const rows = [...(table?.epochs ?? []), table?.previous].filter(Boolean);
-      list = rows.map((e) => ({ epoch: e.index, difficulty: e.difficulty }));
-    }
+    const at = new Map([...(table?.epochs ?? []), table?.previous].filter(Boolean).map((e) => [e.index, e.difficulty]));
+    // Recorded difficulties are what settlements read, so they win wherever the ring holds one
+    for (const e of ring ?? []) at.set(e.epoch, e.difficulty);
     // The current epoch's difficulty is known from its first block, recorded or not
-    if (!list.some((e) => e.epoch === acc.currentEpoch))
-      list = [...list.filter((e) => e.epoch < acc.currentEpoch), { epoch: acc.currentEpoch, difficulty: acc.currentDifficulty }];
-    return list.sort((a, b) => a.epoch - b.epoch).slice(-depth);
-  }, [acc, table, depth]);
+    if (!at.has(acc.currentEpoch)) at.set(acc.currentEpoch, acc.currentDifficulty);
+    return [...at]
+      .filter(([epoch]) => epoch <= acc.currentEpoch)
+      .map(([epoch, difficulty]) => ({ epoch, difficulty }))
+      .sort((a, b) => a.epoch - b.epoch);
+  }, [acc, ring, table]);
+
+  const epochs = useMemo(() => history.slice(-depth), [history, depth]);
+  const means = useMemo(() => (view === 'mean' ? trailingMeans(epochs, history, span) : null), [view, epochs, history, span]);
 
   const next = acc?.nextDifficulty;
   const blocksIn = acc ? EPOCH_LENGTH - acc.blocksLeftInEpoch : 0;
@@ -218,13 +234,42 @@ export default function MarketPanel() {
             Difficulty by {heights ? 'block range' : 'epoch'} {busy && <Spinner />}
           </h3>
           <div className={m.controls}>
-            <span className={m.label}>{heights ? 'epochs of 128 blocks' : 'epochs'}</span>
-            <div className={m.seg}>
-              {DEPTHS.map((d) => (
-                <button key={d} type="button" className={`${m.segBtn} ${depth === d ? m.segBtnOn : ''}`} onClick={() => setDepth(d)}>
-                  {d}
+            <div className={m.legend}>
+              {VIEWS.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={`${m.legendBtn} ${view === v.id ? m.legendOn : m.legendOff}`}
+                  style={view === v.id ? { '--legend-color': v.color } : undefined}
+                  onClick={() => setView(v.id)}
+                  aria-pressed={view === v.id}
+                >
+                  <span className={m.swatch} style={{ background: v.color }} />
+                  {v.label}
                 </button>
               ))}
+            </div>
+            {view === 'mean' && (
+              <div className={m.controls} style={{ flexWrap: 'nowrap' }}>
+                <span className={m.label}>window</span>
+                <div className={m.seg}>
+                  {SPANS.map((l) => (
+                    <button key={l} type="button" className={`${m.segBtn} ${span === l ? m.segBtnOn : ''}`} onClick={() => setSpan(l)}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className={m.controls} style={{ flexWrap: 'nowrap' }}>
+              <span className={m.label}>{heights ? 'epochs of 128 blocks' : 'epochs'}</span>
+              <div className={m.seg}>
+                {DEPTHS.map((d) => (
+                  <button key={d} type="button" className={`${m.segBtn} ${depth === d ? m.segBtnOn : ''}`} onClick={() => setDepth(d)}>
+                    {d}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -235,11 +280,15 @@ export default function MarketPanel() {
           future={Math.max(4, Math.round(depth / 10))}
           width={1120}
           heights={heights}
+          means={means}
+          span={span}
         />
         <p className={m.cardNote} style={{ marginTop: 10 }}>
-          {acc?.deployed
-            ? 'Bars are the difficulties the accumulator recorded, which every settlement reads. '
-            : 'Bars are Ergo difficulty by epoch. '}
+          {view === 'mean'
+            ? `Each point is the mean of its epoch and the ${span - 1} before it: what a ${span}-epoch window ending there settles on. `
+            : acc?.deployed
+              ? 'Bars are the difficulties the accumulator recorded, which every settlement reads. '
+              : 'Bars are Ergo difficulty by epoch. '}
           The outlined bar is the next epoch, computed from block timestamps; dashed while projected. No window can
           include it, so windows start {acc ? fmtEpochs(acc.limits.minWindowStart - acc.currentEpoch, heights) : '2 epochs'} out
           (about {fmtSpan(acc ? acc.blocksLeftInEpoch + EPOCH_LENGTH : EPOCH_LENGTH * 2)} from now), in the hatched

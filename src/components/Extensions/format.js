@@ -172,9 +172,27 @@ export function payoutAt(mean, strike, notional) {
 export const sidePayout = (long, mean, strike, notional) =>
   long ? payoutAt(mean, strike, notional) : -payoutAt(mean, strike, notional);
 
+/**
+ * The mean difficulty over each of `epochs` and the `span - 1` epochs before it, read from `history`: what a
+ * window of `span` epochs ending there settles on. Decimal strings like the wire's, and null where any of those
+ * epochs is missing, so no point is ever a partial window.
+ */
+export function trailingMeans(epochs, history, span) {
+  const at = new Map(history.map((e) => [e.epoch, big(e.difficulty)]));
+  return epochs.map(({ epoch }) => {
+    let sum = 0n;
+    for (let e = epoch - span + 1; e <= epoch; e++) {
+      if (!at.has(e)) return null;
+      sum += at.get(e);
+    }
+    return String(sum / BigInt(span));
+  });
+}
+
 /** Fixed colours, one meaning each across every chart and table in the section. */
 export const COLORS = {
   difficulty: '#38bdf8',
+  average: '#f472b6',
   next: '#818cf8',
   long: '#6ee7b7',
   short: '#fbbf24',

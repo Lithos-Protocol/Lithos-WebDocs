@@ -44,18 +44,21 @@ function Gridlines({ ticks, left, right }) {
  * @param lead   epochs after the current one before a window can start
  * @param future empty slots drawn after the next epoch
  * @param heights label each epoch by its first block rather than its number
+ * @param means  when given, a line of these instead of the bars: one wire integer or null per epoch
+ * @param span   the epochs each of `means` covers
  */
-export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height = 236, width = 760, onPick, heights = false }) {
+export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height = 236, width = 760, onPick, heights = false, means, span }) {
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
   const [hover, setHover] = useState(null);
   const H = height;
   const W = width;
+  const line = means != null;
 
   const model = useMemo(() => {
-    const values = [...epochs.map((e) => Number(big(e.difficulty))), next ? Number(big(next.difficulty)) : null].filter(
-      (v) => v != null && v > 0,
-    );
+    const shown = line ? means.filter((v) => v != null).map(Number) : epochs.map((e) => Number(big(e.difficulty)));
+    if (line && shown.length === 0) return null;
+    const values = [...shown, next ? Number(big(next.difficulty)) : null].filter((v) => v != null && v > 0);
     if (values.length === 0) return null;
     const hi = Math.max(...values);
     const lo = Math.min(...values);
@@ -72,14 +75,22 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
     const firstEpoch = epochs.length ? epochs[0].epoch : (next?.epoch ?? 0) - 1;
     const xOf = (epoch) => padL + (epoch - firstEpoch) * bw;
     const nextEpoch = next?.epoch ?? (current != null ? current + 1 : firstEpoch + epochs.length);
+    const w = Math.max(1, bw - Math.min(2.5, bw * 0.2));
+    // Each point sits over its epoch's bar, and a missing mean breaks the line rather than bridging it
+    const points = line ? epochs.map((e, i) => (means[i] == null ? null : { epoch: e.epoch, x: xOf(e.epoch) + w / 2, y: y(Number(means[i])) })) : [];
+    const path = points
+      .map((p, i) => (p ? `${points[i - 1] ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}` : ''))
+      .join('');
     return {
-      bars: epochs.map((e, i) => ({ i, e, x: xOf(e.epoch), y: y(Number(big(e.difficulty))) })),
+      bars: line ? [] : epochs.map((e, i) => ({ i, e, x: xOf(e.epoch), y: y(Number(big(e.difficulty))) })),
+      points,
+      path,
       next: next ? { x: xOf(next.epoch), y: y(Number(big(next.difficulty))) } : null,
       nextEpoch,
       bandX: xOf(nextEpoch - 1 + lead),
       bandEnd: padL + innerW,
       bw,
-      w: Math.max(1, bw - Math.min(2.5, bw * 0.2)),
+      w,
       ticks: FRACTIONS.map((f, i) => ({ y: y(floor + (ceil - floor) * f), label: labels[i] })),
       baseline: PAD.t + innerH,
       padL,
@@ -87,9 +98,11 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
       firstEpoch,
       slots,
     };
-  }, [epochs, next, current, lead, future, H, W]);
+  }, [epochs, next, current, lead, future, H, W, line, means]);
 
-  if (!model) return <div className={m.empty}>No difficulty epochs collected yet.</div>;
+  if (!model) {
+    return <div className={m.empty}>{line ? `Fewer than ${fmtInt(span)} epochs collected.` : 'No difficulty epochs collected yet.'}</div>;
+  }
 
   const onMove = (ev) => {
     const vx = toViewX(svgRef.current, ev.clientX);
@@ -100,6 +113,11 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
 
   const hovered = hover == null ? null : epochs.find((e) => e.epoch === hover);
   const hoverNext = hover != null && next && hover === next.epoch;
+  const meanAt = (epoch) => {
+    const i = epochs.findIndex((e) => e.epoch === epoch);
+    return i < 0 ? null : means[i];
+  };
+  const hoverPoint = line && hover != null ? model.points.find((p) => p?.epoch === hover) : null;
   const tipX = hover == null ? 0 : model.padL + (hover - model.firstEpoch + 0.5) * model.bw;
   const tipLeft = hover == null ? 0 : tipLeftFor(svgRef.current, wrapRef.current, tipX, 220);
   const prev = (epoch) => epochs.find((e) => e.epoch === epoch - 1);
@@ -113,7 +131,11 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
         className={m.chart}
         style={{ height: 'auto' }}
         role="img"
-        aria-label="Difficulty by epoch, with the next epoch's computed difficulty"
+        aria-label={
+          line
+            ? `Mean difficulty over ${span} epochs, by epoch, with the next epoch's computed difficulty`
+            : "Difficulty by epoch, with the next epoch's computed difficulty"
+        }
         onMouseMove={onMove}
         onClick={() => hover != null && onPick?.(hover)}
       >
@@ -172,6 +194,11 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
           />
         ))}
 
+        {line && (
+          <path d={model.path} fill="none" stroke={COLORS.average} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        )}
+        {hoverPoint && <circle cx={hoverPoint.x} cy={hoverPoint.y} r="3.5" fill={COLORS.average} stroke="#0a0f1e" strokeWidth="1.5" />}
+
         {model.next && (
           <rect
             x={model.next.x}
@@ -214,14 +241,33 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
             {hoverNext && (next.exact ? ' · next, final' : ' · next, projected')}
             {hover === current && ' · now'}
           </div>
-          {(hovered || hoverNext) && (
+          {line && hovered && !hoverNext && (
+            <div className={m.hoverTipRow}>
+              {meanAt(hover) != null ? (
+                <>
+                  <span className={m.hoverSwatch} style={{ background: COLORS.average }} />
+                  <span className={m.hoverTipLabel}>Mean of {fmtInt(span)}</span>
+                  <span className={m.hoverTipValue}>{fmtDifficulty(meanAt(hover))}</span>
+                </>
+              ) : (
+                <span className={m.hoverTipLabel}>Fewer than {fmtInt(span)} epochs before it</span>
+              )}
+            </div>
+          )}
+          {line && hovered && !hoverNext && meanAt(hover) != null && meanAt(hover - 1) != null && (
+            <div className={m.hoverTipRow}>
+              <span className={m.hoverTipLabel}>Move</span>
+              <span className={m.hoverTipValue}>{fmtMove(moveOf(meanAt(hover), meanAt(hover - 1)))}</span>
+            </div>
+          )}
+          {((!line && hovered) || hoverNext) && (
             <div className={m.hoverTipRow}>
               <span className={m.hoverSwatch} style={{ background: hoverNext ? COLORS.next : COLORS.difficulty }} />
               <span className={m.hoverTipLabel}>Difficulty</span>
               <span className={m.hoverTipValue}>{fmtDifficulty(hoverNext ? next.difficulty : hovered.difficulty)}</span>
             </div>
           )}
-          {(hovered || hoverNext) && prev(hover) && (
+          {((!line && hovered) || hoverNext) && prev(hover) && (
             <div className={m.hoverTipRow}>
               <span className={m.hoverTipLabel}>Move</span>
               <span className={m.hoverTipValue}>

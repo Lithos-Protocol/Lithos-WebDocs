@@ -27,6 +27,7 @@ import {
   fmtSpan,
   fmtWindowRange,
   heightTime,
+  lastFillHeight,
   litText,
   marginOf,
   moveOf,
@@ -43,6 +44,8 @@ import {
 const LENGTH_PRESETS = [1, 4, 8, 40, 80, 120];
 const STRIKE_STEPS = [-0.05, -0.02, 0, 0.02, 0.05];
 const MARGIN_PRESETS = ['100', '200', '1000', '2000'];
+/** How long a new offer stands unless the maker moves it: one epoch of blocks. */
+const DEFAULT_EXPIRY_BLOCKS = EPOCH_LENGTH;
 
 /** Where the window's average could end against the strike, for the outcomes table. */
 const OUTCOMES = [-0.2, -0.1, -0.05, 0.05, 0.1, 0.2];
@@ -80,8 +83,7 @@ export default function OfferForm() {
   const [length, setLength] = useState(8);
   const [strikeText, setStrikeText] = useState('');
   const [marginText, setMarginText] = useState('200');
-  const [customExpiry, setCustomExpiry] = useState(false);
-  const [expiryText, setExpiryText] = useState('');
+  const [expiryPick, setExpiryPick] = useState(null);
   const [quote, setQuote] = useState(null);
   const [quoteError, setQuoteError] = useState(null);
   const [checking, setChecking] = useState(false);
@@ -108,23 +110,28 @@ export default function OfferForm() {
   const marginUnits = parseLit(marginText);
   // The contract takes a notional; five times the margin gives exactly the margin typed
   const notionalUnits = marginUnits == null ? null : notionalFor(marginUnits);
-  const expiry = customExpiry ? Number.parseInt(expiryText, 10) : undefined;
+  // A fill must be mined after the next block, and no later than the contract's lead allows for this window
+  const minExpiry = acc ? acc.height + 2 : null;
+  const maxExpiry = start == null ? null : lastFillHeight(start);
+  const expiry =
+    minExpiry == null || maxExpiry == null
+      ? null
+      : Math.min(maxExpiry, Math.max(minExpiry, expiryPick ?? acc.height + 1 + DEFAULT_EXPIRY_BLOCKS));
   const capped = limits && length < limits.shortWindowEpochs;
   const marginCap = limits ? marginOf(limits.shortWindowMaxNotional) : null;
   const overCap = capped && notionalUnits != null && notionalUnits > big(limits.shortWindowMaxNotional);
 
   const request = useMemo(() => {
-    if (start == null || strike == null || notionalUnits == null || notionalUnits <= 0n) return null;
-    if (customExpiry && !Number.isFinite(expiry)) return null;
+    if (start == null || expiry == null || strike == null || notionalUnits == null || notionalUnits <= 0n) return null;
     return {
       makerSide: long ? 'long' : 'short',
       strike: strike.toString(),
       notional: notionalUnits.toString(),
       windowStart: start,
       windowLength: length,
-      ...(customExpiry ? { expiry } : {}),
+      expiry,
     };
-  }, [long, start, length, strike, notionalUnits, customExpiry, expiry]);
+  }, [long, start, length, strike, notionalUnits, expiry]);
 
   // Quoted against the client as the form settles, so every figure on the right is the client's own
   useEffect(() => {
@@ -177,7 +184,6 @@ export default function OfferForm() {
   const margin = marginUnits ?? 0n;
   const locked = margin + SIDE_REWARD;
   const nextMove = strike ? moveOf(strike, base) : null;
-  const defaultExpiry = limits.defaultExpiry;
 
   return (
     <div className={s.formGrid}>
@@ -332,25 +338,27 @@ export default function OfferForm() {
         <div className={s.field}>
           <div className={s.fieldHead}>
             <span className={m.label}>Expiry</span>
-            <label className={s.inlineCheck}>
-              <input type="checkbox" checked={customExpiry} onChange={(e) => setCustomExpiry(e.target.checked)} /> set my own
-            </label>
+            <span className={s.fieldValue}>
+              block {fmtInt(expiry)} · in about {fmtSpan(expiry - acc.height - 1)}
+            </span>
           </div>
-          {customExpiry ? (
-            <input
-              className={f.settingInput}
-              value={expiryText}
-              onChange={(e) => setExpiryText(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder={String(defaultExpiry)}
-              inputMode="numeric"
-              aria-label="Expiry height"
-            />
-          ) : (
-            <p className={m.cardNote}>
-              End of this epoch: block {fmtInt(defaultExpiry)}, in about {fmtSpan(defaultExpiry - acc.height - 1)}. Strikes go
-              stale once the next epoch's difficulty is final, so offers expire with the epoch.
-            </p>
-          )}
+          <input
+            type="range"
+            className={s.range}
+            min={minExpiry}
+            max={maxExpiry}
+            value={expiry}
+            onChange={(e) => setExpiryPick(Number(e.target.value))}
+            aria-label="Expiry height"
+          />
+          <div className={s.rangeEnds}>
+            <span>block {fmtInt(minExpiry)} · soonest</span>
+            <span>block {fmtInt(maxExpiry)} · last fill</span>
+          </div>
+          <p className={m.cardNote} style={{ marginTop: 6 }}>
+            No fill can be mined within 2 epochs of the window, so that is the latest expiry. Each difficulty change before
+            then makes the window easier to forecast, and a taker fills only offers that have turned in their favour.
+          </p>
         </div>
       </div>
 

@@ -693,15 +693,6 @@
   color: var(--cur-amber-light);
 }
 
-.inlineCheck {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  color: var(--cur-muted);
-  cursor: pointer;
-}
-
 .timeline {
   margin-top: 16px;
   padding: 12px 14px;

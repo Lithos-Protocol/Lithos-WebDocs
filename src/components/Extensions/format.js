@@ -38,6 +38,8 @@ export const SETTLE_REWARD = 2n * SIDE_REWARD - ACC_DEPOSIT;
 export const epochOf = (height) => Math.floor((Number(height) - 1) / EPOCH_LENGTH);
 export const epochStart = (epoch) => epoch * EPOCH_LENGTH + 1;
 export const epochEnd = (epoch) => (epoch + 1) * EPOCH_LENGTH;
+/** The last height a fill of a window starting at `windowStart` can be mined at: the window must stay 2 epochs out. */
+export const lastFillHeight = (windowStart) => (windowStart - 1) * EPOCH_LENGTH + 1;
 
 /*
  * Epochs or block heights. A reader can choose to see every epoch as the blocks it covers; the chain and the

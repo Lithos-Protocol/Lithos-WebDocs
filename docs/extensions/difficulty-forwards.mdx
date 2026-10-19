@@ -104,9 +104,11 @@ Two consequences for you:
 
 - **A fill has a deadline.** A window starting at epoch `E` can only be filled while the chain is at
   least 2 epochs before it. The panel shows each offer's last fill height as **Fill by**.
-- **Offers expire with the epoch.** An offer's strike goes stale once the next epoch's difficulty is
-  final, so the panel sets each new offer to expire at the last block of the epoch you post it in. You
-  can set a later expiry yourself.
+- **You choose when an offer expires.** The panel sets each new offer to expire 128 blocks after you
+  post it, about 4.3 hours, or at its last fill height if that comes first. Drag **Expiry** to keep the
+  offer open longer, up to the last fill height. A longer expiry gives takers more chances: each
+  difficulty change makes the window easier to forecast, and a taker fills only an offer that has
+  turned in their favour.
 
 Short windows are cheap to move. A miner with a tenth of Ergo's hashrate who mines elsewhere for one
 epoch lowers that epoch's difficulty by about 7.5%, which can decide a 1-epoch window. Your client
@@ -164,8 +166,8 @@ quote is read again when you open it, so the amounts you confirm are the offer's
 To post your own offer:
 
 1. Open **Make an offer** and pick **Long** or **Short**.
-2. Set the window start, the window length, the strike and your margin. The chips next to the strike
-   set it relative to the next epoch's difficulty.
+2. Set the window start, the window length, the strike, your margin and the expiry. The chips next to
+   the strike set it relative to the next epoch's difficulty.
 3. Read the quote on the right, including any warnings, then click **Post offer**.
 
 Your offer locks its margin, 7.5 LIT and 0.002 ERG until a taker fills it or you cancel it from

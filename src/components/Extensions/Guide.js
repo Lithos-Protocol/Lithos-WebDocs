@@ -273,8 +273,9 @@ export default function Guide() {
               epochs at {lim ? fmtLit(marginOf(lim.shortWindowMaxNotional), 0) : '200'} LIT of margin.
             </li>
             <li>
-              <b>Offers go stale.</b> Part of the next move is predictable from block timestamps, so offers expire at the end
-              of the epoch they are posted in unless you set otherwise.
+              <b>Standing offers can be picked off.</b> Each difficulty change makes a window easier to forecast, and a taker
+              fills only offers that have turned in their favour. New offers expire after one epoch unless you move them, and
+              never after the last block that can fill them.
             </li>
             <li>
               <b>LIT is not hedged.</b> Margins and payouts are LIT, so the LIT price moves what a position is worth in ERG.

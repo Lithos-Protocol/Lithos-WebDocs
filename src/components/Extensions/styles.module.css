@@ -873,10 +873,11 @@
   .kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* minmax(0, …) so a wide table scrolls inside its card instead of widening the column past the screen */
   .formGrid,
   .drawerGrid,
   .explorer {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .formSide {
     position: static;
@@ -893,6 +894,9 @@
   .histTr,
   .closedTr {
     min-width: 780px;
+  }
+  .similarTr {
+    min-width: 450px;
   }
   .table {
     overflow-x: auto;

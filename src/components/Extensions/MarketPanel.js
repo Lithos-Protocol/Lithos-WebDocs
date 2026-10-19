@@ -55,8 +55,21 @@ function EpochRing({ acc, heights }) {
       </svg>
       <div className={m.ringCore}>
         <div className={m.ringValue}>{acc ? `${Math.round(frac * 100)}%` : '—'}</div>
-        <div className={m.ringLabel}>
-          {acc ? (heights ? `to block ${fmtInt(epochStart(acc.currentEpoch + 1))}` : `epoch ${fmtInt(acc.currentEpoch)}`) : '—'}
+        {/* A block number is too long to share a line inside the ring, so it takes its own */}
+        <div className={m.ringLabel} style={{ lineHeight: 1.5 }}>
+          {acc ? (
+            heights ? (
+              <>
+                to block
+                <br />
+                {fmtInt(epochStart(acc.currentEpoch + 1))}
+              </>
+            ) : (
+              `epoch ${fmtInt(acc.currentEpoch)}`
+            )
+          ) : (
+            '—'
+          )}
         </div>
       </div>
     </div>

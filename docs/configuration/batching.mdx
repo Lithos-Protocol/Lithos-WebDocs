@@ -216,7 +216,7 @@ window's average difficulty by about 7.5%, so short windows are kept small:
 | Setting | Default | Range | What it does |
 |---|---|---|---|
 | `forwards.offers.shortWindowEpochs` | 8 | 1 to 121 | Windows shorter than this many epochs are limited. 121 limits every window |
-| `forwards.offers.shortWindowMaxNotionalLit` | 1000 | 0 or more | The largest notional, in whole LIT, such a window may carry. The default is 200 LIT of margin, a fifth of it. `0` refuses short windows entirely |
+| `forwards.offers.shortWindowMaxNotionalLit` | 10000 | 0 or more | The largest notional, in whole LIT, such a window may carry. The default is 2,000 LIT of margin, a fifth of it. `0` refuses short windows entirely |
 
 The limit binds only your client. Other clients can still offer or fill larger short windows, and your
 client shows them in the order book but will not fill them.

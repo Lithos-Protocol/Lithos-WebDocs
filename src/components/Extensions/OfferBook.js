@@ -5,7 +5,7 @@ import s from './styles.module.css';
 import * as api from './api';
 import { useExtensions } from './ExtensionsLayout';
 import { PayoutCurve, StrikeLadder } from './charts';
-import { KeyGate, PageSize, Pager, SideChip, usePaged, WindowText } from './ui';
+import { KeyGate, PageSize, Pager, RoughNext, SideChip, usePaged, WindowText } from './ui';
 import { Alert, Spinner, TxResult } from '../Dex/ui';
 import Link from '@docusaurus/Link';
 import {
@@ -34,7 +34,7 @@ import {
   scaleDifficulty,
 } from './format';
 
-/** Strike bins, as moves against the next epoch's difficulty, with an open bin at each end. */
+/** Strike bins, as moves against the current difficulty, with an open bin at each end. */
 const BIN_STEP = 0.02;
 const BIN_EDGE = 0.2;
 
@@ -68,7 +68,7 @@ const STARTS = [
 
 const SORTS = [
   { id: 'start', label: 'Window start' },
-  { id: 'implied', label: 'Strike vs next' },
+  { id: 'implied', label: 'Strike vs now' },
   { id: 'margin', label: 'Margin' },
   { id: 'expiry', label: 'Fill by' },
 ];
@@ -120,7 +120,7 @@ function FillDrawer({ offer, acc, onDone, onFilled }) {
 
   const takerLong = offer.makerSide === 'short';
   const next = acc?.nextDifficulty?.difficulty;
-  const atNext = next ? sidePayout(takerLong, next, offer.strike, offer.notional) : null;
+  const atNow = acc ? sidePayout(takerLong, acc.currentDifficulty, offer.strike, offer.notional) : null;
   const tip = acc?.height ?? 0;
   const startAt = heightTime(epochStart(offer.windowStart), tip);
   const endAt = heightTime(epochEnd(offer.windowEnd), tip);
@@ -180,9 +180,9 @@ function FillDrawer({ offer, acc, onDone, onFilled }) {
               </span>
             </div>
             <div className={m.kv}>
-              <span className={m.kvKey}>At next epoch's level</span>
-              <span className={m.kvVal} style={{ color: atNext == null ? undefined : atNext >= 0n ? COLORS.gain : COLORS.loss }}>
-                {atNext == null ? '—' : `${fmtLitSigned(atNext)} LIT`}
+              <span className={m.kvKey}>At today's difficulty</span>
+              <span className={m.kvVal} style={{ color: atNow == null ? undefined : atNow >= 0n ? COLORS.gain : COLORS.loss }}>
+                {atNow == null ? '—' : `${fmtLitSigned(atNow)} LIT`}
               </span>
             </div>
             <div className={m.kv}>
@@ -218,10 +218,11 @@ function FillDrawer({ offer, acc, onDone, onFilled }) {
             notional={offer.notional}
             height={196}
             marks={[
-              next ? { move: moveOf(next, offer.strike), label: 'next epoch', color: COLORS.next } : null,
               acc ? { move: moveOf(acc.currentDifficulty, offer.strike), label: 'now', color: COLORS.difficulty } : null,
+              next ? { move: moveOf(next, offer.strike), label: 'next epoch', color: COLORS.next, dashed: true } : null,
             ].filter(Boolean)}
           />
+          <RoughNext acc={acc} style={{ marginTop: 6 }} />
           <p className={m.cardNote} style={{ marginTop: 6 }}>
             Your gain or loss against where the window's mean difficulty lands, before rewards. It stops at the margin, which amounts to a 
             20% move in either direction.
@@ -293,7 +294,7 @@ export default function OfferBook() {
   }, []);
   useEffect(load, [load, tick]);
 
-  const base = acc?.nextDifficulty?.difficulty ?? acc?.currentDifficulty;
+  const base = acc?.currentDifficulty;
   const rows = useMemo(
     () =>
       (book?.offers ?? []).map((o) => ({
@@ -406,8 +407,7 @@ export default function OfferBook() {
       </p>
       <StrikeLadder bins={bins} show={show} selected={bin} onSelect={setBin} width={1120} />
       <p className={m.cardNote} style={{ marginTop: 6 }}>
-        Margin on offer by strike, against the {acc?.nextDifficulty ? "next epoch's" : 'current'} difficulty
-        {acc?.nextDifficulty ? `, ${fmtDifficulty(acc.nextDifficulty.difficulty)}` : ''}. Going long at a strike below
+        Margin on offer by strike, against the current difficulty{acc ? `, ${fmtDifficulty(acc.currentDifficulty)}` : ''}. Going long at a strike below
         it starts you in profit; going short at a strike above it does too. Click a column to filter the book.
       </p>
 
@@ -521,7 +521,7 @@ export default function OfferBook() {
             <span>Window</span>
             <span>Starts in</span>
             <span className={m.num}>Strike</span>
-            <span className={m.num}>vs next</span>
+            <span className={m.num}>vs now</span>
             <span className={m.num} title="Each side's stake: the most either can win or lose">
               Margin
             </span>
@@ -576,7 +576,7 @@ export default function OfferBook() {
       <div className={s.tableFoot}>
         <span className={m.cardNote}>
           {shown.length > 0 && `${fmtInt(paged.first + 1)}–${fmtInt(paged.first + paged.rows.length)} of ${fmtInt(shown.length)}`}
-          {' · '}strike vs next is highlighted where the side you take starts ahead.
+          {' · '}strike vs now is highlighted where the side you take starts ahead.
         </span>
         {paged.pages > 1 && <Pager page={paged.page} pages={paged.pages} onPage={paged.setPage} />}
       </div>
@@ -584,5 +584,5 @@ export default function OfferBook() {
   );
 }
 
-/** Offers a strike near `base`: the next epoch's difficulty moved by `frac`. Exported for the offer form. */
+/** Offers a strike near `base`: a difficulty moved by `frac`. Exported for the offer form. */
 export const strikeAt = (base, frac) => scaleDifficulty(base, frac);

@@ -35,6 +35,16 @@ export const RECORD_REWARD = 5_000_000_000n;
 /** LIT whoever settles a position keeps: both sides' rewards less the deposit. */
 export const SETTLE_REWARD = 2n * SIDE_REWARD - ACC_DEPOSIT;
 
+/** The share of an epoch after which the projected next difficulty is usually close. */
+export const NEXT_RELIABLE = 0.9;
+
+/** Blocks of the current epoch already mined. */
+export const blocksInto = (acc) => (acc ? EPOCH_LENGTH - acc.blocksLeftInEpoch : 0);
+
+/** Whether the next epoch's difficulty is a projection made too early in the epoch to lean on. */
+export const nextIsRough = (acc) =>
+  !!acc?.nextDifficulty && !acc.nextDifficulty.exact && blocksInto(acc) < EPOCH_LENGTH * NEXT_RELIABLE;
+
 export const epochOf = (height) => Math.floor((Number(height) - 1) / EPOCH_LENGTH);
 export const epochStart = (epoch) => epoch * EPOCH_LENGTH + 1;
 export const epochEnd = (epoch) => (epoch + 1) * EPOCH_LENGTH;

@@ -3,7 +3,7 @@ import m from '../Mining/styles.module.css';
 import f from '../Collateral/styles.module.css';
 import s from './styles.module.css';
 import { useExtensions } from './ExtensionsLayout';
-import { COLORS, fmtEpochs, fmtInt, fmtSpan, fmtWindowRange, EPOCH_LENGTH } from './format';
+import { blocksInto, COLORS, fmtEpochs, fmtInt, fmtSpan, fmtWindowRange, EPOCH_LENGTH, NEXT_RELIABLE, nextIsRough } from './format';
 
 export const PAGE_SIZES = [10, 25, 50, 100, 200, 300];
 
@@ -181,5 +181,16 @@ export function KeyGate({ what }) {
         </form>
       </div>
     </div>
+  );
+}
+
+/** A caution beside the next epoch's difficulty while it is projected from too little of the epoch to be close. */
+export function RoughNext({ acc, style }) {
+  if (!nextIsRough(acc)) return null;
+  return (
+    <p className={`${m.cardNote} ${s.noteWarn}`} style={style}>
+      The next epoch's difficulty is projected from {fmtInt(blocksInto(acc))} of {fmtInt(EPOCH_LENGTH)} blocks and may be
+      inaccurate before {Math.round(NEXT_RELIABLE * 100)}% of the epoch has passed.
+    </p>
   );
 }

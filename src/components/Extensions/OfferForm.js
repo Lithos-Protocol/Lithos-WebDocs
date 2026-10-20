@@ -6,7 +6,7 @@ import s from './styles.module.css';
 import * as api from './api';
 import { useExtensions } from './ExtensionsLayout';
 import { PayoutCurve } from './charts';
-import { KeyGate, SideChip } from './ui';
+import { KeyGate, RoughNext, SideChip } from './ui';
 import { Alert, Spinner, TxResult } from '../Dex/ui';
 import {
   big,
@@ -92,7 +92,8 @@ export default function OfferForm() {
   const [sendError, setSendError] = useState(null);
 
   const limits = acc?.limits;
-  const base = acc?.nextDifficulty?.difficulty ?? acc?.currentDifficulty;
+  // The next epoch's projection is far off for most of an epoch, so strikes are set against today's difficulty
+  const base = acc?.currentDifficulty;
   // An offer is filled after the block it is mined in, which at an epoch's last block is already the next epoch
   const minStart = acc ? Math.max(limits.minWindowStart, epochOf(acc.height + 1) + 2) : null;
 
@@ -183,7 +184,7 @@ export default function OfferForm() {
 
   const margin = marginUnits ?? 0n;
   const locked = margin + SIDE_REWARD;
-  const nextMove = strike ? moveOf(strike, base) : null;
+  const nowMove = strike ? moveOf(strike, base) : null;
 
   return (
     <div className={s.formGrid}>
@@ -275,8 +276,8 @@ export default function OfferForm() {
         <div className={s.field}>
           <div className={s.fieldHead}>
             <span className={m.label}>Strike difficulty</span>
-            <span className={s.fieldValue} style={{ color: COLORS.next }}>
-              {nextMove == null ? '' : `${fmtMove(nextMove, 2)} vs ${acc.nextDifficulty ? 'next epoch' : 'now'}`}
+            <span className={s.fieldValue} style={{ color: COLORS.difficulty }}>
+              {nowMove == null ? '' : `${fmtMove(nowMove, 2)} vs now`}
             </span>
           </div>
           <input
@@ -288,7 +289,7 @@ export default function OfferForm() {
             aria-label="Strike difficulty"
           />
           <p className={m.cardNote} style={{ marginTop: 6 }}>
-            The difficulty the window's average is measured against. Near the next epoch's difficulty is an even bet;
+            The difficulty the window's average is measured against. Near the current difficulty is roughly an even bet;
             move it to ask for better odds, which a taker may not take.
           </p>
           <div className={s.chipRow}>
@@ -299,10 +300,22 @@ export default function OfferForm() {
                 className={s.chipBtn}
                 onClick={() => setStrikeText(fmtDifficulty(scaleDifficulty(base, st), 3).replace(/,/g, ''))}
               >
-                {st === 0 ? (acc.nextDifficulty ? 'next epoch' : 'now') : fmtMove(st, 0)}
+                {st === 0 ? 'now' : fmtMove(st, 0)}
               </button>
             ))}
+            {acc.nextDifficulty && (
+              <button
+                type="button"
+                className={s.chipBtn}
+                style={{ borderStyle: 'dashed', color: COLORS.next }}
+                title={`The next epoch's ${acc.nextDifficulty.exact ? 'final' : 'projected'} difficulty, ${fmtDifficulty(acc.nextDifficulty.difficulty)}`}
+                onClick={() => setStrikeText(fmtDifficulty(acc.nextDifficulty.difficulty, 3).replace(/,/g, ''))}
+              >
+                next epoch
+              </button>
+            )}
           </div>
+          <RoughNext acc={acc} style={{ marginTop: 6 }} />
         </div>
 
         <div className={s.field}>
@@ -414,11 +427,14 @@ export default function OfferForm() {
               notional={notionalUnits}
               height={190}
               marks={[
-                acc.nextDifficulty ? { move: moveOf(acc.nextDifficulty.difficulty, strike), label: 'next epoch', color: COLORS.next } : null,
                 { move: moveOf(acc.currentDifficulty, strike), label: 'now', color: COLORS.difficulty },
+                acc.nextDifficulty
+                  ? { move: moveOf(acc.nextDifficulty.difficulty, strike), label: 'next epoch', color: COLORS.next, dashed: true }
+                  : null,
               ].filter(Boolean)}
             />
           )}
+          {strike && notionalUnits > 0n && <RoughNext acc={acc} style={{ marginTop: 6 }} />}
           <p className={m.cardNote} style={{ marginTop: 6 }}>
             What you win or lose against where the window's average difficulty ends, before the {litText(SIDE_REWARD)} of fees.
           </p>
@@ -504,7 +520,7 @@ function Similar({ acc, start, length, long, strike, heights }) {
     .filter((o) => !o.mine && o.windowLength === length && Math.abs(o.windowStart - start) <= 3)
     .sort((a, b) => Math.abs(a.windowStart - start) - Math.abs(b.windowStart - start) || (big(a.strike) < big(b.strike) ? -1 : 1))
     .slice(0, 6);
-  const base = acc.nextDifficulty?.difficulty ?? acc.currentDifficulty;
+  const base = acc.currentDifficulty;
 
   return (
     <div className={`${m.card} ${m.stackGap}`}>
@@ -525,7 +541,7 @@ function Similar({ acc, start, length, long, strike, heights }) {
             <span>Maker</span>
             <span>Window</span>
             <span className={m.num}>Strike</span>
-            <span className={m.num}>vs next</span>
+            <span className={m.num}>vs now</span>
             <span className={m.num}>Margin</span>
           </div>
           {near.map((o) => {

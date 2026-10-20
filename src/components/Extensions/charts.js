@@ -39,15 +39,17 @@ function Gridlines({ ticks, left, right }) {
  * the past and the tradable future: its difficulty is already computable, which is why no window can include
  * it, and the shading shows where windows begin.
  *
- * @param epochs past epochs, oldest first: `{ epoch, difficulty }`
+ * @param epochs past epochs, oldest first: `{ epoch, difficulty }`; a missing epoch leaves its slot empty
  * @param next   `{ epoch, difficulty, exact, fromHeight }`, or null while it cannot be computed
+ * @param rough  the next epoch is projected from too little of the current one to be close
  * @param lead   epochs after the current one before a window can start
  * @param future empty slots drawn after the next epoch
  * @param heights label each epoch by its first block rather than its number
  * @param means  when given, a line of these instead of the bars: one wire integer or null per epoch
+ * @param nextMean the mean ending at the next epoch, drawn dashed from the last point in place of its bar
  * @param span   the epochs each of `means` covers
  */
-export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height = 236, width = 760, onPick, heights = false, means, span }) {
+export function EpochStrip({ epochs, next, rough = false, current, lead = 2, future = 5, height = 236, width = 760, onPick, heights = false, means, nextMean, span }) {
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
   const [hover, setHover] = useState(null);
@@ -58,7 +60,8 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
   const model = useMemo(() => {
     const shown = line ? means.filter((v) => v != null).map(Number) : epochs.map((e) => Number(big(e.difficulty)));
     if (line && shown.length === 0) return null;
-    const values = [...shown, next ? Number(big(next.difficulty)) : null].filter((v) => v != null && v > 0);
+    const ahead = line ? (nextMean == null ? null : Number(nextMean)) : next ? Number(big(next.difficulty)) : null;
+    const values = [...shown, ahead].filter((v) => v != null && v > 0);
     if (values.length === 0) return null;
     const hi = Math.max(...values);
     const lo = Math.min(...values);
@@ -69,23 +72,27 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
     const padL = gutter(labels);
     const innerW = W - padL - PAD.r;
     const innerH = H - PAD.t - PAD.b;
-    const slots = epochs.length + 1 + future;
+    const firstEpoch = epochs.length ? epochs[0].epoch : (next?.epoch ?? 0) - 1;
+    const nextEpoch = next?.epoch ?? (current != null ? current + 1 : firstEpoch + epochs.length);
+    const slots = nextEpoch - firstEpoch + 1 + future;
     const bw = innerW / slots;
     const y = (v) => PAD.t + innerH - ((v - floor) / (ceil - floor)) * innerH;
-    const firstEpoch = epochs.length ? epochs[0].epoch : (next?.epoch ?? 0) - 1;
     const xOf = (epoch) => padL + (epoch - firstEpoch) * bw;
-    const nextEpoch = next?.epoch ?? (current != null ? current + 1 : firstEpoch + epochs.length);
     const w = Math.max(1, bw - Math.min(2.5, bw * 0.2));
     // Each point sits over its epoch's bar, and a missing mean breaks the line rather than bridging it
     const points = line ? epochs.map((e, i) => (means[i] == null ? null : { epoch: e.epoch, x: xOf(e.epoch) + w / 2, y: y(Number(means[i])) })) : [];
     const path = points
       .map((p, i) => (p ? `${points[i - 1] ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}` : ''))
       .join('');
+    const nextPoint = line && next && nextMean != null ? { x: xOf(next.epoch) + w / 2, y: y(Number(nextMean)) } : null;
+    const lastPoint = nextPoint ? points.find((p) => p?.epoch === next.epoch - 1) : null;
     return {
       bars: line ? [] : epochs.map((e, i) => ({ i, e, x: xOf(e.epoch), y: y(Number(big(e.difficulty))) })),
       points,
       path,
-      next: next ? { x: xOf(next.epoch), y: y(Number(big(next.difficulty))) } : null,
+      next: next && !line ? { x: xOf(next.epoch), y: y(Number(big(next.difficulty))) } : null,
+      nextPoint,
+      lastPoint,
       nextEpoch,
       bandX: xOf(nextEpoch - 1 + lead),
       bandEnd: padL + innerW,
@@ -133,7 +140,7 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
         role="img"
         aria-label={
           line
-            ? `Mean difficulty over ${span} epochs, by epoch, with the next epoch's computed difficulty`
+            ? `Mean difficulty over ${span} epochs, by epoch, with the next epoch's projected mean`
             : "Difficulty by epoch, with the next epoch's computed difficulty"
         }
         onMouseMove={onMove}
@@ -197,6 +204,28 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
         {line && (
           <path d={model.path} fill="none" stroke={COLORS.average} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         )}
+        {model.nextPoint && model.lastPoint && (
+          <line
+            x1={model.lastPoint.x}
+            y1={model.lastPoint.y}
+            x2={model.nextPoint.x}
+            y2={model.nextPoint.y}
+            stroke={COLORS.average}
+            strokeWidth="2"
+            strokeDasharray="3 3"
+            strokeLinecap="round"
+          />
+        )}
+        {model.nextPoint && (
+          <circle
+            cx={model.nextPoint.x}
+            cy={model.nextPoint.y}
+            r={hoverNext ? 3.5 : 2.5}
+            fill={hoverNext ? COLORS.average : '#0a0f1e'}
+            stroke={COLORS.average}
+            strokeWidth="1.5"
+          />
+        )}
         {hoverPoint && <circle cx={hoverPoint.x} cy={hoverPoint.y} r="3.5" fill={COLORS.average} stroke="#0a0f1e" strokeWidth="1.5" />}
 
         {model.next && (
@@ -234,7 +263,7 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
           ))}
       </svg>
 
-      {hover != null && (hovered || hoverNext || hover > model.nextEpoch - 1) && (
+      {hover != null && (hovered || hoverNext || hover >= model.nextEpoch - 1) && (
         <div className={m.hoverTip} style={{ left: `${tipLeft}px` }}>
           <div className={m.hoverTipLabel}>
             {heights ? `Blocks ${fmtInt(epochStart(hover))}–${fmtInt(epochEnd(hover))}` : `Epoch ${fmtInt(hover)}`}
@@ -260,14 +289,33 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
               <span className={m.hoverTipValue}>{fmtMove(moveOf(meanAt(hover), meanAt(hover - 1)))}</span>
             </div>
           )}
-          {((!line && hovered) || hoverNext) && (
+          {line && hoverNext && (
+            <div className={m.hoverTipRow}>
+              {nextMean != null ? (
+                <>
+                  <span className={m.hoverSwatch} style={{ background: COLORS.average }} />
+                  <span className={m.hoverTipLabel}>Mean of {fmtInt(span)}</span>
+                  <span className={m.hoverTipValue}>{fmtDifficulty(nextMean)}</span>
+                </>
+              ) : (
+                <span className={m.hoverTipLabel}>Fewer than {fmtInt(span)} epochs before it</span>
+              )}
+            </div>
+          )}
+          {line && hoverNext && nextMean != null && meanAt(hover - 1) != null && (
+            <div className={m.hoverTipRow}>
+              <span className={m.hoverTipLabel}>Move</span>
+              <span className={m.hoverTipValue}>{fmtMove(moveOf(nextMean, meanAt(hover - 1)))}</span>
+            </div>
+          )}
+          {!line && (hovered || hoverNext) && (
             <div className={m.hoverTipRow}>
               <span className={m.hoverSwatch} style={{ background: hoverNext ? COLORS.next : COLORS.difficulty }} />
               <span className={m.hoverTipLabel}>Difficulty</span>
               <span className={m.hoverTipValue}>{fmtDifficulty(hoverNext ? next.difficulty : hovered.difficulty)}</span>
             </div>
           )}
-          {((!line && hovered) || hoverNext) && prev(hover) && (
+          {!line && (hovered || hoverNext) && prev(hover) && (
             <div className={m.hoverTipRow}>
               <span className={m.hoverTipLabel}>Move</span>
               <span className={m.hoverTipValue}>
@@ -275,10 +323,21 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
               </span>
             </div>
           )}
+          {hoverNext && rough && (
+            <div className={m.hoverTipRow}>
+              <span className={m.hoverTipLabel} style={{ color: 'var(--cur-amber-light)' }}>
+                Early projection, may be inaccurate
+              </span>
+            </div>
+          )}
           {!hovered && !hoverNext && (
             <div className={m.hoverTipRow}>
               <span className={m.hoverTipLabel}>
-                {hover >= model.nextEpoch - 1 + lead ? 'A window can start here' : 'Too soon for a window'}
+                {hover === model.nextEpoch - 1
+                  ? 'Not recorded yet'
+                  : hover >= model.nextEpoch - 1 + lead
+                    ? 'A window can start here'
+                    : 'Too soon for a window'}
               </span>
             </div>
           )}
@@ -294,7 +353,7 @@ export function EpochStrip({ epochs, next, current, lead = 2, future = 5, height
 }
 
 /**
- * The book as a ladder: margin on offer by where its strike sits against the next epoch's difficulty. Above
+ * The book as a ladder: margin on offer by where its strike sits against the current difficulty. Above
  * the axis are offers you take the long side of, below it those you take short.
  *
  * Both halves are LIT of margin on one scale, so a bar twice as tall is twice the size. Clicking a column
@@ -343,7 +402,7 @@ export function StrikeLadder({ bins, show, selected, onSelect, height = 200, wid
         className={m.chart}
         style={{ height: 'auto', cursor: 'pointer' }}
         role="img"
-        aria-label="Margin on offer by strike against the next epoch's difficulty"
+        aria-label="Margin on offer by strike against the current difficulty"
         onMouseMove={onMove}
         onClick={() => hover != null && onSelect(selected === hover ? null : hover)}
       >
@@ -420,7 +479,7 @@ export function StrikeLadder({ bins, show, selected, onSelect, height = 200, wid
 
       {hover != null && (
         <div className={m.hoverTip} style={{ left: `${tipLeft}px` }}>
-          <div className={m.hoverTipLabel}>Strike {bins[hover].range} vs next epoch</div>
+          <div className={m.hoverTipLabel}>Strike {bins[hover].range} vs now</div>
           <div className={m.hoverTipRow}>
             <span className={m.hoverSwatch} style={{ background: COLORS.long }} />
             <span className={m.hoverTipLabel}>You go long</span>
@@ -448,7 +507,7 @@ export function StrikeLadder({ bins, show, selected, onSelect, height = 200, wid
  * What one side gains or pays against where the window's mean lands, before the rewards each side
  * puts in. The payout is linear in the move and stops at the margin, a 20% move either way.
  *
- * @param marks vertical markers, `{ move, label, color }`, where `move` is a mean against the strike
+ * @param marks vertical markers, `{ move, label, color, dashed }`, where `move` is a mean against the strike
  */
 export function PayoutCurve({ long, strike, notional, marks = [], height = 210, span = 0.3 }) {
   const wrapRef = useRef(null);
@@ -489,8 +548,8 @@ export function PayoutCurve({ long, strike, notional, marks = [], height = 210, 
     const mv = ((vx - model.padL) / model.innerW) * 2 * span - span;
     setHover(mv >= -span && mv <= span ? mv : null);
   };
-  const hoverPayout =
-    hover == null ? null : (long ? 1n : -1n) * payoutAt((k * BigInt(Math.round((1 + hover) * 1e9))) / 1_000_000_000n, k, n);
+  const hoverMean = hover == null ? null : (k * BigInt(Math.round((1 + hover) * 1e9))) / 1_000_000_000n;
+  const hoverPayout = hover == null ? null : (long ? 1n : -1n) * payoutAt(hoverMean, k, n);
   const tipLeft = hover == null ? 0 : tipLeftFor(svgRef.current, wrapRef.current, model.x(hover), 200);
   const clipId = `extPayClip${long ? 'L' : 'S'}`;
 
@@ -546,8 +605,8 @@ export function PayoutCurve({ long, strike, notional, marks = [], height = 210, 
                 x2={model.x(mk.move)}
                 y2={H - PAD.b}
                 stroke={mk.color}
-                strokeOpacity="0.7"
-                strokeDasharray="3 3"
+                strokeOpacity={mk.dashed ? 0.7 : 0.9}
+                strokeDasharray={mk.dashed ? '3 3' : undefined}
               />
               <text x={model.x(mk.move) + 4} y={PAD.t + 10 + i * 12} className={s.bandText} style={{ fill: mk.color }}>
                 {mk.label}
@@ -565,6 +624,10 @@ export function PayoutCurve({ long, strike, notional, marks = [], height = 210, 
       {hover != null && (
         <div className={m.hoverTip} style={{ left: `${tipLeft}px` }}>
           <div className={m.hoverTipLabel}>Window mean {fmtMove(hover, 1)} vs strike</div>
+          <div className={m.hoverTipRow}>
+            <span className={m.hoverTipLabel}>Average difficulty</span>
+            <span className={m.hoverTipValue}>{fmtDifficulty(hoverMean, 2)}</span>
+          </div>
           <div className={m.hoverTipRow}>
             <span className={m.hoverSwatch} style={{ background: hoverPayout >= 0n ? COLORS.gain : COLORS.loss }} />
             <span className={m.hoverTipLabel}>{long ? 'Long' : 'Short'} receives</span>

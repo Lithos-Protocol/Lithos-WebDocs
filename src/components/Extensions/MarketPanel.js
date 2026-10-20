@@ -7,7 +7,7 @@ import { EpochStrip } from './charts';
 import { StatusChip } from './ui';
 import { Spinner } from '../Dex/ui';
 import {
-  big,
+  blocksInto,
   COLORS,
   EPOCH_LENGTH,
   epochStart,
@@ -19,7 +19,8 @@ import {
   fmtMove,
   fmtSpan,
   marginOf,
-  moveOf,
+  NEXT_RELIABLE,
+  nextIsRough,
   trailingMeans,
 } from './format';
 
@@ -29,6 +30,10 @@ const SPANS = [4, 8, 16, 40, 80, 120];
 const VIEWS = [
   { id: 'epoch', label: 'Per epoch', color: COLORS.difficulty },
   { id: 'mean', label: 'Moving average', color: COLORS.average },
+];
+const SOURCES = [
+  { id: 'real', label: 'real', hint: "Ergo's difficulty, read from block headers" },
+  { id: 'accumulator', label: 'accumulator', hint: 'What the accumulator recorded, which settlements read' },
 ];
 
 /** The current epoch as a ring, with when the earliest window opens. */
@@ -110,14 +115,16 @@ export default function MarketPanel() {
   const [depth, setDepth] = useState(64);
   const [view, setView] = useState('epoch');
   const [span, setSpan] = useState(8);
+  const [source, setSource] = useState('real');
   const [table, setTable] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const ring = acc?.deployed && acc.recent?.length ? acc.recent : null;
+  const fromRing = source === 'accumulator' && ring != null;
   // A mean over the first bar needs the span - 1 epochs before it as well
   const need = depth + (view === 'mean' ? span - 1 : 0);
-  // The client's difficulty table serves what the ring does not: everything before genesis, and older epochs
-  const tableLimit = !acc ? 0 : !ring ? Math.max(128, need) : need > ring.length ? need : 0;
+  // At least 128, so changing the depth or the window rarely refetches
+  const tableLimit = !acc || fromRing ? 0 : Math.max(128, need);
 
   useEffect(() => {
     if (!tableLimit) return;
@@ -131,22 +138,27 @@ export default function MarketPanel() {
 
   const history = useMemo(() => {
     if (!acc) return [];
-    const at = new Map([...(table?.epochs ?? []), table?.previous].filter(Boolean).map((e) => [e.index, e.difficulty]));
-    // Recorded difficulties are what settlements read, so they win wherever the ring holds one
-    for (const e of ring ?? []) at.set(e.epoch, e.difficulty);
-    // The current epoch's difficulty is known from its first block, recorded or not
-    if (!at.has(acc.currentEpoch)) at.set(acc.currentEpoch, acc.currentDifficulty);
+    const at = fromRing
+      ? new Map(ring.map((e) => [e.epoch, e.difficulty]))
+      : new Map([...(table?.epochs ?? []), table?.previous].filter(Boolean).map((e) => [e.index, e.difficulty]));
+    // The current epoch's difficulty is known from its first block; the ring holds it only once recorded
+    if (!fromRing) at.set(acc.currentEpoch, acc.currentDifficulty);
     return [...at]
       .filter(([epoch]) => epoch <= acc.currentEpoch)
       .map(([epoch, difficulty]) => ({ epoch, difficulty }))
       .sort((a, b) => a.epoch - b.epoch);
-  }, [acc, ring, table]);
+  }, [acc, ring, table, fromRing]);
 
   const epochs = useMemo(() => history.slice(-depth), [history, depth]);
   const means = useMemo(() => (view === 'mean' ? trailingMeans(epochs, history, span) : null), [view, epochs, history, span]);
 
   const next = acc?.nextDifficulty;
-  const blocksIn = acc ? EPOCH_LENGTH - acc.blocksLeftInEpoch : 0;
+  const nextMean = useMemo(
+    () => (view === 'mean' && next ? trailingMeans([next], [...history, next], span)[0] : null),
+    [view, next, history, span],
+  );
+  const rough = nextIsRough(acc);
+  const blocksIn = blocksInto(acc);
   const statuses = ['waiting', 'in_window', 'settleable', 'refundable'];
   const counts = market ? [market.waiting, market.inWindow, market.settleable, market.refundable] : null;
 
@@ -161,7 +173,7 @@ export default function MarketPanel() {
               {next ? (heights ? `From block ${fmtInt(epochStart(next.epoch))}` : `Next epoch ${fmtInt(next.epoch)}`) : 'Next epoch'}
             </span>
             {next ? (
-              <span className={s.nextValue}>
+              <span className={s.nextValue} style={rough ? { opacity: 0.6 } : undefined}>
                 {fmtDifficulty(next.difficulty, 2)}
                 <span className={s.movePill} style={{ '--pill-color': next.change >= 0 ? COLORS.long : COLORS.short }}>
                   {fmtMove(next.change, 1)}
@@ -174,11 +186,20 @@ export default function MarketPanel() {
           <p className={m.cardNote} style={{ marginTop: 10 }}>
             Ergo resets its difficulty every {fmtInt(EPOCH_LENGTH)} blocks, about {fmtSpan(EPOCH_LENGTH)}, based on block times from the last epoch.
              Every bet here is on the average of those difficulties over a window.{' '}
-            {next
-              ? next.exact
-                ? 'Final: the current epoch has ended, so this is the difficulty the next blocks carry.'
-                : `Projected with Ergo's retarget rule from ${fmtInt(blocksIn)} of ${EPOCH_LENGTH} blocks. It is close only late in the epoch.`
-              : acc?.nextDifficultyUnavailable ?? 'Waiting for the client.'}
+            {next ? (
+              next.exact ? (
+                'Final: the current epoch has ended, so this is the difficulty the next blocks carry.'
+              ) : rough ? (
+                <span className={s.noteWarn}>
+                  Projected with Ergo's retarget rule from {fmtInt(blocksIn)} of {EPOCH_LENGTH} blocks, so it may be
+                  inaccurate before {Math.round(NEXT_RELIABLE * 100)}% of the epoch has passed.
+                </span>
+              ) : (
+                `Projected with Ergo's retarget rule from ${fmtInt(blocksIn)} of ${EPOCH_LENGTH} blocks, late enough to be close.`
+              )
+            ) : (
+              acc?.nextDifficultyUnavailable ?? 'Waiting for the client.'
+            )}
           </p>
         </div>
 
@@ -262,6 +283,24 @@ export default function MarketPanel() {
                 </button>
               ))}
             </div>
+            {ring && (
+              <div className={m.controls} style={{ flexWrap: 'nowrap' }}>
+                <span className={m.label}>values</span>
+                <div className={m.seg}>
+                  {SOURCES.map((x) => (
+                    <button
+                      key={x.id}
+                      type="button"
+                      title={x.hint}
+                      className={`${m.segBtn} ${source === x.id ? m.segBtnOn : ''}`}
+                      onClick={() => setSource(x.id)}
+                    >
+                      {x.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {view === 'mean' && (
               <div className={m.controls} style={{ flexWrap: 'nowrap' }}>
                 <span className={m.label}>window</span>
@@ -289,6 +328,8 @@ export default function MarketPanel() {
         <EpochStrip
           epochs={epochs}
           next={next}
+          nextMean={nextMean}
+          rough={rough}
           current={acc?.currentEpoch}
           future={Math.max(4, Math.round(depth / 10))}
           width={1120}
@@ -299,21 +340,19 @@ export default function MarketPanel() {
         <p className={m.cardNote} style={{ marginTop: 10 }}>
           {view === 'mean'
             ? `Each point is the mean of its epoch and the ${span - 1} before it: what a ${span}-epoch window ending there settles on. `
-            : acc?.deployed
+            : fromRing
               ? 'Bars are the difficulties the accumulator recorded, which every settlement reads. '
-              : 'Bars are Ergo difficulty by epoch. '}
-          The outlined bar is the next epoch, computed from block timestamps; dashed while projected. No window can
-          include it, so windows start {acc ? fmtEpochs(acc.limits.minWindowStart - acc.currentEpoch, heights) : '2 epochs'} out
+              : "Bars are Ergo's difficulty by epoch, from block headers. "}
+          {fromRing && 'Epochs from before it launched hold the difficulty it launched with. '}
+          {view === 'mean'
+            ? "The dashed segment ends at the next epoch's mean, using its difficulty computed from block timestamps. "
+            : 'The outlined bar is the next epoch, computed from block timestamps; dashed while projected. '}
+          No window can
+          include the next epoch, so windows start {acc ? fmtEpochs(acc.limits.minWindowStart - acc.currentEpoch, heights) : '2 epochs'} out
           (about {fmtSpan(acc ? acc.blocksLeftInEpoch + EPOCH_LENGTH : EPOCH_LENGTH * 2)} from now), in the hatched
           area. Each epoch is {fmtInt(EPOCH_LENGTH)} blocks, about {fmtSpan(EPOCH_LENGTH)}.
         </p>
       </div>
     </>
   );
-}
-
-/** The move a strike implies against the next epoch's difficulty, or against the current one before it is known. */
-export function impliedAgainst(acc) {
-  const base = acc?.nextDifficulty?.difficulty ?? acc?.currentDifficulty;
-  return (strike) => moveOf(strike, base);
 }

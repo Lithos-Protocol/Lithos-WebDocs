@@ -164,7 +164,7 @@ function Explorer({ base }) {
 
 export default function Guide() {
   const { acc, heights } = useExtensions();
-  const base = acc?.nextDifficulty?.difficulty ?? acc?.currentDifficulty;
+  const base = acc?.currentDifficulty;
   const hedge = useMemo(
     () =>
       HEDGE.map((h) => {

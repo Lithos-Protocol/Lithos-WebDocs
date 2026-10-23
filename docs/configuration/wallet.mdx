@@ -12,12 +12,18 @@ description: How the client selects and bounds its own UTXOs, and when it merges
 *Assumes you know what a UTXO is and why a fragmented wallet is a problem.*
 
 The `wallet` block controls how the client reads your node wallet, how many boxes it may hold in
-flight, whether it merges small boxes back together, and when it moves your lending rewards. These knobs help control how your wallet is used in the client,
+flight, whether it splits your wallet when you first register, whether it merges small boxes back
+together, and when it moves your lending rewards. These knobs help control how your wallet is used in the client,
 and how to deal with UTXO growth inside of it. A miner with a fragmented wallet wants
 different behaviour from one with a handful of large boxes.
 
-**Every default except the reward sweep's reproduces the constant it replaced**, so leaving the block
-out changes nothing else. The [reward sweep](#sweeping-lending-rewards) is new, and it ships on.
+**Most defaults reproduce the constant they replaced**, so leaving the block out changes little. The
+following features ship on and act on your wallet by themselves:
+
+- [Cancelling stale sends](#when-held-boxes-are-released) that your node dropped from its mempool.
+- [Splitting your wallet](#splitting-your-wallet-when-you-first-register) once your first registration
+  confirms.
+- [Sweeping lending rewards](#sweeping-lending-rewards) to your first address.
 
 ## Selection and paging
 
@@ -114,6 +120,54 @@ funded another transaction, and one of the two fails. The client logs every canc
 release at the ceiling at `WARN`.
 
 A send still in your node's mempool is never cancelled or released, however long it waits.
+
+## Splitting your wallet when you first register
+
+A wallet of one box makes every transaction wait on the change of the one before it. If your node drops
+one of those transactions, every transaction built on its change is dropped too, a NISP submission
+included. Once your first registration in the Miner Dictionary confirms, the client splits your largest
+plain box into smaller ones, so a NISP submission, a fraud proof and a swap can each fund themselves
+from a box of their own. [Committing your difficulty](./runtime.mdx#committing-your-difficulty)
+explains registration. The following settings control the split:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `wallet.seed.on-initial-commitment` | `true` | `true` or `false` | Split the wallet once your first registration confirms |
+| `wallet.seed.target-utxos` | 32 | 2 to 256, and below `wallet.consolidation.target-utxos` while consolidation is on | Plain boxes to aim for, counting the box that is split |
+
+A plain box holds no tokens and is not a mining reward. The split is one transaction that pays the
+0.001 ERG minimum fee, and every new box stays at your first address. The client sizes the split by the
+following rules:
+
+- Each new box holds 0.05 ERG, or twice your NISP bond plus fees when that is more. [What submitting
+  costs](../startup-intro.mdx#what-submitting-costs) explains how the bond is priced.
+- Every plain box you already hold that can pay a fee and leave change counts toward `target-utxos`.
+- Boxes no larger than a new box may hold at most half your plain ERG. A wallet under about 3 ERG
+  therefore gets fewer boxes than the default target, and keeps one large box for large spends.
+- The split box keeps at least one new box's worth of ERG.
+- Only a box that is in a block and not held for another send can be split.
+
+**The split runs once, and only for a new registration.** The client checks once a minute until your
+registration confirms. It splits only a registration declared within the last 720 blocks, about a day
+at Ergo's 2-minute block time, so a miner registered before that keeps the wallet as it is. A restart
+within that day checks again and finds nothing to do once the wallet has reached its target.
+
+If the split ends short of `target-utxos`, the client logs at `WARN` how much plain ERG a full split
+needs. For a wallet holding one box of 1.2 ERG and new boxes of 0.05 ERG, the warning reads:
+
+```text
+Wallet seed ended at 13 of 32 plain boxes. A full seed needs about 3.100 ERG in plain boxes and this
+wallet held 1.200 ERG. ERG added now is seeded only if the client restarts within about a day of
+registering
+```
+
+To fill the rest, send the difference between the two figures to your first address in one
+transaction, then restart the client within the day.
+Like any box, a new box left unspent for four years owes up to about 0.1 ERG of storage rent.
+
+Startup refuses a `target-utxos` at or above `wallet.consolidation.target-utxos` while consolidation
+is on, because consolidation would merge the new boxes back together. With `on-initial-commitment` off,
+the client never splits your wallet.
 
 ## Consolidation
 

@@ -196,7 +196,7 @@ function PositionsCard({ list }) {
                       setOpen(null);
                     }}
                     actLabel={p.status === 'refundable' ? 'Refund both margins' : 'Settle now'}
-                    note="Anyone can settle a finished position, and Lithos clients do it on their own, by broadcast from block 96 of an epoch at the latest. Settling now pays the 0.001 ERG fee out of the position and gives you the builder's reward."
+                    note="Anyone can settle a finished position, and Lithos clients do it on their own, by broadcast from an epoch's fourth block by default. Settling now pays the 0.001 ERG fee out of the position and gives you the builder's reward."
                     rows={(q) => [
                       ['Long receives', `${fmtLitFull(q.owedLong, 2)} LIT`],
                       ['Short receives', `${fmtLitFull(q.owedShort, 2)} LIT`],

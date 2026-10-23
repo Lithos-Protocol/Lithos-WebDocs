@@ -176,9 +176,14 @@ blocks, yours included, which carry it fee-less. From then on your client broadc
 | `batching.forwards.maxTrackedOrders` | 512 | 1 to 4096 | Due positions held between scans. Boxes are reloaded before settling |
 | `batching.forwards.maxOrdersPerBlock` | 10 | 1 to 100 | Transactions one broadcast pass sends, the recording included |
 | `batching.forwards.broadcast` | `true` | `true` or `false` | Broadcast recordings and settlements from `broadcastAfterBlocks` onward |
-| `batching.forwards.broadcastAfterBlocks` | 96 | 0 to 120 | Blocks into each epoch before broadcasting starts |
+| `batching.forwards.broadcastAfterBlocks` | 3 | 0 to 120 | Blocks into each epoch before broadcasting starts |
 | `batching.forwards.skippedOrderTtlMs` | 3600000 | 60000 to 86400000 ms | How long a position that could not be built is left out |
 | `batching.forwards.maxSkippedOrders` | 4096 | 0 to 100000 | Such positions remembered at once, oldest forgotten first |
+
+**The default of 3 leaves Lithos blocks two chances an epoch.** The Lithos client can record an epoch in
+a block only once the epoch's second block is on chain. At 3, the epoch's third and fourth blocks can
+carry the work fee-less, and your client broadcasts it once the fourth block is on chain. At 0 or 1,
+your client broadcasts every recording.
 
 A settlement pays its broadcast fee out of the position's own ERG. A recording that no settlement
 carries pays its 0.001 ERG fee from your wallet, at most once an epoch, which is about 0.006 ERG a day.

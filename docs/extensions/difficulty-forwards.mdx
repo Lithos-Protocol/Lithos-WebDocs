@@ -175,8 +175,9 @@ Your offer locks its margin, 7.5 LIT and 0.002 ERG until a taker fills it or you
 
 ## Settlement and refunds
 
-Lithos clients settle a finished position on their own, either in a Lithos block or by broadcast later
-in the epoch. You can also settle any finished position yourself from **Portfolio**, which pays the
+Lithos clients settle a finished position on their own. A Lithos block can carry the settlement from
+the third block of the window's last epoch. Once the fourth block is on chain, clients broadcast the
+settlement by default. You can also settle any finished position yourself from **Portfolio**, which pays the
 0.001 ERG fee out of the position and gives you the 5 LIT the settler keeps, or 10 LIT if the same
 transaction records the current epoch.
 

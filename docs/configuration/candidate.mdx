@@ -251,20 +251,24 @@ the client logs a warning once.
 ### Storage rent
 
 Storage rent collects boxes nobody has touched for four years, which Ergo permits anyone to spend. It
-ships on, and it has three settings of its own:
+ships on, and it has the following four settings of its own:
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `stratum.candidate.sources.rent.startHeight` | 837000 | 0 to 100000000 | Inclusion height the walk begins at |
+| `stratum.candidate.sources.rent.startBehindBlocks` | 720 | 0 to 1000000 | Blocks behind the due frontier the walk begins at, measured when the client starts |
 | `stratum.candidate.sources.rent.scanIntervalMs` | 30000 | 1000 to 3600000 ms | Gap between scan passes |
 | `stratum.candidate.sources.rent.blocksPerScan` | 200 | 1 to 10000 | Blocks one pass reads. Two node calls each |
+| `stratum.candidate.sources.rent.lookaheadBlocks` | 100 | 0 to 10000 | Blocks the walk reads past those whose boxes are already due |
 
 Discovery walks the chain by inclusion height rather than reading the whole UTXO set. A box created at
-height `h` becomes collectable at `h + 1051200`, so the walk trails four years behind the tip and every
-box it meets there is old enough by construction.
+height `h` becomes collectable at `h + 1051200`, measured from the creation height the box declares.
+Wallets usually declare a height a few blocks before the box is included, so the walk reads
+`lookaheadBlocks` past the due frontier and holds each box it finds until the box falls due.
 
-**Set `startHeight` to roughly where collection has already caught up**, not to zero. The early chain
-was swept long ago and walking it costs node reads for nothing.
+The due frontier is the newest block whose boxes are all collectable in the next block. Other
+collectors sweep boxes as soon as they fall due, so the chain behind the frontier holds almost nothing
+to collect. `startBehindBlocks` sets how far back the walk begins, and so how long it takes to catch up
+when the client starts.
 
 A collection is two transactions: the sweep, and one that folds what it took into a single box of
 yours. That is why the source needs `maxTxs` of at least 2 while it is on. Its `maxCost` is twice the

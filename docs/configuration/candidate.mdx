@@ -90,6 +90,7 @@ This can potentially slow down mining, especially if the two jobs are sent in qu
 | Setting | Default | Range | What it does |
 |---|---|---|---|
 | `stratum.candidate.mempoolRefreshMs` | 20000 | 0 to 3600000 ms | Milliseconds between mid-block package rebuilds. `0` mines the block's initial transaction set and never rebuilds |
+| `stratum.candidate.cacheRefreshMs` | 30000 | 20000 to 55000 ms | Milliseconds between re-sending the served package to your Ergo node, so the node still accepts a block found on the job your rigs are mining |
 | `stratum.candidate.minCandidateChangeRevenue` | 1000000 | 0 to 9223372036854775807 nanoERG | Extra package revenue required before a mid-block job change is worth making |
 | `stratum.candidate.refreshForProtocolTxs` | `true` | `true` or `false` | Also change the job when a rebuilt package adds rollup or emission transactions |
 | `stratum.candidate.minNewProtocolTxs` | 1 | 1 to 1000 | Rollup or emission transactions a rebuilt package must add before the job changes |
@@ -112,6 +113,20 @@ software, and at most one happens per `mempoolRefreshMs`.
 
 The client keeps the current job, whatever the rebuild adds, when a source that contributed to the
 current job did not answer the rebuild in time. Switching would drop that source's work from the block.
+
+`cacheRefreshMs` keeps the job your rigs are mining valid at your Ergo node. The Ergo node holds only
+its two latest candidates and accepts a block only if it was mined on one of them. Once a candidate is
+60 seconds old, the Ergo node replaces it with a candidate of its own the next time its mempool changes.
+After two replacements, a block your rigs find on the current job is refused. Every `cacheRefreshMs`,
+the client sends the package it is serving to the Ergo node again:
+
+- If the Ergo node still holds the candidate, nothing changes and your mining software keeps its job.
+- If the Ergo node has replaced the candidate, the Ergo node builds a new candidate from the same
+  package and your mining software gets a new job. The client logs `Node had replaced the served
+  candidate` each time.
+
+Keep `cacheRefreshMs` below the Ergo node's `blockCandidateGenerationInterval`, which is 60 seconds
+unless you changed it in the Ergo node's config.
 
 `blockTxTimeout` tells you how long the client will wait before sending its best effort candidate to the stratum.
 In some cases, transaction sources can take a while, so before `blockTxTimeout` is hit, the candidate builder will

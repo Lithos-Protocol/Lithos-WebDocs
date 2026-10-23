@@ -128,7 +128,9 @@ can change that age with
 typical rather than guaranteed.
 
 `0` posts at the floor and offers nothing. Any other value must be at least `1000000` (0.001 ERG), so
-the miner's fifth is worth more than the output it arrives in.
+the miner's fifth is worth more than the output it arrives in. Miners running this client compare
+priority fees in [steps of 0.005 ERG](./candidate.mdx#which-box-your-block-spends), so a fee under
+`5000000` ranks no higher than `0`.
 
 :::warning Past 0.085 ERG the block reward no longer covers your principal
 The lender receives the 3 ERG block reward plus the block's transaction fees. Above `85000000`

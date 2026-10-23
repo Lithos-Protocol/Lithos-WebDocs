@@ -44,8 +44,14 @@ The box is chosen afresh at every block height and kept for the rest of that hei
 
 1. If any box has been live for `clearanceAge` blocks or more, the oldest of those is drawn, whatever
    the others offer.
-2. Otherwise the box offering the finder the largest priority fee is drawn. Boxes tied on that fee are
-   drawn at random, whatever their age.
+2. Otherwise the box offering the finder the largest priority fee is drawn. Fees compare by the
+   finder's fifth, rounded down to whole 0.001 ERG steps, and boxes in the same step are drawn at
+   random, whatever their age.
+
+**Bids compare in steps of 0.005 ERG of priority fee.** A priority fee of 0.012 ERG gives the finder
+0.0024 ERG and ties with one of 0.010 ERG, which gives 0.002 ERG. Any priority fee under 0.005 ERG ties
+with a box that offers nothing. To outbid another lender, offer enough to reach the next step.
+Overdue boxes of the same age compare the same way.
 
 The default of 7200 blocks is about 10 days on mainnet. Until a box reaches it, lenders compete on
 priority fee alone, which is what makes paying one worth anything. The age rule then clears boxes that

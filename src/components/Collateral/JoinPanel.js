@@ -14,13 +14,12 @@ const QUICK_COUNTS = [1, 5, 10, 25];
 const QUOTE_DEBOUNCE_MS = 320;
 
 /*
- * Priority-fee presets, in ERG. Miners compare fees in 0.005 ERG steps, so the
- * first non-zero one is the smallest fee that outranks none. The last is the
- * break-even the client reports (0.085 ERG) — past that a position costs more
- * than the block reward returns, so it is the top of the useful range rather
- * than a limit.
+ * Priority-fee presets, in ERG. The first non-zero one is the minimum the client
+ * accepts and the last is the break-even it reports (0.085 ERG) — past that a
+ * position costs more than the block reward returns, so it is the top of the
+ * useful range rather than a limit.
  */
-const QUICK_FEES = ['0', '0.005', '0.01', '0.085'];
+const QUICK_FEES = ['0', '0.001', '0.01', '0.085'];
 
 export default function JoinPanel() {
   const { market, refresh, refreshWallet } = useCollateral();
@@ -298,7 +297,7 @@ export default function JoinPanel() {
           <div className={s.cmPermitNote}>
             Added to your collateral box on top of the principal, so it raises what the position
             locks up one for one. Miners spend whichever box pays them most, comparing fees in
-            steps of 0.005 ERG, so a fee under 0.005 ERG ranks with the boxes offering nothing. The
+            steps of 0.001 ERG, which is what moves you ahead of the boxes offering nothing. The
             minimum is 0.001 ERG.
           </div>
         </div>

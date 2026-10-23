@@ -44,7 +44,7 @@ candidate on the critical path. The client prepares for it in advance:
 - **The collateral set is held in memory.** The client keeps the live collateral boxes, up to 100,
   loaded ahead of time and refreshes them after every block. Nothing is fetched while a block waits.
 - **A box is chosen per block.** The box offering the finder the largest priority fee wins. Fees
-  compare in steps of 0.005 ERG, and the box is drawn at random among those in the highest step. A box that has been live for `clearanceAge` blocks, 7200 by
+  compare in steps of 0.001 ERG, and the box is drawn at random among those in the highest step. A box that has been live for `clearanceAge` blocks, 7200 by
   default, is taken ahead of every bid, oldest first, so no box waits forever. Setting
   `collateralStrategy` to `random` draws uniformly instead. Boxes paying into a rollup chain this
   release does not build are never drawn, as [Boxes your block never spends](../configuration/candidate.mdx#boxes-your-block-never-spends)

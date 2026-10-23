@@ -90,6 +90,31 @@ The spendable balance, `nanoErgs` on the same response, leaves held boxes out, a
 priced against it. If a quote reports a shortfall while your node wallet shows enough ERG, these two
 fields show how much is held. See [Wallet balances and lending status](../lithosapi/get-wallet-balances.api.mdx).
 
+### When held boxes are released
+
+A box held for a send stays held until the chain shows what happened to that send. When a block spends
+one of the send's inputs, the client releases its boxes, and those of every send built on it, without any
+setting involved. The following settings cover a send that leaves your node's mempool with none of its
+inputs spent, for example after a node restart:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `wallet.reconcile.cancel-stale-sends` | `true` | `true` or `false` | Cancel such a send on chain |
+| `wallet.reconcile.cancel-after-blocks` | 20 | 5 to 1440 | Blocks a send stays out of the mempool before it is cancelled |
+| `wallet.reconcile.hold-ceiling-ms` | 21600000 | 3600000 to 604800000 ms | Longest a box stays held without proof of what happened to it |
+
+To cancel a send, the client sends one of its wallet inputs back to your first address and pays the
+0.001 ERG minimum fee. Once that transaction confirms, the old send can never be mined, and the client
+frees the rest of its boxes. If the old send is mined first, the cancellation fails and costs nothing.
+The client never cancels a NISP submission or a fraud proof.
+
+**Past `hold-ceiling-ms`, the client settles the send from the chain alone.** It drops the inputs the
+chain has spent and frees the unspent ones. If the send is mined after that, a freed box may also have
+funded another transaction, and one of the two fails. The client logs every cancellation and every
+release at the ceiling at `WARN`.
+
+A send still in your node's mempool is never cancelled or released, however long it waits.
+
 ## Consolidation
 
 Consolidation merges your own wallet boxes back together. It ships **off**, because a miner who never

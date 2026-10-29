@@ -688,13 +688,9 @@ export const cancelOrder = (boxId) =>
 /**
  * GET /wallet/balances
  *
- * Replaces the old `/wallet/balance` and the collateral panel's
- * `/collateral/wallet`, so both sections describe the same instant. Needs an
- * api_key, which the balance read did not previously — without one the balance
- * simply reads as unavailable.
- *
- * `nanoErgs` is the SPENDABLE balance: unreserved boxes plus matured rewards,
- * not the node's total. It is what a join quote's `affordNow` is decided
- * against, so the two now agree.
+ * Needs an api_key; without one the balance reads as unavailable. `nanoErgs`
+ * is the SPENDABLE balance: unreserved plain boxes, not the node's total, and
+ * not unclaimed rewards. Each token carries `verified`, and verified tokens an
+ * `icon` path on this client.
  */
 export const getWalletBalances = () => req('/wallet/balances', { auth: true });

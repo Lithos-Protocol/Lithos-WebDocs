@@ -85,7 +85,7 @@ it or the reserve for critical work shrinks.
 
 A box the client has taken for a transaction in flight, or for a transaction carried in your own
 blocks, is held: nothing else can spend it until that work confirms or fails. `GET /wallet/balances`
-reports the held boxes under `collateral`, in the following fields:
+reports the held boxes in the following fields:
 
 | Field | What it reports |
 |---|---|
@@ -233,7 +233,7 @@ with the box count.
 A sweep takes the smallest rewards first, up to `max-inputs` per transaction, so dust merges into the
 early transactions. Each transaction pays the 0.001 ERG minimum fee.
 
-**Claim** in the Collateral web panel, or `POST /collateral/rewards/claim`, sweeps at once whatever
+**Claim** in the Collateral web panel, or `POST /wallet/rewards/claim`, sweeps at once whatever
 `interval-ms` says. With the sweep off, unlocked rewards stay where they are until you claim them. See
 [Claim unlocked block rewards](../lithosapi/claim-collateral-rewards.api.mdx).
 

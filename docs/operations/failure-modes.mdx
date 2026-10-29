@@ -41,7 +41,7 @@ expected.
 | `EngineWalletState could not cover <n> nanoERG` | The wallet could not fund a transaction | Query the **Ergo node's** `/wallet/status` endpoint, not the Lithos API. If the wallet is unlocked, inspect the preceding wallet-refresh line for the available, reserved, reward and partial counts, and report those with the requested amount |
 
 Do not compare a consolidation target with the raw UTXO total. Check the reward-box count
-separately, using the **Lithos client's** `/collateral/rewards` endpoint, because reward boxes are
+separately, using the **Lithos client's** `/wallet/rewards` endpoint, because reward boxes are
 not eligible consolidation inputs.
 
 ## Consolidation

@@ -12,8 +12,8 @@
 /*
  * Base URL and API key both live in the Dex module and are re-exported here.
  *
- * Both sections talk to the same client — they share `/wallet/balances` — so a
- * second, separately-editable host or key could only disagree with the first.
+ * Both sections talk to the same client and both read `/wallet/*`, so a second,
+ * separately-editable host or key could only disagree with the first.
  */
 import {
   getApiKey,
@@ -226,7 +226,6 @@ export const getMiningBuckets = ({ from, until, interval = 'day' }) =>
    Wallet-scoped state
    ============================================================ */
 
-/** GET /collateral/wallet — balances, config echo, keys, positions, rewards. */
 /*
  * Which token in the wallet is LIT.
  *
@@ -255,31 +254,37 @@ function litTokenId() {
 }
 
 /**
- * GET /wallet/balances
- *
- * One endpoint for both sections now. The collateral half moved under
- * `collateral`, and `primaryAddress` / spendable ERG live on the parent — so
- * this flattens them back together for the panels, which want one object.
+ * GET /collateral/wallet, /wallet/balances and /wallet/rewards, flattened into
+ * the one object the panels want: lending status, spendable and reserved ERG,
+ * tokens, and `rewards`. Read together so a refresh moves them as one.
  *
  * `litBalance` is null when the token could not be identified, which the UI
  * shows as unavailable. Guessing would be worse: a wrong balance looks right.
  */
 export const getWallet = async () => {
-  const [r, litId] = await Promise.all([req('/wallet/balances', { auth: true }), litTokenId()]);
-  const tokens = r.tokens ?? [];
+  const [status, balances, rewards, litId] = await Promise.all([
+    req('/collateral/wallet', { auth: true }),
+    req('/wallet/balances', { auth: true }),
+    getRewards(),
+    litTokenId(),
+  ]);
+  const tokens = balances.tokens ?? [];
   const lit = litId ? (tokens.find((tk) => tk.tokenId === litId) ?? null) : null;
   return {
-    ...(r.collateral ?? {}),
-    primaryAddress: r.primaryAddress,
-    spendableNanoErgs: r.nanoErgs,
+    ...status,
+    rewards,
+    primaryAddress: balances.primaryAddress,
+    spendableNanoErgs: balances.nanoErgs,
+    reservedBoxes: balances.reservedBoxes,
+    reservedNanoErgs: balances.reservedNanoErgs,
     litBalance: litId ? (lit?.amount ?? '0') : null,
     litTokenId: litId,
     tokens,
   };
 };
 
-/** GET /collateral/rewards — reward summary alone (same shape as wallet.rewards). */
-export const getRewards = () => req('/collateral/rewards', { auth: true });
+/** GET /wallet/rewards — this wallet's coinbase reward boxes, locked and unlocked. */
+export const getRewards = () => req('/wallet/rewards', { auth: true });
 
 /**
  * GET /stats/collateral/earnings — this wallet's collateral that Lithos blocks spent, newest first, with
@@ -292,11 +297,11 @@ export const getLendingEarnings = ({ offset, limit } = {}) =>
 export const MAX_LENDING_PAGE = 500;
 
 /**
- * POST /collateral/rewards/claim — sweeps ALL unlocked coinbases to EIP-3 index 0.
+ * POST /wallet/rewards/claim — sweeps ALL unlocked coinbases to EIP-3 index 0.
  * Dust is consolidated, never dropped. 400 means nothing unlocked or a claim is
  * already running; nothing was lost either way.
  */
-export const claimRewards = () => req('/collateral/rewards/claim', { method: 'POST', auth: true });
+export const claimRewards = () => req('/wallet/rewards/claim', { method: 'POST', auth: true });
 
 /* ============================================================
    Join flow

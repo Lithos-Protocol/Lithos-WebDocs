@@ -6,6 +6,12 @@ import { big, fmtErgAmount, fmtInt, shortId } from './format';
 import { Alert, Spinner } from './ui';
 import { BID, BID_DIM, BREAK_EVEN_NANO } from './feeMarket';
 import ClearanceCard from './ClearanceCard';
+import SelectionCard from './SelectionCard';
+import { Pager } from '../Extensions/ui';
+import m from '../Mining/styles.module.css';
+
+/** Bars per page on each side of the book. 100 is the most the queue endpoint returns at once. */
+const BOOK_PAGE_SIZES = [20, 50, 100];
 
 const W = 520;
 const H = 230;
@@ -214,12 +220,22 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
   const [active, setActive] = useState(null);
   const [queue, setQueue] = useState(null);
   const [error, setError] = useState(null);
+  const [livePage, setLivePage] = useState(0);
+  const [queuePage, setQueuePage] = useState(0);
+  const [pageSize, setPageSize] = useState(BOOK_PAGE_SIZES[0]);
+  const resize = (size) => {
+    setPageSize(size);
+    setLivePage(0);
+    setQueuePage(0);
+  };
 
+  // The live set holds at most 100 boxes, so one read covers it and pages are cut here, best bid first.
+  // The queue can be longer, and the client lists it in queue order, so each page is its own read.
   const load = useCallback(async () => {
     try {
       const [a, q] = await Promise.all([
         api.getActive({ limit: 100 }),
-        api.getQueue({ limit: 100 }),
+        api.getQueue({ limit: pageSize, offset: queuePage * pageSize }),
       ]);
       setActive(a ?? []);
       setQueue(q ?? []);
@@ -229,7 +245,7 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
       setQueue(null);
       setError(e.message);
     }
-  }, []);
+  }, [queuePage, pageSize]);
 
   useEffect(() => {
     load();
@@ -261,22 +277,39 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
       (queue ?? [])
         .map((b) => ({
           boxId: b.boxId,
+          position: Number(b.position ?? 0),
           bid: big(b.priorityFeeNanoErgs ?? '0'),
           caption: `position #${fmtInt(b.position)}`,
         }))
-        .sort((x, y) => Number(x.position ?? 0) - Number(y.position ?? 0)),
+        .sort((x, y) => x.position - y.position),
     [queue],
   );
 
+  const livePages = Math.max(1, Math.ceil(liveRows.length / pageSize));
+  const queuePages = Math.max(1, Math.ceil(Number(market?.queueLength ?? queuedRows.length) / pageSize));
+  // A shrinking set must not strand either side on a page past its end.
+  useEffect(() => {
+    if (livePage > livePages - 1) setLivePage(livePages - 1);
+  }, [livePage, livePages]);
+  useEffect(() => {
+    if (queuePage > queuePages - 1) setQueuePage(queuePages - 1);
+  }, [queuePage, queuePages]);
+  const liveShown = useMemo(
+    () => liveRows.slice(livePage * pageSize, (livePage + 1) * pageSize),
+    [liveRows, livePage, pageSize],
+  );
+
+  // One scale for the two pages on screen, so the sides still compare bar for bar.
   const maxBid = useMemo(() => {
-    const all = [...liveRows, ...queuedRows].map((r) => r.bid);
+    const all = [...liveShown, ...queuedRows].map((r) => r.bid);
     return all.reduce((a, b) => (b > a ? b : a), 0n);
-  }, [liveRows, queuedRows]);
+  }, [liveShown, queuedRows]);
 
   const bidding = fees ? Number(fees.bidding ?? 0) : 0;
   const observed = fees ? bidding + Number(fees.atFloor ?? 0) : 0;
   const best = fees ? big(fees.bestNanoErg ?? '0') : 0n;
   const basis = settled != null && fees ? best - settled : null;
+  const queueStats = stats?.queue;
 
   return (
     <>
@@ -291,6 +324,23 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
               ? `${fmtInt(bidding)} of ${fmtInt(observed)} live boxes bidding`
               : 'waiting for the client…'
           }
+        />
+        <Kpi
+          label="Best queued bid"
+          value={queueStats ? fmtErgAmount(queueStats.bestNanoErg, 4) : '—'}
+          unit="ERG"
+          sub={
+            queueStats
+              ? `${fmtInt(queueStats.bestStepBoxes)} of ${fmtInt(queueStats.boxes)} queued in its 0.001 step`
+              : 'waiting for the client…'
+          }
+        />
+        <Kpi
+          label="Bid to be first"
+          value={queueStats ? fmtErgAmount(queueStats.firstNanoErg, 3) : '—'}
+          unit="ERG"
+          accent
+          sub="ahead of every box queued now"
         />
         <Kpi
           label="Median bid"
@@ -322,7 +372,24 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
       </div>
 
       <div className={s.card}>
-        <h3 className={s.cardTitle}>The book</h3>
+        <div className={s.cmBookTitleRow}>
+          <h3 className={s.cardTitle}>The book</h3>
+          <span className={s.cmBookSize}>
+            <span className={m.label}>boxes per side</span>
+            <select
+              className={m.pageSelect}
+              value={pageSize}
+              onChange={(e) => resize(Number(e.target.value))}
+              aria-label="Boxes per page on each side of the book"
+            >
+              {BOOK_PAGE_SIZES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </span>
+        </div>
         <p className={s.cardDesc}>
           A miner spends whichever collateral box pays it most, so these bids are an order book.
           On the left is what a miner can take right now; on the right is what the queue will
@@ -347,30 +414,52 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
           </div>
         ) : (
           <div className={s.cmBook}>
-            <BidBars
-              rows={liveRows}
-              maxBid={maxBid}
-              title="Live"
-              subtitle={`${fmtInt(liveRows.length)} spendable now`}
-              xLabel="boxes, best bid first"
-              emptyNote={
-                liveRows.length === 0
-                  ? 'No live collateral boxes.'
-                  : `None of the ${fmtInt(liveRows.length)} live boxes have posted a bid.`
-              }
-            />
-            <BidBars
-              rows={queuedRows}
-              maxBid={maxBid}
-              title="Queued"
-              subtitle={`${fmtInt(queuedRows.length)} waiting`}
-              xLabel="queue position, head first"
-              emptyNote={
-                queuedRows.length === 0
-                  ? 'Nothing waiting in the queue.'
-                  : `None of the ${fmtInt(queuedRows.length)} queued positions have posted a bid yet.`
-              }
-            />
+            <div>
+              <BidBars
+                rows={liveShown}
+                maxBid={maxBid}
+                title="Live"
+                subtitle={`${fmtInt(liveRows.length)} spendable now`}
+                xLabel={
+                  livePages > 1
+                    ? `boxes ${fmtInt(livePage * pageSize + 1)}–${fmtInt(livePage * pageSize + liveShown.length)}, best bid first`
+                    : 'boxes, best bid first'
+                }
+                emptyNote={
+                  liveRows.length === 0
+                    ? 'No live collateral boxes.'
+                    : `None of these ${fmtInt(liveShown.length)} live boxes have posted a bid.`
+                }
+              />
+              {livePages > 1 && (
+                <div className={s.cmBookPager}>
+                  <Pager page={livePage} pages={livePages} onPage={setLivePage} />
+                </div>
+              )}
+            </div>
+            <div>
+              <BidBars
+                rows={queuedRows}
+                maxBid={maxBid}
+                title="Queued"
+                subtitle={`${fmtInt(market?.queueLength ?? queuedRows.length)} waiting`}
+                xLabel={
+                  queuePages > 1
+                    ? `positions ${fmtInt(queuePage * pageSize + 1)}–${fmtInt(queuePage * pageSize + queuedRows.length)}, head first`
+                    : 'queue position, head first'
+                }
+                emptyNote={
+                  queuedRows.length === 0
+                    ? 'Nothing waiting in the queue.'
+                    : `None of these ${fmtInt(queuedRows.length)} queued positions have posted a bid yet.`
+                }
+              />
+              {queuePages > 1 && (
+                <div className={s.cmBookPager}>
+                  <Pager page={queuePage} pages={queuePages} onPage={setQueuePage} />
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -432,6 +521,7 @@ export default function FeeBookPanel({ stats, statsError, loading, settled }) {
       </div>
 
       <ClearanceCard active={active} />
+      <SelectionCard selection={stats?.selection} />
     </>
   );
 }

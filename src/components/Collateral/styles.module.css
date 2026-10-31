@@ -233,8 +233,10 @@
   text-decoration: none;
 }
 
-.tabActive,
-.tabActive:hover {
+/* Two classes, so the active tab outranks `.tab` wherever the minifier puts this rule: it merges identical
+   rules across modules, which can land this one before `.tab`. */
+.tab.tabActive,
+.tab.tabActive:hover {
   background: var(--cur-grad-btn);
   color: #060913;
   font-weight: 600;
@@ -2765,6 +2767,18 @@
   line-height: 1.65;
 }
 
+.cmBookPager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.cardNote {
+  font-size: 11.5px;
+  color: var(--cur-dim);
+  line-height: 1.6;
+}
+
 .cmChartFoot {
   margin-top: 10px;
   padding-top: 10px;
@@ -3394,4 +3408,18 @@
   .lnTr > :nth-child(8) {
     display: none;
   }
+}
+
+.cmBookTitleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cmBookSize {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }

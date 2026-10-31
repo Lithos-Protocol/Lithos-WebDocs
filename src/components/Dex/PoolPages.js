@@ -10,6 +10,7 @@ import { PoolDepositCard, PoolRedeemCard, PoolSwapCard } from './PoolTrade';
 import PoolOrdersCard from './PoolOrdersCard';
 import { PoolInfoCard, VerifiedOnlyCard } from './PoolParts';
 import { poolTrust } from './pools';
+import NftLookupCard from './NftLookupCard';
 
 /**
  * This wallet's balance and a placement counter, for the order cards of a pool other than ERG:LIT. A placement
@@ -55,7 +56,13 @@ export function LiquidityPage() {
   const { isCanonical, selected } = useDex();
   const { balance, version, placed } = usePoolWallet();
   if (!selected) return null;
-  if (isCanonical) return <LiquidityPanel />;
+  if (isCanonical)
+    return (
+      <>
+        <LiquidityPanel />
+        <NftLookupCard />
+      </>
+    );
   return (
     <>
       <div className={s.cols}>
@@ -63,6 +70,7 @@ export function LiquidityPage() {
         <PoolRedeemCard pool={selected} version={version} onPlaced={placed} />
       </div>
       <PoolOrdersCard pool={selected} version={version} />
+      <NftLookupCard />
     </>
   );
 }

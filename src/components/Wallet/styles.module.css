@@ -695,3 +695,21 @@
   padding-top: 6px;
   border-top: 1px solid rgba(125, 211, 252, 0.08);
 }
+
+/* A provision check's rows outside a hover card, as the LithosDex liquidity lookup shows them. */
+.lookupStats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--cur-bg-well);
+  border: 1px solid rgba(125, 211, 252, 0.08);
+  border-radius: 12px;
+  font-size: 12.5px;
+}
+
+.lookupLink {
+  align-self: flex-end;
+  font-size: 12px;
+}

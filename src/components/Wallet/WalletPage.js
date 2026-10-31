@@ -7,12 +7,13 @@ import s from './styles.module.css';
 import * as api from './api';
 import useAutoRefresh from '../Dex/useAutoRefresh';
 import { Alert, Spinner, GearIcon, TxResult } from '../Dex/ui';
-import { fmtErg, fmtErgAmount, fmtToken, fmtTokenAmount, fmtInt, fmtPct, hasAny, shortId, big } from '../Dex/format';
-import { pairLabel, kindLabel, poolTrust, fmtSide } from '../Dex/pools';
+import { fmtErg, fmtErgAmount, fmtToken, fmtTokenAmount, fmtInt, shortId, big } from '../Dex/format';
+import { pairLabel } from '../Dex/pools';
 import { Pager, PageSize, usePaged } from '../Extensions/ui';
 import SettingsPanel from './SettingsPanel';
 import TokenIcon, { PairIcons, TrustBadge, tokenLabel } from './TokenIcon';
 import { CopyButton, KeyGate, FilterChips } from './ui';
+import { ProvisionStats, RedeemedStats } from './ProvisionStats';
 
 const BAND_LINES = [46, 89, 130, 169, 206, 243, 280];
 
@@ -89,6 +90,7 @@ function statusOf(t, check, pending) {
   if (t.verified) return 'verified';
   if (check?.provisionNft) return 'provision';
   if (pending) return 'checking';
+  if (check?.redeemed) return 'redeemed';
   if (check && ldNamed(t)) return 'fakeNft';
   return 'unverified';
 }
@@ -109,59 +111,9 @@ function Balance({ t }) {
   );
 }
 
-/** What a provision check found for an NFT that owns one: its pool, its stake and its fees. */
-function ProvisionStats({ c }) {
-  const { pool, provision: p } = c;
-  const both = (ax, ay) =>
-    `${fmtSide(ax, pool.tokenX)} ${tokenLabel(pool.tokenX)} + ${fmtSide(ay, pool.tokenY)} ${tokenLabel(pool.tokenY)}`;
-  return (
-    <>
-      <span className={s.hoverRow}>
-        <span>Pool</span>
-        <span>
-          {pairLabel(pool)} ({kindLabel(pool.kind)})
-        </span>
-      </span>
-      <span className={s.hoverRow}>
-        <span>Pool list</span>
-        <TrustBadge status={poolTrust(pool)} />
-      </span>
-      <span className={s.hoverRow}>
-        <span>Shares</span>
-        <span>{fmtInt(p.shares)}</span>
-      </span>
-      <span className={s.hoverRow}>
-        <span>Share of pool</span>
-        <span>{fmtPct(p.shareOfSupply, 4)}</span>
-      </span>
-      <span className={s.hoverRow}>
-        <span>Liquidity now</span>
-        <span>{both(c.amountX, c.amountY)}</span>
-      </span>
-      <span className={s.hoverRow}>
-        <span>Claimable fees</span>
-        <span>{hasAny(p.claimableX, p.claimableY) ? both(p.claimableX, p.claimableY) : 'none yet'}</span>
-      </span>
-      {p.awaitingFlush && (
-        <span className={s.hoverRow}>
-          <span>Awaiting a flush</span>
-          <span>{both(p.unflushedX, p.unflushedY)}</span>
-        </span>
-      )}
-      <span className={s.hoverRow}>
-        <span>Opened</span>
-        <span>block {fmtInt(p.createdHeight)}</span>
-      </span>
-      <span className={s.hoverRow}>
-        <span>Checked at</span>
-        <span>{new Date(c.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-      </span>
-    </>
-  );
-}
-
 const PROVISION_TEXT = {
   checking: 'Checking',
+  redeemed: 'Closed: this NFT owned a provision since redeemed',
   fakeNft: 'None: the name copies an LD-NFT',
   unverified: 'None',
 };
@@ -194,7 +146,9 @@ function TokenHover({ t, check, status, candidate }) {
         </span>
       )}
       {c ? (
-        <ProvisionStats c={c} />
+        <ProvisionStats c={c} checkedAt={c.at} />
+      ) : check?.redeemed ? (
+        <RedeemedStats c={check} />
       ) : (
         <>
           <span className={s.hoverRow}>

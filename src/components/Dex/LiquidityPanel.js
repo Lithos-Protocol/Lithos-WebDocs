@@ -1,35 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from '@docusaurus/Link';
 import s from './styles.module.css';
+import pp from './pools.module.css';
 import * as api from './api';
 import { useDex } from './DexLayout';
-import {
-  fmtErg,
-  fmtToken,
-  fmtErgMin,
-  fmtTokenMin,
-  fmtInt,
-  fmtPct,
-  parseErg,
-  big,
-  hasAny,
-  lessSlippage,
-  shortId,
-} from './format';
-import {
-  Alert,
-  TxResult,
-  Row,
-  AssetChip,
-  Spinner,
-  IdText,
-  OrderModeToggle,
-  SLIPPAGE_OPTIONS,
-} from './ui';
+import { fmtErg, fmtInt, fmtPct, parseErg, big, hasAny, lessSlippage } from './format';
+import { Alert, TxResult, Row, Spinner, OrderModeToggle, SLIPPAGE_OPTIONS } from './ui';
 import OrdersCard, { OrderPlacedResult, lockedInOrders, ORDERS_ANCHOR } from './OrdersPanel';
+import { TokenChip } from './PoolTrade';
+import { fmtSide, tokenLabel } from './pools';
+
+/** ERG as the pools list names a pool's X side, until that list has answered. */
+const ERG_SIDE = { tokenId: 'ERG', name: 'ERG', ticker: 'ERG', decimals: 9, verified: true };
 
 function DepositCard() {
-  const { pool, refresh, tick, ordersOn, orderFees, orders, reloadOrders } = useDex();
+  const { pool, selected: summary, refresh, tick, ordersOn, orderFees, orders, reloadOrders } = useDex();
   /* `hasApiKey()` is a module read, not state, but it is read during render —
      so this flips false->true on the re-render Settings triggers and the
      balance loads once a key exists. The balance is a display; the quote below
@@ -56,8 +41,9 @@ function DepositCard() {
   }, [tick, hasKey]);
 
   const mode = ordersOn ? 'order' : 'direct';
-  const dec = pool?.tokenDecimals ?? 0;
-  const name = pool?.tokenName ?? 'TOKEN';
+  const tx = summary?.tokenX ?? ERG_SIDE;
+  const ty = summary?.tokenY ?? { tokenId: pool?.tokenY, name: pool?.tokenName, decimals: pool?.tokenDecimals };
+  const both = (x, y) => `${fmtSide(x, tx)} ${tokenLabel(tx)} + ${fmtSide(y, ty)} ${tokenLabel(ty)}`;
   const raw = parseErg(ergAmount);
   const has = raw !== null && raw > 0n;
 
@@ -171,8 +157,9 @@ function DepositCard() {
     <div className={s.card}>
       <h3 className={s.cardTitle}>Add liquidity</h3>
       <p className={s.cardDesc}>
-        Deposit a balanced pair and receive a provision box recording your share and the accumulator
-        you entered at. You earn compounding liquidity and permanent fees.
+        {mode === 'order'
+          ? 'A deposit order mints you a provision when a miner fills it. The side the pool cannot match comes back.'
+          : 'Enter the ERG side; the client adds the matching token side and mints you a provision straight away.'}
       </p>
 
       <div className={s.field}>
@@ -180,11 +167,9 @@ function DepositCard() {
           <span className={s.fieldLabel}>ERG to deposit</span>
           <span className={s.fieldBalance}>
             {balance
-              ? `Balance: ${fmtErg(balance.nanoErgs)}${
-                  locked > 0n ? ` · ${fmtErg(locked)} in orders` : ''
-                }`
+              ? `Balance ${fmtErg(balance.nanoErgs)}${locked > 0n ? ` · ${fmtErg(locked)} in orders` : ''}`
               : hasKey
-                ? 'Balance: —'
+                ? 'Balance —'
                 : 'Balance hidden · set an API key'}
           </span>
         </div>
@@ -199,7 +184,7 @@ function DepositCard() {
               setResult(null);
             }}
           />
-          <AssetChip isErg tokenName={name} tokenId={pool?.tokenY} />
+          <TokenChip t={tx} />
         </div>
         <div className={s.chips}>
           {[0.25, 0.5, 0.75, 1].map((p) => (
@@ -242,42 +227,29 @@ function DepositCard() {
         </div>
       )}
 
-      {quoting && (
+      {q && !order && (
         <div className={s.summary}>
-          <Spinner /> <span className={s.rowLabel}>Quoting deposit…</span>
+          <Row label="Shares" value={fmtInt(q.direct.shares)} />
+          <Row label="Share of the pool" value={fmtPct(q.direct.shareOfSupply, 4)} />
+          <Row label="Used" value={both(q.direct.amountX, q.direct.amountY)} accent />
+          <Row label="Provision box" value={`${fmtErg(q.direct.provisionBoxValue)} ERG, returned on redeem`} />
+          <Row label="ERG out in total" value={`${fmtErg(q.direct.totalErgRequired)} ERG`} />
         </div>
       )}
 
-      {q && !quoting && !order && (
+      {q && order && (
         <div className={s.summary}>
-          <Row label="LP shares" value={fmtInt(q.direct.shares)} accent />
-          <Row label="ERG required" value={`${fmtErg(q.direct.amountX)} ERG`} />
-          <Row label={`${name} required`} value={`${fmtToken(q.direct.amountY, dec)} ${name}`} />
-          <Row label="Provision box value" value={`${fmtErg(q.direct.provisionBoxValue)} ERG`} />
-          <Row label="Total ERG out" value={`${fmtErg(q.direct.totalErgRequired)} ERG`} accent />
-          <Row label="Share of pool" value={fmtPct(q.direct.shareOfSupply, 4)} />
-        </div>
-      )}
-
-      {q && !quoting && order && (
-        <div className={s.summary}>
-          <Row label="LP shares" value={fmtInt(order.shares)} accent />
-          <Row label={`Minimum shares (${fmtPct(slippage, 1)})`} value={fmtInt(minShares)} accent />
-          <Row label="ERG offered" value={`${fmtErg(q.direct.amountX)} ERG`} />
-          <Row label={`${name} offered`} value={`${fmtToken(q.direct.amountY, dec)} ${name}`} />
-          <Row
-            label="Returned if unmatched"
-            value={`${fmtErg(order.excessX)} ERG · ${fmtToken(order.excessY, dec)} ${name}`}
-          />
-          <Row label="Provision box value" value={`${fmtErg(order.provisionBoxValue)} ERG`} />
+          <Row label="Shares" value={fmtInt(order.shares)} />
+          <Row label={`Fewest accepted (${fmtPct(slippage, 1)})`} value={fmtInt(minShares)} accent />
+          <Row label="Share of the pool" value={fmtPct(order.shareOfSupply, 4)} />
+          <Row label="Offered" value={both(q.direct.amountX, q.direct.amountY)} />
+          {hasAny(order.excessX, order.excessY) && (
+            <Row label="Returned unused" value={both(order.excessX, order.excessY)} />
+          )}
+          <Row label="Provision box" value={`${fmtErg(order.provisionBoxValue)} ERG, returned on redeem`} />
           <Row label="Executor fee" value={`${fmtErg(order.executorFee)} ERG`} />
           <Row label="Network fee" value={`${fmtErg(order.networkFee)} ERG`} />
-          <Row
-            label="Locked now"
-            value={`${fmtErg(order.totalErgRequired)} ERG + ${fmtToken(q.direct.amountY, dec)} ${name}`}
-          />
-          <Row label="Returned with the fill" value={`${fmtErg(order.ergReturned)} ERG`} />
-          <Row label="Share of pool" value={fmtPct(order.shareOfSupply, 4)} />
+          <Row label="Locked now" value={`${fmtErg(order.totalErgRequired)} ERG + ${fmtSide(q.direct.amountY, ty)} ${tokenLabel(ty)}`} />
         </div>
       )}
 
@@ -287,14 +259,16 @@ function DepositCard() {
         </Alert>
       )}
 
-      <button className={s.btn} disabled={!has || !q || quoting || submitting} onClick={submit}>
+      <button className={s.btn} disabled={!has || !q || quoting || submitting} onClick={submit} type="button">
         {submitting
           ? mode === 'order'
             ? 'Placing…'
             : 'Submitting…'
-          : mode === 'order'
-            ? 'Place order'
-            : 'Deposit liquidity'}
+          : quoting
+            ? 'Fetching quote…'
+            : mode === 'order'
+              ? 'Place deposit order'
+              : 'Deposit liquidity'}
       </button>
 
       {error && (
@@ -307,10 +281,8 @@ function DepositCard() {
         <OrderPlacedResult
           result={res}
           rows={[
-            ['ERG offered', `${fmtErg(res.order?.amountX)} ERG`],
-            [`${name} offered`, `${fmtToken(res.order?.amountY, dec)} ${name}`],
-            ['Minimum shares', fmtInt(res.order?.minShares)],
-            ['Executor fee', `${fmtErg(res.order?.executorFee)} ERG`],
+            ['Offering', both(res.order?.amountX ?? 0, res.order?.amountY ?? 0)],
+            ['Fewest shares', fmtInt(res.order?.minShares)],
           ]}
         >
           <div className={s.txNote}>
@@ -327,8 +299,7 @@ function DepositCard() {
             outcome={res.outcome}
             rows={[
               ['Shares', fmtInt(res.shares)],
-              ['ERG deposited', `${fmtErg(res.amountX)} ERG`],
-              [`${name} deposited`, `${fmtToken(res.amountY, dec)} ${name}`],
+              ['Deposited', both(res.amountX, res.amountY)],
               ['Owner NFT', res.ownerNFT],
               ['Provision box', res.provisionBoxId],
             ]}
@@ -346,9 +317,10 @@ function DepositCard() {
 }
 
 function RedeemCard() {
-  const { pool, refresh, tick, ordersOn, orderFees, reloadOrders } = useDex();
+  const { pool, selected: summary, refresh, tick, ordersOn, orderFees, reloadOrders, toggleSettings } = useDex();
+  const hasKey = api.hasApiKey();
   const [provisions, setProvisions] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [quote, setQuote] = useState(null);
   const [quoting, setQuoting] = useState(false);
@@ -359,19 +331,26 @@ function RedeemCard() {
   const [ackFees, setAckFees] = useState(false);
 
   const mode = ordersOn ? 'order' : 'direct';
-  const dec = pool?.tokenDecimals ?? 0;
-  const name = pool?.tokenName ?? 'TOKEN';
+  // The pool's two sides as the pools list names them, so amounts read as they do on every other pool
+  const tx = summary?.tokenX ?? ERG_SIDE;
+  const ty = summary?.tokenY ?? { tokenId: pool?.tokenY, name: pool?.tokenName, decimals: pool?.tokenDecimals };
+  const both = (x, y) => `${fmtSide(x, tx)} ${tokenLabel(tx)} + ${fmtSide(y, ty)} ${tokenLabel(ty)}`;
 
   const load = useCallback(() => {
-    setLoading(true);
+    if (!api.hasApiKey()) {
+      setProvisions(null);
+      return;
+    }
     api
       .listProvisions()
-      .then((r) => setProvisions(r.provisions ?? []))
-      .catch(() => setProvisions([]))
-      .finally(() => setLoading(false));
+      .then((r) => {
+        setProvisions(r.provisions ?? []);
+        setListError(null);
+      })
+      .catch((e) => setListError(e.message));
   }, []);
 
-  useEffect(load, [load, tick]);
+  useEffect(load, [load, tick, hasKey]);
 
   // A provision that went into a redeem order (here or elsewhere) can no longer be
   // redeemed; one that vanished has been closed. Either way, drop the selection.
@@ -419,7 +398,7 @@ function RedeemCard() {
     try {
       if (mode === 'order') {
         const r = await api.placeRedeemOrder({ provisionBoxId: selected });
-        setResult({ mode, data: r });
+        setResult({ mode, data: r, q });
         setSelected(null);
         setQuote(null);
         // The provision now reports its redeem order, and the placement may have
@@ -464,210 +443,146 @@ function RedeemCard() {
   const hasUnflushed = mode === 'order' && q && hasAny(q.unflushedX, q.unflushedY);
   const res = result?.data;
 
+  let body;
+  if (!hasKey) {
+    body = (
+      <div className={s.empty}>
+        Your provisions need an API key.{' '}
+        <button className={s.linkBtn} onClick={toggleSettings} type="button">
+          Open settings
+        </button>
+      </div>
+    );
+  } else if (provisions === null) {
+    body = listError ? (
+      <Alert kind="error" title="Could not read your provisions">
+        {listError}
+      </Alert>
+    ) : (
+      <div className={s.empty}>
+        <Spinner /> Reading your provisions…
+      </div>
+    );
+  } else if (provisions.length === 0) {
+    body = <div className={s.empty}>No provisions on this pool.</div>;
+  } else {
+    body = (
+      <div className={pp.provList} role="radiogroup" aria-label="Your provisions">
+        {provisions.map((x) => {
+          // In a redeem order, the owner NFT is locked away: nothing can act on
+          // the provision until that order fills or is cancelled.
+          const inOrder = !!x.redeemOrderBoxId;
+          return (
+            <label
+              key={x.boxId}
+              className={`${pp.prov} ${selected === x.boxId ? pp.provActive : ''} ${inOrder ? pp.provLocked : ''}`}
+              title={`Provision ${x.boxId}`}
+            >
+              <input
+                type="radio"
+                name="prov-canonical"
+                checked={selected === x.boxId}
+                disabled={inOrder}
+                onChange={() => {
+                  setSelected(x.boxId);
+                  setResult(null);
+                }}
+              />
+              <span className={pp.provMain}>
+                <span className={pp.provShares}>{fmtInt(x.shares)} shares</span>
+                <span className={pp.provSub}>{fmtPct(x.shareOfSupply, 4)} of the pool</span>
+              </span>
+              <span className={pp.provFees}>
+                {inOrder ? (
+                  <a className={pp.provSub} href={`#${ORDERS_ANCHOR}`}>
+                    closing: a redeem order holds its NFT
+                  </a>
+                ) : (
+                  <>
+                    <span>{both(x.claimableX, x.claimableY)}</span>
+                    <span className={pp.provSub}>fees claimable now</span>
+                  </>
+                )}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className={s.card}>
       <h3 className={s.cardTitle}>Remove liquidity</h3>
       <p className={s.cardDesc}>
         {mode === 'order'
-          ? 'A redeem order closes a provision when a miner fills it. Settled fees are claimed as the order is placed.'
-          : 'Closing a provision returns its share of the reserves. Permanent fees settle against the vault separately. Claim them first, or they are lost when the box is spent.'}
+          ? 'Placing the order claims what the vault owes the provision first. Fees still unflushed when it fills are forfeited.'
+          : 'Closing a provision returns its share of the reserves straight away. Fees it has not claimed are lost with the box.'}
       </p>
+      {body}
 
-      {loading && provisions === null ? (
-        <div className={s.empty}>
-          <Spinner /> Loading provisions…
-        </div>
-      ) : provisions?.length ? (
-        <div className={s.list}>
-          {provisions.map((p) => {
-            // In a redeem order, the owner NFT is locked away: nothing can act on
-            // the provision until that order fills or is cancelled.
-            const inOrder = !!p.redeemOrderBoxId;
-            // Anything earned but not yet claimed is forfeited when the box is
-            // spent — including the part still waiting on a flush. Flag on the
-            // full accrued amount, not just what the vault can pay today.
-            const owed = !inOrder && hasAny(p.accruedX, p.accruedY);
-            return (
-              <div
-                key={p.boxId}
-                className={`${s.item} ${selected === p.boxId ? s.itemActive : ''} ${
-                  owed ? s.itemFlagged : ''
-                } ${inOrder ? s.itemLocked : ''}`}
-                aria-disabled={inOrder || undefined}
-                onClick={() => {
-                  if (inOrder) return;
-                  setSelected(selected === p.boxId ? null : p.boxId);
-                  setResult(null);
-                }}
-              >
-                <div className={s.itemHead}>
-                  <span className={s.itemHeadLeft}>
-                    <IdText id={p.boxId} />
-                    {inOrder && (
-                      <span className={s.orderBadge} title={`Order box ${p.redeemOrderBoxId}`}>
-                        <span className={s.orderBadgeDot} />
-                        redeem order open
-                      </span>
-                    )}
-                    {owed && (
-                      <span
-                        className={s.feeBadge}
-                        title="This provision has unclaimed permanent fees: redeeming forfeits them"
-                      >
-                        <span className={s.feeBadgeDot} />
-                        unclaimed fees
-                      </span>
-                    )}
-                  </span>
-                  <span className={s.itemShare}>{fmtPct(p.shareOfSupply, 4)} of pool</span>
-                </div>
-                <div className={s.itemGrid}>
-                  <div className={s.itemCell}>
-                    <div className={s.itemCellLabel}>Shares</div>
-                    <div className={s.itemCellValue}>{fmtInt(p.shares)}</div>
-                  </div>
-                  <div className={s.itemCell}>
-                    <div className={s.itemCellLabel}>Unclaimed ERG</div>
-                    <div className={`${s.itemCellValue} ${owed ? s.valueWarn : ''}`}>
-                      {fmtErgMin(p.accruedX)} ERG
-                    </div>
-                  </div>
-                  <div className={s.itemCell}>
-                    <div className={s.itemCellLabel}>Unclaimed {name}</div>
-                    <div className={`${s.itemCellValue} ${owed ? s.valueWarn : ''}`}>
-                      {fmtTokenMin(p.accruedY, dec)} {name}
-                    </div>
-                  </div>
-                  <div className={s.itemCell}>
-                    <div className={s.itemCellLabel}>Opened at</div>
-                    <div className={s.itemCellValue}>{fmtInt(p.createdHeight)}</div>
-                  </div>
-                </div>
-                {inOrder && (
-                  <div className={s.itemNote}>
-                    Cannot be claimed or redeemed until the order fills or is cancelled.{' '}
-                    <a href={`#${ORDERS_ANCHOR}`} onClick={(e) => e.stopPropagation()}>
-                      View the order ↓
-                    </a>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className={s.empty}>No open provisions.</div>
-      )}
-
-      {quoting && (
+      {q && mode === 'direct' && (
         <div className={s.summary}>
-          <Spinner /> <span className={s.rowLabel}>Quoting redemption…</span>
+          <Row label="Returns" value={both(q.amountX, q.amountY)} accent />
+          {!q.withinMinSupply && <Row label="Status" value="The pool refuses to close its last shares" />}
         </div>
       )}
 
-      {q && !quoting && mode === 'direct' && (
+      {q && mode === 'order' && (
         <div className={s.summary}>
-          <Row label="Shares closed" value={fmtInt(q.shares)} />
-          <Row label="ERG returned" value={`${fmtErg(q.amountX)} ERG`} accent />
-          <Row label={`${name} returned`} value={`${fmtToken(q.amountY, dec)} ${name}`} accent />
-          {!q.withinMinSupply && (
-            <Row label="Blocked" value="Would take supply under CONST_MIN_SUPPLY" />
-          )}
-        </div>
-      )}
-
-      {q && !quoting && mode === 'order' && (
-        <div className={s.summary}>
-          <Row label="Shares closed" value={fmtInt(q.shares)} />
-          <Row label="ERG received" value={`${fmtErg(q.receivedX)} ERG`} accent />
-          <Row label={`${name} received`} value={`${fmtToken(q.amountY, dec)} ${name}`} accent />
-          <Row
-            label="Fees claimed now"
-            value={`${fmtErgMin(q.claimableX)} ERG · ${fmtTokenMin(q.claimableY, dec)} ${name}`}
-          />
-          <Row
-            label="Fees lost when it fills"
-            value={`${fmtErgMin(q.unflushedX)} ERG · ${fmtTokenMin(q.unflushedY, dec)} ${name}`}
-          />
+          <Row label="Returns" value={both(q.receivedX, q.amountY)} accent />
+          <Row label="Claimed first" value={both(q.claimableX, q.claimableY)} />
+          {hasUnflushed && <Row label="Lost when it fills" value={both(q.unflushedX, q.unflushedY)} />}
           <Row label="Executor fee" value={`${fmtErg(q.executorFee)} ERG`} />
           <Row label="Network fee" value={`${fmtErg(q.networkFee)} ERG`} />
-          <Row label="Locked now" value={`${fmtErg(q.totalErgRequired)} ERG + owner NFT`} />
-          {!q.withinMinSupply && (
-            <Row label="Blocked" value="Would take supply under CONST_MIN_SUPPLY" />
-          )}
+          {!q.withinMinSupply && <Row label="Status" value="The pool refuses to close its last shares" />}
         </div>
       )}
 
       {/* Direct: unclaimed fees die with the box, so losing them takes an explicit tick. */}
       {hasUnclaimed && (
-        <Alert kind="warn" title="Unclaimed permanent fees on this provision">
-          This provision still has {fmtErgMin(q.unclaimedX)} ERG and{' '}
-          {fmtTokenMin(q.unclaimedY, dec)} {name} owed to it. Redeeming spends the box and
-          <strong> destroys them</strong>. Claim from the Fees page first to keep them.
+        <Alert kind="warn" title="Unclaimed fees on this provision">
+          {both(q.unclaimedX, q.unclaimedY)} is still owed to it. Redeeming spends the box and
+          <strong> destroys them</strong>. Claim from the Fees tab first to keep them.
           <label className={s.ackRow}>
-            <input
-              type="checkbox"
-              checked={ackFees}
-              onChange={(e) => setAckFees(e.target.checked)}
-            />
+            <input type="checkbox" checked={ackFees} onChange={(e) => setAckFees(e.target.checked)} />
             <span>Redeem anyway and give up these fees</span>
           </label>
         </Alert>
       )}
 
-      {/* Order: settled fees are claimed at placement, so only unflushed ones — and
-          whatever accrues while the order waits — are at stake. No acknowledge flag
-          exists for these; the form's job is to show them before the send. */}
-      {q && !quoting && mode === 'order' && (
-        <Alert
-          kind={hasUnflushed ? 'warn' : 'info'}
-          title={hasUnflushed ? 'Unflushed fees are lost when this order fills' : undefined}
-        >
-          {hasUnflushed ? (
-            <>
-              {fmtErgMin(q.unflushedX)} ERG and {fmtTokenMin(q.unflushedY, dec)} {name} have been
-              earned but not yet flushed to the vault, so the placement cannot claim them. A{' '}
-              <Link to="/dex/flush">flush</Link> first moves them into the vault, and placing the
-              order then claims them. Fees earned while the order waits are lost as well.
-            </>
-          ) : (
-            <>
-              Settled fees are claimed when the order is placed. Fees the provision earns while the
-              order waits are lost when it fills.
-            </>
-          )}
+      {/* Order: only unflushed fees are at stake, and no flag exists for them; a flush first saves them. */}
+      {hasUnflushed && (
+        <Alert kind="warn" title="Unflushed fees are lost when this order fills">
+          A <Link to="/dex/flush">flush</Link> first moves them into the vault, and placing the order then claims
+          them.
         </Alert>
       )}
+
+      <button
+        className={s.btn}
+        disabled={!selected || !q || quoting || submitting || q?.withinMinSupply === false || (hasUnclaimed && !ackFees)}
+        onClick={submit}
+        type="button"
+      >
+        {submitting
+          ? mode === 'order'
+            ? 'Placing…'
+            : 'Submitting…'
+          : quoting
+            ? 'Fetching quote…'
+            : mode === 'order'
+              ? 'Place redeem order'
+              : hasUnclaimed && !ackFees
+                ? 'Confirm fee loss to continue'
+                : 'Redeem provision'}
+      </button>
 
       {quoteErr && (
         <Alert kind="error" title="Quote failed">
           {quoteErr}
         </Alert>
       )}
-
-      <button
-        className={`${s.btn} ${s.btnPurple}`}
-        disabled={
-          !selected ||
-          !q ||
-          quoting ||
-          submitting ||
-          q?.withinMinSupply === false ||
-          (hasUnclaimed && !ackFees)
-        }
-        onClick={submit}
-      >
-        {submitting
-          ? mode === 'order'
-            ? 'Placing…'
-            : 'Submitting…'
-          : mode === 'order'
-            ? 'Place order'
-            : hasUnclaimed && !ackFees
-              ? 'Confirm fee loss to continue'
-              : 'Redeem provision'}
-      </button>
-
       {error && (
         <Alert kind="error" title={mode === 'order' ? 'Order not placed' : 'Redemption failed'}>
           {error}
@@ -678,21 +593,11 @@ function RedeemCard() {
         <OrderPlacedResult
           result={res}
           rows={[
-            // Shortened: a full 64-char id wraps and squeezes its label onto two lines.
-            [
-              'Provision',
-              shortId(res.order?.provisionBoxId ?? res.order?.ownerNFT, 10, 10),
-            ],
+            ...(result.q ? [['Returns', both(result.q.receivedX, result.q.amountY)]] : []),
             // Only present when the placement had settled fees to claim.
             ...(res.claimedX != null || res.claimedY != null
-              ? [
-                  [
-                    'Fees claimed',
-                    `${fmtErgMin(res.claimedX ?? 0)} ERG · ${fmtTokenMin(res.claimedY ?? 0, dec)} ${name}`,
-                  ],
-                ]
+              ? [['Claimed now', both(res.claimedX ?? 0, res.claimedY ?? 0)]]
               : []),
-            ['Executor fee', `${fmtErg(res.order?.executorFee)} ERG`],
           ]}
         />
       )}
@@ -702,8 +607,7 @@ function RedeemCard() {
           title="Provision redeemed"
           outcome={res.outcome}
           rows={[
-            ['ERG returned', `${fmtErg(res.amountX)} ERG`],
-            [`${name} returned`, `${fmtToken(res.amountY, dec)} ${name}`],
+            ['Returned', both(res.amountX, res.amountY)],
             ['Shares closed', fmtInt(res.shares)],
           ]}
           txId={res.txId}

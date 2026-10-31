@@ -4,6 +4,7 @@ import * as api from './api';
 import { useMining } from './MiningLayout';
 import { SeriesChart, StackedBars } from './charts';
 import { Spinner, PartialTag } from '../Dex/ui';
+import TokenIcon from '../Wallet/TokenIcon';
 import { fmtBlocks, fmtTokenMin } from '../Dex/format';
 import {
   big,
@@ -35,6 +36,8 @@ const LIT = '#a855f7';
 const RUNNING = '#38bdf8';
 const LITHOSDEX = '#2dd4bf';
 const ERGODEX = '#f472b6';
+/** Forward recordings and settlements. Lime, since the block package's indigo is the bond here. */
+const FORWARDS = '#a3e635';
 /** Executor fees this client kept outside the pool. Teal like LithosDex, since that is most of it. */
 const BATCHING = '#2dd4bf';
 
@@ -834,7 +837,15 @@ function ProfileCard({ payments, days }) {
 const PROTOCOLS = [
   { id: 'lithosdex', label: 'LithosDex', color: LITHOSDEX },
   { id: 'ergodex', label: 'ErgoDEX', color: ERGODEX },
+  { id: 'forwards', label: 'Forwards', color: FORWARDS },
 ];
+
+/**
+ * What one protocol's executions left this client after fees, in one bucket. A forward recording broadcast on its
+ * own pays its fee from the wallet for LIT, which the client keeps as its own key so no total goes negative.
+ */
+const directNet = (b, id) =>
+  metric(b, `local.batching.${id}.afterTransactionFeesNanoErg`) - metric(b, `local.batching.${id}.feeAboveGrossNanoErg`);
 
 function ProtocolCell({ row }) {
   return (
@@ -853,7 +864,7 @@ function ProtocolCell({ row }) {
  * Earned. Direct: executions this client broadcast, or put in a block it mined without Lithos, keep
  * their takings in its wallet after paying their own fee. Other executors' fills are neither.
  */
-function BatchingCard({ batching, rangeId }) {
+function BatchingCard({ batching, received, rangeId }) {
   const rows = PROTOCOLS.map((p) => ({ ...p, ...batching[p.id] }));
   const pooled = sum(rows.map((r) => r.poolGross));
   const direct = sum(rows.map((r) => r.directNet));
@@ -920,10 +931,48 @@ function BatchingCard({ batching, rangeId }) {
             <span className={s.num} style={{ color: 'var(--cur-dim)' }}>
               {r.directFee > 0n ? `−${fmtErgMin(r.directFee, 4)}` : '0'}
             </span>
-            <span className={`${s.num} ${s.good}`}>{fmtErgMin(r.directNet, 4)}</span>
+            <span className={`${s.num} ${r.directNet < 0n ? '' : s.good}`}>
+              {r.directNet < 0n ? `−${fmtErgMin(-r.directNet, 4)}` : fmtErgMin(r.directNet, 4)}
+            </span>
           </div>
         ))}
       </div>
+
+      {(received?.tokens?.length > 0 || received?.otherTokens > 0n) && (
+        <>
+          <div className={s.batchHead} style={{ marginTop: 16 }}>
+            <div>
+              <div className={s.label}>Tokens to you</div>
+              <div className={s.batchSub}>verified tokens only · in your own Lithos blocks too</div>
+            </div>
+          </div>
+          <div className={s.batchTable}>
+            {received.tokens.map((t) => {
+              const meta = received.meta[t.tokenId];
+              const label = meta?.ticker ?? meta?.name ?? t.tokenId.slice(0, 6);
+              return (
+                <div key={t.tokenId} className={`${s.batchTr} ${s.batchTrPool}`}>
+                  <span className={s.payPart}>
+                    <TokenIcon tokenId={t.tokenId} label={label} size={16} />
+                    {label}
+                  </span>
+                  <span className={s.num} style={{ gridColumn: 'span 2' }}>
+                    {fmtTokenMin(t.amount.toString(), meta?.decimals ?? 0, 4)}
+                  </span>
+                  <span className={`${s.num} ${s.kvValDim}`}>
+                    {[...t.protocols].map((id) => PROTOCOLS.find((p) => p.id === id)?.label ?? id).join(', ')}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {received.otherTokens > 0n && (
+            <p className={s.cardNote} style={{ marginTop: 6 }}>
+              Plus {fmtInt(received.otherTokens)} takings in tokens not on the verified list.
+            </p>
+          )}
+        </>
+      )}
 
       <div className={s.rows} style={{ marginTop: 14 }}>
         <div className={s.kv}>
@@ -1232,7 +1281,11 @@ function bucketModel(buckets) {
       surplus: metric(b, 'local.payout.surplusNanoErg'),
       bond: metric(b, 'local.payout.bondNanoErg'),
       bounty: metric(b, 'rollup.fraudProof.localValueNanoErg'),
-      batching: sum(PROTOCOLS.map(({ id }) => metric(b, `local.batching.${id}.afterTransactionFeesNanoErg`))),
+      // The chart stacks this, so a bucket whose recording fees outweigh its takings shows as nothing
+      batching: (() => {
+        const net = sum(PROTOCOLS.map(({ id }) => directNet(b, id)));
+        return net > 0n ? net : 0n;
+      })(),
       litOwed: metric(b, 'local.payout.rewardLit'),
       litReceived: metric(b, 'local.payout.receivedLit'),
       outputs: metric(b, 'local.payout.outputs'),
@@ -1252,10 +1305,26 @@ function bucketModel(buckets) {
       directOrders: total(`local.batching.${id}.orders`),
       directGross: total(`local.batching.${id}.grossNanoErg`),
       directFee: total(`local.batching.${id}.transactionFeeNanoErg`),
-      directNet: total(`local.batching.${id}.afterTransactionFeesNanoErg`),
+      directNet: sum((buckets.buckets ?? []).map((b) => directNet(b, id))),
       allGross: total(`batching.${id}.grossNanoErg`),
     };
   });
+  // Tokens that reached this client, by verified token: a holding box takes no tokens, so even a Lithos block's
+  // takings in tokens go straight to its finder. Unlisted tokens are only ever counted.
+  const tokens = new Map();
+  let otherTokens = 0n;
+  (buckets.buckets ?? []).forEach((b) => {
+    Object.entries(b.totals ?? {}).forEach(([key, value]) => {
+      const m = /^local\.received\.([a-z]+)\.tokens\.([0-9a-f]{64})$/.exec(key);
+      if (m) {
+        const row = tokens.get(m[2]) ?? { tokenId: m[2], amount: 0n, protocols: new Set() };
+        row.amount += BigInt(value);
+        row.protocols.add(m[1]);
+        tokens.set(m[2], row);
+      } else if (/^local\.received\.[a-z]+\.otherTokens$/.test(key)) otherTokens += BigInt(value);
+    });
+  });
+  const received = { tokens: [...tokens.values()], otherTokens, meta: buckets.tokens ?? {} };
   const totals = {};
   ['reward', 'surplus', 'bond', 'bounty', 'batching', 'litOwed', 'litReceived', 'outputs', 'networkReward', 'networkOutputs',
     'bondPosted', 'slashedCount', 'slashedBond'].forEach((k) => {
@@ -1264,7 +1333,7 @@ function bucketModel(buckets) {
   const retained = buckets.retainedFrom != null ? Number(buckets.retainedFrom) : until;
   const tip = Math.min(until, Number(buckets.source?.timestamp ?? until));
   const coveredMs = Math.max(0, tip - Math.max(from, retained));
-  return { rows, totals, batching, interval, coveredMs, partial: !!buckets.partial };
+  return { rows, totals, batching, received, interval, coveredMs, partial: !!buckets.partial };
 }
 
 export default function PaymentsPanel() {
@@ -1647,7 +1716,7 @@ export default function PaymentsPanel() {
         />
         <div className={s.stackCol}>
           <ProfileCard payments={sample} days={days} />
-          <BatchingCard batching={model?.batching ?? emptyBatching} rangeId={rangeId} />
+          <BatchingCard batching={model?.batching ?? emptyBatching} received={model?.received} rangeId={rangeId} />
         </div>
       </div>
 

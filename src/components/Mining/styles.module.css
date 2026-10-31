@@ -116,8 +116,10 @@
   text-decoration: none;
 }
 
-.tabActive,
-.tabActive:hover {
+/* Two classes, so the active tab outranks `.tab` wherever the minifier puts this rule: it merges identical
+   rules across modules, which can land this one before `.tab`. */
+.tab.tabActive,
+.tab.tabActive:hover {
   background: var(--cur-grad-btn);
   color: #060913;
   font-weight: 600;

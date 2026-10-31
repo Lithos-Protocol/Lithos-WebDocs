@@ -21,8 +21,24 @@ const QUOTE_DEBOUNCE_MS = 320;
  */
 const QUICK_FEES = ['0', '0.001', '0.01', '0.085'];
 
+/** A nanoERG amount as the ERG a lender would type, with no trailing zeros. */
+const ergText = (nano) => {
+  const n = big(nano);
+  const frac = (n % 1_000_000_000n).toString().padStart(9, '0').replace(/0+$/, '');
+  return frac ? `${n / 1_000_000_000n}.${frac}` : `${n / 1_000_000_000n}`;
+};
+
 export default function JoinPanel() {
-  const { market, refresh, refreshWallet } = useCollateral();
+  const { market, refresh, refreshWallet, tick } = useCollateral();
+  /** The least bid ahead of every queued box, from the client's inventory. Absent until it answers. */
+  const [firstBid, setFirstBid] = useState(null);
+
+  useEffect(() => {
+    api
+      .getCollateralStats()
+      .then((st) => setFirstBid(st?.queue?.firstNanoErg ? ergText(st.queue.firstNanoErg) : null))
+      .catch(() => setFirstBid(null));
+  }, [tick]);
 
   const [count, setCount] = useState(1);
   /** Priority fee as typed, in ERG. Empty means none. */
@@ -293,6 +309,17 @@ export default function JoinPanel() {
                 {f === '0' ? 'None' : `${f} ERG`}
               </button>
             ))}
+            {firstBid && (
+              <button
+                className={`${s.chip} ${feeErg === firstBid ? s.chipActive : ''}`}
+                onClick={() => setFeeErg(firstBid)}
+                disabled={submitting}
+                type="button"
+                title="The least bid ahead of every box queued now"
+              >
+                First · {firstBid} ERG
+              </button>
+            )}
           </div>
           <div className={s.cmPermitNote}>
             Added to your collateral box on top of the principal, so it raises what the position

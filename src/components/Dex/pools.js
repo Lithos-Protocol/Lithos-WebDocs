@@ -9,6 +9,10 @@ export { tokenLabel };
 
 export const poolHref = (nft) => `/dex?pool=${nft}`;
 
+/** ERG:LIT ahead of every other pool, which keep their order. */
+export const canonicalFirst = (list, nft) =>
+  nft ? [...list].sort((a, b) => Number(b.poolNFT === nft) - Number(a.poolNFT === nft)) : list;
+
 /**
  * How far a pool can be trusted: `unsafe` breaks a genesis fact and can be drained, `verified` is on the
  * shipped list, `unchecked` has not had its genesis read yet, and `unverified` passed the checks but nobody

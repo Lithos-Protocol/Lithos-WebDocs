@@ -6,11 +6,21 @@ import p from './pools.module.css';
 import * as api from './api';
 import { useDex } from './DexLayout';
 import { Alert, Spinner } from './ui';
-import { fmtInt, shortId } from './format';
+import { big, fmtErgAmount, fmtInt, shortId } from './format';
 import { Pager, PageSize, usePaged } from '../Extensions/ui';
 import { PairIcons, TrustBadge } from '../Wallet/TokenIcon';
 import { FilterChips } from '../Wallet/ui';
-import { poolHref, poolTrust, pairLabel, kindLabel, fmtSide, fmtSideFull, fmtPrice, tokenLabel } from './pools';
+import {
+  canonicalFirst,
+  poolHref,
+  poolTrust,
+  pairLabel,
+  kindLabel,
+  fmtSide,
+  fmtSideFull,
+  fmtPrice,
+  tokenLabel,
+} from './pools';
 import { FeeBreakdown } from './PoolParts';
 
 /** How often to re-read while the client's first index is still building. */
@@ -19,8 +29,10 @@ const BUILDING_RETRY_MS = 5000;
 function Strip({ list }) {
   const pools = list?.pools ?? [];
   const verified = pools.filter((x) => x.verified).length;
-  const t2t = pools.filter((x) => x.kind === 't2t').length;
-  const unsafe = pools.filter((x) => x.problems?.length).length;
+  const n2t = pools.filter((x) => x.kind === 'n2t' && !x.problems?.length);
+  const t2t = pools.length - pools.filter((x) => x.kind === 'n2t').length;
+  // A pool that can be drained holds nothing anyone should count on
+  const ergHeld = n2t.reduce((sum, x) => sum + big(x.reservesX), 0n);
   return (
     <div className={w.kpis}>
       <div className={w.kpi}>
@@ -39,9 +51,9 @@ function Strip({ list }) {
         <div className={w.kpiSub}>two tokens, ERG for storage only</div>
       </div>
       <div className={w.kpi}>
-        <div className={m.label}>Can be drained</div>
-        <div className={`${w.kpiValue} ${unsafe ? p.valueBad : ''}`}>{list ? fmtInt(unsafe) : '—'}</div>
-        <div className={w.kpiSub}>{list ? `index at block ${fmtInt(list.height)}` : '—'}</div>
+        <div className={m.label}>ERG in pools</div>
+        <div className={w.kpiValue}>{list ? fmtErgAmount(ergHeld, 2) : '—'}</div>
+        <div className={w.kpiSub}>{list ? `ERG/token reserves at block ${fmtInt(list.height)}` : '—'}</div>
       </div>
     </div>
   );
@@ -49,7 +61,7 @@ function Strip({ list }) {
 
 /** Every LithosDex pool, filterable, each row linking to its own page. */
 export default function PoolsPanel() {
-  const { tick } = useDex();
+  const { tick, pool: canonical } = useDex();
   const [list, setList] = useState(null);
   const [error, setError] = useState(null);
   const [retry, setRetry] = useState(0);
@@ -86,14 +98,14 @@ export default function PoolsPanel() {
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = (t) => [t.tokenId, t.name, t.ticker].some((v) => v && v.toLowerCase().includes(q));
-    return pools.filter((x) => {
+    return canonicalFirst(pools, canonical?.poolNFT).filter((x) => {
       if (!showUnsafe && x.problems?.length) return false;
       if (kind !== 'all' && x.kind !== kind) return false;
       if (trust === 'verified' && !x.verified) return false;
       if (trust === 'unverified' && x.verified) return false;
       return !q || x.poolNFT.toLowerCase().includes(q) || matches(x.tokenX) || matches(x.tokenY);
     });
-  }, [pools, query, trust, kind, showUnsafe]);
+  }, [pools, query, trust, kind, showUnsafe, canonical?.poolNFT]);
   const paged = usePaged(rows);
 
   return (

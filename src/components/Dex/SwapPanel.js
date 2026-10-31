@@ -3,7 +3,7 @@ import s from './styles.module.css';
 import * as api from './api';
 import { useDex } from './DexLayout';
 import { fmtErg, fmtToken, fmtNum, fmtPct, parseErg, parseToken, big, lessSlippage } from './format';
-import { Alert, TxResult, Row, AssetChip, Spinner, OrderModeToggle, SLIPPAGE_OPTIONS } from './ui';
+import { Alert, TxResult, Row, AssetChip, Spinner, ImpactValue, OrderModeToggle, SLIPPAGE_OPTIONS } from './ui';
 import SwapAside from './SwapAside';
 import { PoolInfoCard } from './PoolParts';
 import OrdersCard, { OrderPlacedResult, lockedInOrders } from './OrdersPanel';
@@ -239,7 +239,7 @@ export default function SwapPanel() {
 
   return (
     <>
-      <div className={s.swapLayout}>
+      <div className={`${s.swapLayout} ${s.swapLayoutFill}`}>
         {/* ---------- LEFT COLUMN ---------- */}
         <div className={s.swapCol}>
           <div className={s.swapCardWrap}>
@@ -348,7 +348,7 @@ export default function SwapPanel() {
                     value={`${fmtOut(minRecv)} ${outUnit}`}
                     accent={!!order}
                   />
-                  <Row label="Price impact" value={fmtPct(q.swap.priceImpact)} />
+                  <Row label="Price impact" value={<ImpactValue impact={q.swap.priceImpact} />} />
                   <Row label="Permanent fee" value={`${fmtIn(q.swap.protocolFee)} ${inUnit}`} />
                   <Row label="AMM fee" value={`${fmtIn(q.swap.ammFee)} ${inUnit}`} />
                   {order && (

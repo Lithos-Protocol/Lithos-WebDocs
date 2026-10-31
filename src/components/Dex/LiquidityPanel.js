@@ -617,19 +617,25 @@ function RedeemCard() {
   );
 }
 
-export default function LiquidityPanel() {
+/** One switch for both liquidity cards: deposit and redeem always agree on the mode. */
+export function LiquidityModeBar() {
   const { ordersOn, setOrdersOn } = useDex();
   return (
+    <div className={s.modeBar}>
+      <OrderModeToggle checked={ordersOn} onChange={setOrdersOn} />
+      <span className={s.modeBarText}>
+        {ordersOn
+          ? 'Deposits and redemptions are placed as orders that any miner fills for a small executor fee. Claims stay direct.'
+          : 'Deposits and redemptions spend the pool directly. A miner batching orders may replace an unconfirmed direct spend, which then has to be resent.'}
+      </span>
+    </div>
+  );
+}
+
+export default function LiquidityPanel() {
+  return (
     <>
-      {/* One switch for both cards: deposit and redeem always agree on the mode. */}
-      <div className={s.modeBar}>
-        <OrderModeToggle checked={ordersOn} onChange={setOrdersOn} />
-        <span className={s.modeBarText}>
-          {ordersOn
-            ? 'Deposits and redemptions are placed as orders that any miner fills for a small executor fee. Claims stay direct.'
-            : 'Deposits and redemptions spend the pool directly. A miner batching orders may replace an unconfirmed direct spend, which then has to be resent.'}
-        </span>
-      </div>
+      <LiquidityModeBar />
 
       <div className={s.cols}>
         <DepositCard />

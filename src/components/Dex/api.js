@@ -782,6 +782,63 @@ export const placePoolRedeem = (nft, { provisionBoxId }) =>
     }),
   );
 
+/** POST /dex/pools/{poolNft}/swap/check — a swap spending the pool now, no executor. */
+export const checkPoolDirectSwap = (nft, { tokenIn, amountIn }) =>
+  req(poolPath(nft, '/swap/check'), { method: 'POST', body: { tokenIn, amountIn: String(amountIn) } });
+
+/** POST /dex/pools/{poolNft}/swap — `expectedPoolBoxId` refuses a pool that moved since the quote. */
+export const placePoolDirectSwap = (nft, { tokenIn, amountIn, minOutput, expectedPoolBoxId, acknowledgeUnverified }) =>
+  submitted(
+    req(poolPath(nft, '/swap'), {
+      method: 'POST',
+      auth: true,
+      body: omitEmpty({
+        tokenIn,
+        amountIn: String(amountIn),
+        minOutput: String(minOutput),
+        expectedPoolBoxId,
+        acknowledgeUnverified,
+      }),
+    }),
+  );
+
+/** POST /dex/pools/{poolNft}/deposit/check */
+export const checkPoolDirectDeposit = (nft, { amountX, amountY }) =>
+  req(poolPath(nft, '/deposit/check'), {
+    method: 'POST',
+    body: { amountX: String(amountX), amountY: String(amountY) },
+  });
+
+/** POST /dex/pools/{poolNft}/deposit */
+export const placePoolDirectDeposit = (nft, { amountX, amountY, minShares, expectedPoolBoxId, acknowledgeUnverified }) =>
+  submitted(
+    req(poolPath(nft, '/deposit'), {
+      method: 'POST',
+      auth: true,
+      body: omitEmpty({
+        amountX: String(amountX),
+        amountY: String(amountY),
+        minShares: String(minShares),
+        expectedPoolBoxId,
+        acknowledgeUnverified,
+      }),
+    }),
+  );
+
+/** POST /dex/pools/{poolNft}/redeem/check */
+export const checkPoolDirectRedeem = (nft, { provisionBoxId }) =>
+  req(poolPath(nft, '/redeem/check'), { method: 'POST', body: { provisionBoxId } });
+
+/** POST /dex/pools/{poolNft}/redeem — forfeits unclaimed fees only with `acknowledgeUnclaimedFees`. */
+export const placePoolDirectRedeem = (nft, { provisionBoxId, acknowledgeUnclaimedFees, expectedPoolBoxId }) =>
+  submitted(
+    req(poolPath(nft, '/redeem'), {
+      method: 'POST',
+      auth: true,
+      body: omitEmpty({ provisionBoxId, acknowledgeUnclaimedFees, expectedPoolBoxId }),
+    }),
+  );
+
 /** POST /dex/pools/{poolNft}/flush/check */
 export const checkPoolFlush = (nft) => req(poolPath(nft, '/flush/check'), { method: 'POST' });
 

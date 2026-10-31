@@ -430,17 +430,26 @@ export default function JoinPanel() {
         )}
 
         {/* ---- PRE-SEND WARNINGS ---- */}
-        {/* The client accepts a bid above break-even on purpose: the fees of the
-            block you are mined against can still cover it. Say what the shortfall
-            is and leave the judgement to the reader. */}
+        {/* The client accepts a bid at or above break-even on purpose: the fees of the
+            block you are mined against can still pay. Say where the profit has to come
+            from and leave the judgement to the reader. */}
+        {quote && !quoting && big(quote.netAtCoinbaseEachNanoErgs) === 0n && (
+          <Alert kind="warn" title="At break-even, only transaction fees are profit">
+            Each position locks {fmtErgAmount(quote.principalEachNanoErgs, 4)} ERG and the coinbase
+            pays back exactly that. Any profit comes from the transaction fees of the block your box
+            is mined against. Bidding under {fmtErgAmount(quote.breakEvenPriorityFeeNanoErgs, 4)} ERG
+            leaves a margin in the reward itself.
+          </Alert>
+        )}
         {quote && !quoting && big(quote.netAtCoinbaseEachNanoErgs) < 0n && (
           <Alert kind="warn" title="This bid costs more than the block reward returns">
             Each position locks {fmtErgAmount(quote.principalEachNanoErgs, 4)} ERG and the coinbase
             pays back 3 ERG, leaving you{' '}
-            {fmtErgAmount(-big(quote.netAtCoinbaseEachNanoErgs), 6)} ERG short per position. You
-            recover that only if the block your box is mined against carries at least that much in
-            transaction fees. Bidding at or under{' '}
-            {fmtErgAmount(quote.breakEvenPriorityFeeNanoErgs, 4)} ERG stays inside the reward.
+            {fmtErgAmount(-big(quote.netAtCoinbaseEachNanoErgs), 6)} ERG short per position. Profit
+            comes only from the transaction fees of the block your box is mined against, and only
+            once they cover that shortfall. Bidding under{' '}
+            {fmtErgAmount(quote.breakEvenPriorityFeeNanoErgs, 4)} ERG leaves a margin in the reward
+            itself.
           </Alert>
         )}
 

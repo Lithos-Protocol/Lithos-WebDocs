@@ -4,10 +4,6 @@
  * drained; green only verified.
  */
 
-.valueBad {
-  color: #fca5a5;
-}
-
 /* ---- Pool list ---- */
 
 .listCard {
@@ -97,14 +93,6 @@
   margin: 0;
 }
 
-.orderNote {
-  font-family: var(--cur-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--cur-dim);
-}
-
 .stack {
   display: flex;
   flex-direction: column;
@@ -173,8 +161,16 @@
   accent-color: var(--cur-cyan);
 }
 
+/* Side by side when there is room: an info note and a warning rarely need a full row each. */
 .notes {
-  margin: -16px 0 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.notes > div {
+  margin-top: 0;
 }
 
 .notes:empty {
@@ -671,8 +667,48 @@
   color: var(--cur-dim);
 }
 
-.verifiedOnly {
-  align-self: start;
+.verifiedNote {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px dashed rgba(125, 211, 252, 0.18);
+  background: rgba(6, 9, 19, 0.35);
+}
+
+.verifiedNoteTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cur-text);
+}
+
+.verifiedNoteText {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--cur-dim);
+}
+
+/* About this pool across a full row: tokens on the left, the fee split on the right. */
+.infoWide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 32px;
+  align-items: center;
+}
+
+.infoWide > div:last-child {
+  margin-top: 0;
+}
+
+@media screen and (max-width: 760px) {
+  .infoWide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .infoWide > div:last-child {
+    margin-top: 18px;
+  }
 }
 
 @media screen and (max-width: 640px) {

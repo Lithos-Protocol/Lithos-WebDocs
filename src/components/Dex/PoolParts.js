@@ -8,7 +8,7 @@ import { Alert } from './ui';
 import { fmtInt, fmtIntCompact, shortId } from './format';
 import TokenIcon, { PairIcons, TrustBadge } from '../Wallet/TokenIcon';
 import { CopyButton } from '../Wallet/ui';
-import { fmtPrice, fmtSide, fmtSideFull, kindLabel, pairLabel, poolTrust, tokenLabel } from './pools';
+import { canonicalFirst, fmtPrice, fmtSide, fmtSideFull, kindLabel, pairLabel, poolTrust, tokenLabel } from './pools';
 
 /** A fee numerator over the pool's denominator, as a percentage. */
 const feePct = (fp, n) => `${((n / fp.feeDenom) * 100).toFixed(2)}%`;
@@ -85,11 +85,14 @@ export function PoolSelector({ selected, pools, canonicalNft }) {
   const options = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = (t) => [t?.tokenId, t?.name, t?.ticker].some((v) => v && v.toLowerCase().includes(q));
-    // The list arrives verified first, then newest; pools that can be drained go last
-    return (pools ?? [])
-      .filter((x) => !q || x.poolNFT.includes(q) || matches(x.tokenX) || matches(x.tokenY))
-      .sort((a, b) => Number(!!a.problems?.length) - Number(!!b.problems?.length));
-  }, [pools, query]);
+    // The list arrives ERG:LIT first, then verified, then newest; pools that can be drained go last
+    return canonicalFirst(
+      (pools ?? [])
+        .filter((x) => !q || x.poolNFT.includes(q) || matches(x.tokenX) || matches(x.tokenY))
+        .sort((a, b) => Number(!!a.problems?.length) - Number(!!b.problems?.length)),
+      canonicalNft,
+    );
+  }, [pools, query, canonicalNft]);
 
   const pick = (nft) => {
     setOpen(false);
@@ -250,8 +253,11 @@ export function PoolStrip({ pool, vault }) {
   );
 }
 
-/** Which tokens these are, by id, and how the fee splits: what to check before trading with an unvetted pool. */
-export function PoolInfoCard({ pool, vault }) {
+/**
+ * Which tokens these are, by id, and how the fee splits: what to check before trading with an unvetted pool.
+ * `wide` puts the tokens and the figures side by side, for a full-width row.
+ */
+export function PoolInfoCard({ pool, vault, wide = false }) {
   const fp = pool.feeParams;
   const side = (t, label) => (
     <div className={p.infoToken} key={label}>
@@ -277,55 +283,59 @@ export function PoolInfoCard({ pool, vault }) {
   return (
     <div className={s.card}>
       <h3 className={s.cardTitle}>About this pool</h3>
-      {side(pool.tokenX, 'X')}
-      {side(pool.tokenY, 'Y')}
-      <div className={s.summary}>
-        <div className={s.row}>
-          <span className={s.rowLabel}>Kept by the pool</span>
-          <span className={s.rowValue}>{feePct(fp, fp.feeDenom - fp.dexFeeNum)} of every swap</span>
+      <div className={wide ? p.infoWide : undefined}>
+        <div>
+          {side(pool.tokenX, 'X')}
+          {side(pool.tokenY, 'Y')}
         </div>
-        <div className={s.row}>
-          <span className={s.rowLabel}>To providers, selling {tokenLabel(pool.tokenX)}</span>
-          <span className={s.rowValue}>{feePct(fp, fp.ergFeeNum)}</span>
-        </div>
-        <div className={s.row}>
-          <span className={s.rowLabel}>To providers, selling {tokenLabel(pool.tokenY)}</span>
-          <span className={s.rowValue}>{feePct(fp, fp.tokenFeeNum)}</span>
-        </div>
-        <div className={s.row}>
-          <span className={s.rowLabel}>Genesis</span>
-          <span className={s.rowValue}>
-            {pool.verified ? 'checked by hand' : pool.genesisChecked ? 'checked by this client' : 'not yet read'}
-          </span>
-        </div>
-        <div className={s.row}>
-          <span className={s.rowLabel}>Pool</span>
-          <span className={s.rowValue}>
-            <span title={pool.poolNFT}>{shortId(pool.poolNFT, 8, 6)}</span> <CopyButton text={pool.poolNFT} title="Copy pool NFT id" />
-          </span>
-        </div>
-        {vault && (
+        <div className={s.summary}>
           <div className={s.row}>
-            <span className={s.rowLabel}>Vault</span>
-            <span className={s.rowValue} title={vault.vaultNFT}>
-              {shortId(vault.vaultNFT, 8, 6)}
+            <span className={s.rowLabel}>Kept by the pool</span>
+            <span className={s.rowValue}>{feePct(fp, fp.feeDenom - fp.dexFeeNum)} of every swap</span>
+          </div>
+          <div className={s.row}>
+            <span className={s.rowLabel}>To providers, selling {tokenLabel(pool.tokenX)}</span>
+            <span className={s.rowValue}>{feePct(fp, fp.ergFeeNum)}</span>
+          </div>
+          <div className={s.row}>
+            <span className={s.rowLabel}>To providers, selling {tokenLabel(pool.tokenY)}</span>
+            <span className={s.rowValue}>{feePct(fp, fp.tokenFeeNum)}</span>
+          </div>
+          <div className={s.row}>
+            <span className={s.rowLabel}>Genesis</span>
+            <span className={s.rowValue}>
+              {pool.verified ? 'checked by hand' : pool.genesisChecked ? 'checked by this client' : 'not yet read'}
             </span>
           </div>
-        )}
+          <div className={s.row}>
+            <span className={s.rowLabel}>Pool</span>
+            <span className={s.rowValue}>
+              <span title={pool.poolNFT}>{shortId(pool.poolNFT, 8, 6)}</span> <CopyButton text={pool.poolNFT} title="Copy pool NFT id" />
+            </span>
+          </div>
+          {vault && (
+            <div className={s.row}>
+              <span className={s.rowLabel}>Vault</span>
+              <span className={s.rowValue} title={vault.vaultNFT}>
+                {shortId(vault.vaultNFT, 8, 6)}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-/** In place of a graph on a pool the client keeps no history for. */
+/** A slim note in place of a graph on a pool the client keeps no history for. */
 export function VerifiedOnlyCard({ title = 'Graphs and history are kept for verified pools only' }) {
   return (
-    <div className={`${s.card} ${p.verifiedOnly}`}>
-      <h3 className={s.cardTitle}>{title}</h3>
-      <p className={s.cardDesc} style={{ marginBottom: 0 }}>
-        The client collects them in the background, and limits that work to pools on its verified list. Swaps,
-        liquidity, flushes and claims all work here as on any pool.
-      </p>
+    <div className={p.verifiedNote}>
+      <span className={p.verifiedNoteTitle}>{title}</span>
+      <span className={p.verifiedNoteText}>
+        The client collects them only for pools on its verified list. Swaps, liquidity, flushes and claims work here
+        as on any pool.
+      </span>
     </div>
   );
 }

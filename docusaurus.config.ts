@@ -91,14 +91,14 @@ const config: Config = {
             className: "navbar__link--dex",
           },
           {
-            label: "Extensions",
-            position: "left",
-            to: "/extensions/forwards",
-          },
-          {
             label: "Wallet",
             position: "left",
             to: "/wallet",
+          },
+          {
+            label: "Extensions",
+            position: "left",
+            to: "/extensions/forwards",
           },
           {
             href: "https://github.com/Lithos-Protocol",

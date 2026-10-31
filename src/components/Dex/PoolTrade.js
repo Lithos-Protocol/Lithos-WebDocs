@@ -4,7 +4,7 @@ import p from './pools.module.css';
 import * as api from './api';
 import { useDex } from './DexLayout';
 import { big, fmtErg, fmtInt, fmtPct, lessSlippage, ratio } from './format';
-import { Alert, Row, Spinner, SLIPPAGE_OPTIONS } from './ui';
+import { Alert, IdText, ImpactValue, OrderModeToggle, Row, Spinner, TxResult, SLIPPAGE_OPTIONS } from './ui';
 import { OrderPlacedResult } from './OrdersPanel';
 import TokenIcon from '../Wallet/TokenIcon';
 import { decimalsOf, fmtPrice, fmtSide, fmtSideFull, matchSide, parseSide, tokenLabel } from './pools';
@@ -117,7 +117,7 @@ function lockedText(q, pool) {
   return [`${fmtErg(q.totalErgRequired)} ERG`, ...tokens].join(' + ');
 }
 
-/** A swap order on any pool, either direction. */
+/** A swap on any pool, either direction: an order any miner fills, or a direct spend of the pool. */
 export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
   const [xIn, setXIn] = useState(true);
   const [amount, setAmount] = useState('');
@@ -126,7 +126,7 @@ export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const { orderFees } = useDex();
+  const { orderFees, ordersOn, setOrdersOn, refresh } = useDex();
 
   const tin = xIn ? pool.tokenX : pool.tokenY;
   const tout = xIn ? pool.tokenY : pool.tokenX;
@@ -135,18 +135,24 @@ export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
 
   const { quote: q, error: quoteErr, quoting } = useQuote(
     hasAmount,
-    [raw?.toString(), xIn, pool.poolNFT, pool.utxoId, orderFees?.executorFee, orderFees?.maxMinerFee],
-    () => api.checkPoolSwap(pool.poolNFT, { tokenIn: tin.tokenId, amountIn: raw.toString() }),
+    [raw?.toString(), xIn, ordersOn, pool.poolNFT, pool.utxoId, orderFees?.executorFee, orderFees?.maxMinerFee],
+    () =>
+      (ordersOn ? api.checkPoolSwap : api.checkPoolDirectSwap)(pool.poolNFT, {
+        tokenIn: tin.tokenId,
+        amountIn: raw.toString(),
+      }).then((r) => ({ ...r, ordersOn })),
   );
+  // A quote fetched in the other mode describes the other kind of swap
+  const qq = q && q.ordersOn === ordersOn ? q : null;
 
-  const netOut = q ? big(q.netOutput) : null;
-  const minRecv = q ? lessSlippage(netOut, slippage) : null;
-  const unfillable = !!q && (netOut <= 0n || minRecv <= 0n);
+  const netOut = qq ? big(ordersOn ? qq.netOutput : qq.amountOut) : null;
+  const minRecv = qq ? lessSlippage(netOut, slippage) : null;
+  const unfillable = !!qq && (netOut <= 0n || minRecv <= 0n);
   // The least input that buys the same output; anything above it buys nothing more
-  const least = q?.minAmountIn ? big(q.minAmountIn) : null;
+  const least = qq?.minAmountIn ? big(qq.minAmountIn) : null;
   const surplus = least !== null && hasAmount && least < raw ? raw - least : 0n;
-  const rate = q && hasAmount
-    ? ratio(big(q.amountOut) * 10n ** BigInt(decimalsOf(tin)), raw * 10n ** BigInt(decimalsOf(tout)), 12)
+  const rate = qq && hasAmount
+    ? ratio(big(qq.amountOut) * 10n ** BigInt(decimalsOf(tin)), raw * 10n ** BigInt(decimalsOf(tout)), 12)
     : null;
   const held = heldOf(balance, tin);
   const blocked = unsafe || (!pool.verified && !consent);
@@ -156,18 +162,27 @@ export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
     setError(null);
     setResult(null);
     try {
-      const r = await api.placePoolSwap(pool.poolNFT, {
+      const body = {
         tokenIn: tin.tokenId,
         amountIn: raw.toString(),
         minOutput: minRecv.toString(),
         acknowledgeUnverified: pool.verified ? undefined : true,
-      });
-      setResult({ r, tin, tout, amountIn: raw, minOutput: minRecv, fee: q.executorFee });
+      };
+      const r = ordersOn
+        ? await api.placePoolSwap(pool.poolNFT, body)
+        : await api.placePoolDirectSwap(pool.poolNFT, { ...body, expectedPoolBoxId: qq.poolBoxId });
+      setResult({ r, ordersOn, tin, tout, amountIn: raw, minOutput: minRecv, fee: qq.executorFee });
       setAmount('');
       setConsent(false);
       onPlaced();
+      if (!ordersOn) refresh();
     } catch (e) {
-      setError(e.message);
+      if (e.name === 'StateChangedError') {
+        setError('The pool moved and nothing was sent. The quote has been refreshed.');
+        refresh();
+      } else {
+        setError(e.message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -177,7 +192,13 @@ export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
     <div className={s.card}>
       <div className={p.cardHeadRow}>
         <h3 className={s.cardTitle}>Swap</h3>
-        <span className={p.orderNote}>placed as an order</span>
+        <OrderModeToggle
+          checked={ordersOn}
+          onChange={(on) => {
+            setOrdersOn(on);
+            setResult(null);
+          }}
+        />
       </div>
 
       <div className={s.field}>
@@ -219,12 +240,12 @@ export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
       <div className={`${s.field} ${s.fieldPurple}`}>
         <div className={s.fieldHead}>
           <span className={s.fieldLabel}>
-            {tout.tokenId === 'ERG' ? 'You receive (estimated, after executor fee)' : 'You receive (estimated)'}
+            {ordersOn && tout.tokenId === 'ERG' ? 'You receive (estimated, after executor fee)' : 'You receive (estimated)'}
           </span>
           <span className={s.fieldBalance}>{quoting && <Spinner />}</span>
         </div>
         <div className={s.fieldRow}>
-          <input className={s.input} value={q ? fmtSideFull(netOut, tout) : ''} placeholder="0.0" disabled readOnly />
+          <input className={s.input} value={qq ? fmtSideFull(netOut, tout) : ''} placeholder="0.0" disabled readOnly />
           <TokenChip t={tout} />
         </div>
       </div>
@@ -241,22 +262,31 @@ export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
         </div>
       )}
 
-      {q && (
+      {qq && (
         <div className={s.summary}>
           {rate !== null && (
-            <Row label="Rate" value={`1 ${tokenLabel(tin)} ≈ ${fmtPrice(rate)} ${tokenLabel(tout)}`} />
+            <Row label="Execution price" value={`1 ${tokenLabel(tin)} ≈ ${fmtPrice(rate)} ${tokenLabel(tout)}`} />
           )}
           <Row
             label={`Minimum received (${fmtPct(slippage, 1)})`}
             value={`${fmtSideFull(minRecv, tout)} ${tokenLabel(tout)}`}
             accent
           />
-          <Row label="Executor fee" value={`${fmtErg(q.executorFee)} ERG`} />
-          <Row label="Network fee" value={`${fmtErg(q.networkFee)} ERG`} />
-          <Row label="Locked now" value={lockedText(q, pool)} />
-          <Row label="Returned with the fill" value={`${fmtErg(q.ergReturned)} ERG`} />
-          {!q.executable && <Row label="Status" value="Not executable at this size" />}
-          {q.executable && unfillable && <Row label="Status" value="Output does not cover the executor fee" />}
+          <Row label="Price impact" value={<ImpactValue impact={qq.priceImpact} />} />
+          <Row label="Permanent fee" value={`${fmtSideFull(qq.protocolFee, tin)} ${tokenLabel(tin)}`} />
+          <Row label="AMM fee" value={`${fmtSideFull(qq.ammFee, tin)} ${tokenLabel(tin)}`} />
+          {ordersOn ? (
+            <>
+              <Row label="Executor fee" value={`${fmtErg(qq.executorFee)} ERG`} />
+              <Row label="Network fee" value={`${fmtErg(qq.networkFee)} ERG`} />
+              <Row label="Locked now" value={lockedText(qq, pool)} />
+              <Row label="Returned with the fill" value={`${fmtErg(qq.ergReturned)} ERG`} />
+            </>
+          ) : (
+            <Row label="Network fee" value={`${fmtErg(qq.networkFee)} ERG`} />
+          )}
+          {!qq.executable && <Row label="Status" value="Not executable at this size" />}
+          {qq.executable && unfillable && <Row label="Status" value="Output does not cover the executor fee" />}
         </div>
       )}
 
@@ -264,11 +294,11 @@ export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
 
       <button
         className={s.btn}
-        disabled={!hasAmount || !q || !q.executable || unfillable || quoting || submitting || blocked}
+        disabled={!hasAmount || !qq || !qq.executable || unfillable || quoting || submitting || blocked}
         onClick={submit}
         type="button"
       >
-        {submitting ? 'Placing…' : quoting ? 'Fetching quote…' : 'Place order'}
+        {submitting ? (ordersOn ? 'Placing…' : 'Swapping…') : quoting ? 'Fetching quote…' : ordersOn ? 'Place order' : 'Swap'}
       </button>
 
       {quoteErr && (
@@ -277,11 +307,11 @@ export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
         </Alert>
       )}
       {error && (
-        <Alert kind="error" title="Order not placed">
+        <Alert kind="error" title={ordersOn ? 'Order not placed' : 'Swap not sent'}>
           {error}
         </Alert>
       )}
-      {result && (
+      {result && result.ordersOn && (
         <OrderPlacedResult
           result={result.r}
           rows={[
@@ -291,11 +321,22 @@ export function PoolSwapCard({ pool, balance, unsafe, onPlaced }) {
           ]}
         />
       )}
+      {result && !result.ordersOn && (
+        <TxResult
+          title="Swap sent"
+          outcome={result.r.outcome}
+          txId={result.r.txId}
+          rows={[
+            ['Sold', `${fmtSideFull(result.amountIn, result.tin)} ${tokenLabel(result.tin)}`],
+            ['Received', `${fmtSideFull(result.r.amountY, result.tout)} ${tokenLabel(result.tout)}`],
+          ]}
+        />
+      )}
     </div>
   );
 }
 
-/** A deposit order on any pool. With "Balanced" on, typing one side fills in the other at the pool's ratio. */
+/** A deposit on any pool, as an order or directly. With "Balanced" on, typing one side fills in the other at the pool's ratio. */
 export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
   const [amountX, setAmountX] = useState('');
   const [amountY, setAmountY] = useState('');
@@ -305,7 +346,7 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const { orderFees } = useDex();
+  const { orderFees, ordersOn, refresh } = useDex();
 
   const { tokenX: tx, tokenY: ty } = pool;
   const rawX = parseSide(amountX, tx);
@@ -315,9 +356,14 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
 
   const { quote: q, error: quoteErr, quoting } = useQuote(
     ready && !full,
-    [rawX?.toString(), rawY?.toString(), pool.poolNFT, pool.utxoId, orderFees?.executorFee, orderFees?.maxMinerFee],
-    () => api.checkPoolDeposit(pool.poolNFT, { amountX: rawX.toString(), amountY: rawY.toString() }),
+    [rawX?.toString(), rawY?.toString(), ordersOn, pool.poolNFT, pool.utxoId, orderFees?.executorFee, orderFees?.maxMinerFee],
+    () =>
+      (ordersOn ? api.checkPoolDeposit : api.checkPoolDirectDeposit)(pool.poolNFT, {
+        amountX: rawX.toString(),
+        amountY: rawY.toString(),
+      }).then((r) => ({ ...r, ordersOn })),
   );
+  const qq = q && q.ordersOn === ordersOn ? q : null;
 
   const setSide = (fromX, text) => {
     setResult(null);
@@ -328,7 +374,7 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
     (fromX ? setAmountY : setAmountX)(other);
   };
 
-  const minShares = q ? lessSlippage(big(q.shares), slippage) : null;
+  const minShares = qq ? lessSlippage(big(qq.shares), slippage) : null;
   const blocked = unsafe || full || (!pool.verified && !consent);
 
   const submit = async () => {
@@ -336,19 +382,28 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
     setError(null);
     setResult(null);
     try {
-      const r = await api.placePoolDeposit(pool.poolNFT, {
+      const body = {
         amountX: rawX.toString(),
         amountY: rawY.toString(),
         minShares: minShares.toString(),
         acknowledgeUnverified: pool.verified ? undefined : true,
-      });
-      setResult({ r, rawX, rawY, minShares });
+      };
+      const r = ordersOn
+        ? await api.placePoolDeposit(pool.poolNFT, body)
+        : await api.placePoolDirectDeposit(pool.poolNFT, { ...body, expectedPoolBoxId: qq.poolBoxId });
+      setResult({ r, ordersOn, rawX, rawY, minShares });
       setAmountX('');
       setAmountY('');
       setConsent(false);
       onPlaced();
+      if (!ordersOn) refresh();
     } catch (e) {
-      setError(e.message);
+      if (e.name === 'StateChangedError') {
+        setError('The pool moved and nothing was sent. The quote has been refreshed.');
+        refresh();
+      } else {
+        setError(e.message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -377,6 +432,8 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
     );
   };
 
+  const both = (x, y) => `${fmtSide(x, tx)} ${tokenLabel(tx)} + ${fmtSide(y, ty)} ${tokenLabel(ty)}`;
+
   return (
     <div className={s.card}>
       <div className={p.cardHeadRow}>
@@ -387,7 +444,9 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
         </label>
       </div>
       <p className={s.cardDesc}>
-        A deposit order mints you a provision when a miner fills it. The side the pool cannot match comes back.
+        {ordersOn
+          ? 'A deposit order mints you a provision when a miner fills it. The side the pool cannot match comes back.'
+          : 'A direct deposit mints the provision and its owner NFT at once. The side the pool cannot match stays in the wallet.'}
       </p>
 
       {full && (
@@ -403,23 +462,20 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
 
       <SlippageChips value={slippage} onChange={setSlippage} />
 
-      {q && (
+      {qq && (
         <div className={s.summary}>
-          <Row label="Shares" value={fmtInt(q.shares)} />
+          <Row label="Shares" value={fmtInt(qq.shares)} />
           <Row label={`Fewest accepted (${fmtPct(slippage, 1)})`} value={fmtInt(minShares)} accent />
-          <Row label="Share of the pool" value={fmtPct(q.shareOfSupply, 4)} />
-          <Row label="Used" value={`${fmtSide(q.takenX, tx)} ${tokenLabel(tx)} + ${fmtSide(q.takenY, ty)} ${tokenLabel(ty)}`} />
-          {(big(q.excessX) > 0n || big(q.excessY) > 0n) && (
-            <Row
-              label="Returned unused"
-              value={`${fmtSide(q.excessX, tx)} ${tokenLabel(tx)} + ${fmtSide(q.excessY, ty)} ${tokenLabel(ty)}`}
-            />
+          <Row label="Share of the pool" value={fmtPct(qq.shareOfSupply, 4)} />
+          <Row label="Used" value={both(qq.takenX, qq.takenY)} />
+          {(big(qq.excessX) > 0n || big(qq.excessY) > 0n) && (
+            <Row label={ordersOn ? 'Returned unused' : 'Left in the wallet'} value={both(qq.excessX, qq.excessY)} />
           )}
-          <Row label="Provision box" value={`${fmtErg(q.provisionBoxValue)} ERG, returned on redeem`} />
-          <Row label="Executor fee" value={`${fmtErg(q.executorFee)} ERG`} />
-          <Row label="Network fee" value={`${fmtErg(q.networkFee)} ERG`} />
-          <Row label="Locked now" value={lockedText(q, pool)} />
-          {big(q.shares) <= 0n && <Row label="Status" value="Too small to issue a share" />}
+          <Row label="Provision box" value={`${fmtErg(qq.provisionBoxValue)} ERG, returned on redeem`} />
+          {ordersOn && <Row label="Executor fee" value={`${fmtErg(qq.executorFee)} ERG`} />}
+          <Row label="Network fee" value={`${fmtErg(qq.networkFee)} ERG`} />
+          {ordersOn && <Row label="Locked now" value={lockedText(qq, pool)} />}
+          {big(qq.shares) <= 0n && <Row label="Status" value="Too small to issue a share" />}
         </div>
       )}
 
@@ -427,11 +483,19 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
 
       <button
         className={s.btn}
-        disabled={!ready || !q || big(q.shares) <= 0n || minShares <= 0n || quoting || submitting || blocked}
+        disabled={!ready || !qq || big(qq.shares) <= 0n || minShares <= 0n || quoting || submitting || blocked}
         onClick={submit}
         type="button"
       >
-        {submitting ? 'Placing…' : quoting ? 'Fetching quote…' : 'Place deposit order'}
+        {submitting
+          ? ordersOn
+            ? 'Placing…'
+            : 'Depositing…'
+          : quoting
+            ? 'Fetching quote…'
+            : ordersOn
+              ? 'Place deposit order'
+              : 'Deposit'}
       </button>
 
       {quoteErr && (
@@ -440,11 +504,11 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
         </Alert>
       )}
       {error && (
-        <Alert kind="error" title="Order not placed">
+        <Alert kind="error" title={ordersOn ? 'Order not placed' : 'Deposit not sent'}>
           {error}
         </Alert>
       )}
-      {result && (
+      {result && result.ordersOn && (
         <OrderPlacedResult
           result={result.r}
           rows={[
@@ -453,17 +517,30 @@ export function PoolDepositCard({ pool, balance, unsafe, onPlaced }) {
           ]}
         />
       )}
+      {result && !result.ordersOn && (
+        <TxResult
+          title="Deposit sent"
+          outcome={result.r.outcome}
+          txId={result.r.txId}
+          rows={[
+            ['Deposited', both(result.r.amountX, result.r.amountY)],
+            ['Shares', fmtInt(result.r.shares)],
+            ['Owner NFT', <IdText key="nft" id={result.r.ownerNFT} />],
+          ]}
+        />
+      )}
     </div>
   );
 }
 
-/** Close one of this wallet's provisions on the pool through a redeem order. Open on every pool. */
+/** Close one of this wallet's provisions on the pool, as a redeem order or directly. Open on every pool. */
 export function PoolRedeemCard({ pool, version, onPlaced }) {
-  const { tick, toggleSettings } = useDex();
+  const { tick, toggleSettings, ordersOn, refresh } = useDex();
   const hasKey = api.hasApiKey();
   const [provisions, setProvisions] = useState(null);
   const [listError, setListError] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [ackFees, setAckFees] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -488,21 +565,43 @@ export function PoolRedeemCard({ pool, version, onPlaced }) {
     if (selected && provisions && !provisions.some((x) => x.boxId === selected)) setSelected(null);
   }, [provisions, selected]);
 
-  const { quote: q, error: quoteErr, quoting } = useQuote(!!selected, [selected, pool.utxoId], () =>
-    api.checkPoolRedeem(pool.poolNFT, { provisionBoxId: selected }),
+  // A new selection or mode must be acknowledged on its own terms
+  useEffect(() => setAckFees(false), [selected, ordersOn]);
+
+  const { quote: q, error: quoteErr, quoting } = useQuote(!!selected, [selected, ordersOn, pool.utxoId], () =>
+    (ordersOn ? api.checkPoolRedeem : api.checkPoolDirectRedeem)(pool.poolNFT, { provisionBoxId: selected }).then(
+      (r) => ({ ...r, ordersOn }),
+    ),
   );
+  const qq = q && q.ordersOn === ordersOn ? q : null;
+  const both = (x, y) => `${fmtSide(x, tx)} ${tokenLabel(tx)} + ${fmtSide(y, ty)} ${tokenLabel(ty)}`;
+  const hasUnclaimed = !ordersOn && !!qq && (big(qq.unclaimedX) > 0n || big(qq.unclaimedY) > 0n);
 
   const submit = async () => {
     setSubmitting(true);
     setError(null);
     setResult(null);
     try {
-      const r = await api.placePoolRedeem(pool.poolNFT, { provisionBoxId: selected });
-      setResult({ r, q });
+      const r = ordersOn
+        ? await api.placePoolRedeem(pool.poolNFT, { provisionBoxId: selected })
+        : await api.placePoolDirectRedeem(pool.poolNFT, {
+            provisionBoxId: selected,
+            acknowledgeUnclaimedFees: ackFees || undefined,
+            expectedPoolBoxId: qq.poolBoxId,
+          });
+      setResult({ r, q: qq, ordersOn });
       setSelected(null);
       onPlaced();
+      if (!ordersOn) refresh();
     } catch (e) {
-      setError(e.message);
+      if (e.name === 'StateChangedError') {
+        setError('The pool or provision moved and nothing was sent. Reloading; select it again.');
+        setSelected(null);
+        onPlaced();
+        refresh();
+      } else {
+        setError(e.message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -560,9 +659,7 @@ export function PoolRedeemCard({ pool, version, onPlaced }) {
                   <span className={p.provSub}>closing: a redeem order holds its NFT</span>
                 ) : (
                   <>
-                    <span>
-                      {fmtSide(x.claimableX, tx)} {tokenLabel(tx)} + {fmtSide(x.claimableY, ty)} {tokenLabel(ty)}
-                    </span>
+                    <span>{both(x.claimableX, x.claimableY)}</span>
                     <span className={p.provSub}>fees claimable now</span>
                   </>
                 )}
@@ -578,29 +675,61 @@ export function PoolRedeemCard({ pool, version, onPlaced }) {
     <div className={s.card}>
       <h3 className={s.cardTitle}>Remove liquidity</h3>
       <p className={s.cardDesc}>
-        Placing the order claims what the vault owes the provision first. Fees still unflushed when it fills are
-        forfeited.
+        {ordersOn
+          ? 'Placing the order claims what the vault owes the provision first. Fees still unflushed when it fills are forfeited.'
+          : 'Closing a provision returns its share of the reserves straight away. Fees it has not claimed are lost with the box.'}
       </p>
       {body}
 
-      {q && (
+      {qq && ordersOn && (
         <div className={s.summary}>
-          <Row label="Returns" value={`${fmtSide(q.amountX, tx)} ${tokenLabel(tx)} + ${fmtSide(q.amountY, ty)} ${tokenLabel(ty)}`} accent />
-          <Row label="Claimed first" value={`${fmtSide(q.claimableX, tx)} ${tokenLabel(tx)} + ${fmtSide(q.claimableY, ty)} ${tokenLabel(ty)}`} />
-          <Row label="ERG back beside it" value={`${fmtErg(q.ergReturned)} ERG`} />
-          <Row label="Executor fee" value={`${fmtErg(q.executorFee)} ERG`} />
-          <Row label="Network fee" value={`${fmtErg(q.networkFee)} ERG`} />
-          {!q.withinMinSupply && <Row label="Status" value="The pool refuses to close its last shares" />}
+          <Row label="Returns" value={both(qq.amountX, qq.amountY)} accent />
+          <Row label="Claimed first" value={both(qq.claimableX, qq.claimableY)} />
+          <Row label="ERG back beside it" value={`${fmtErg(qq.ergReturned)} ERG`} />
+          <Row label="Executor fee" value={`${fmtErg(qq.executorFee)} ERG`} />
+          <Row label="Network fee" value={`${fmtErg(qq.networkFee)} ERG`} />
+          {!qq.withinMinSupply && <Row label="Status" value="The pool refuses to close its last shares" />}
         </div>
+      )}
+
+      {qq && !ordersOn && (
+        <div className={s.summary}>
+          <Row label="Returns" value={both(qq.amountX, qq.amountY)} accent />
+          <Row label="ERG back beside it" value={`${fmtErg(qq.ergReturned)} ERG`} />
+          <Row label="Network fee" value={`${fmtErg(qq.networkFee)} ERG`} />
+          {!qq.withinMinSupply && <Row label="Status" value="The pool refuses to close its last shares" />}
+        </div>
+      )}
+
+      {/* Direct: unclaimed fees die with the box, so losing them takes an explicit tick. */}
+      {hasUnclaimed && (
+        <Alert kind="warn" title="Unclaimed fees on this provision">
+          {both(qq.unclaimedX, qq.unclaimedY)} is still owed to it. Redeeming spends the box and
+          <strong> destroys them</strong>. Claim from the Fees tab first to keep them.
+          <label className={s.ackRow}>
+            <input type="checkbox" checked={ackFees} onChange={(e) => setAckFees(e.target.checked)} />
+            <span>Redeem anyway and give up these fees</span>
+          </label>
+        </Alert>
       )}
 
       <button
         className={s.btn}
-        disabled={!selected || !q || !q.withinMinSupply || quoting || submitting}
+        disabled={!selected || !qq || !qq.withinMinSupply || quoting || submitting || (hasUnclaimed && !ackFees)}
         onClick={submit}
         type="button"
       >
-        {submitting ? 'Placing…' : quoting ? 'Fetching quote…' : 'Place redeem order'}
+        {submitting
+          ? ordersOn
+            ? 'Placing…'
+            : 'Redeeming…'
+          : quoting
+            ? 'Fetching quote…'
+            : ordersOn
+              ? 'Place redeem order'
+              : hasUnclaimed && !ackFees
+                ? 'Confirm fee loss to continue'
+                : 'Redeem provision'}
       </button>
 
       {quoteErr && (
@@ -609,18 +738,27 @@ export function PoolRedeemCard({ pool, version, onPlaced }) {
         </Alert>
       )}
       {error && (
-        <Alert kind="error" title="Order not placed">
+        <Alert kind="error" title={ordersOn ? 'Order not placed' : 'Redemption failed'}>
           {error}
         </Alert>
       )}
-      {result && (
+      {result && result.ordersOn && (
         <OrderPlacedResult
           result={result.r}
           rows={[
-            ['Returns', `${fmtSide(result.q.amountX, tx)} ${tokenLabel(tx)} + ${fmtSide(result.q.amountY, ty)} ${tokenLabel(ty)}`],
-            ...(result.r.claimedX
-              ? [['Claimed now', `${fmtSide(result.r.claimedX, tx)} ${tokenLabel(tx)} + ${fmtSide(result.r.claimedY, ty)} ${tokenLabel(ty)}`]]
-              : []),
+            ['Returns', both(result.q.amountX, result.q.amountY)],
+            ...(result.r.claimedX ? [['Claimed now', both(result.r.claimedX, result.r.claimedY)]] : []),
+          ]}
+        />
+      )}
+      {result && !result.ordersOn && (
+        <TxResult
+          title="Provision redeemed"
+          outcome={result.r.outcome}
+          txId={result.r.txId}
+          rows={[
+            ['Returned', both(result.r.amountX, result.r.amountY)],
+            ['Shares closed', fmtInt(result.r.shares)],
           ]}
         />
       )}

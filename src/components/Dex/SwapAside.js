@@ -560,7 +560,7 @@ function RecentActivityCard() {
   const rows = (activity ?? []).filter((a) => showFlushes || a.type !== 'FLUSH');
 
   return (
-    <div className={s.card} style={{ paddingBottom: 10 }}>
+    <div className={`${s.card} ${s.activityFill}`} style={{ paddingBottom: 10 }}>
       <div className={s.activityHead}>
         <div className={s.sectionLabel}>Recent activity</div>
         {flushCount > 0 && (

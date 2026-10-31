@@ -173,20 +173,38 @@ export const SLIPPAGE_OPTIONS = [0.001, 0.005, 0.01, 0.03, 0.05, 0.07];
  * Presentational only; the value lives in DexLayout so both pages, and both
  * cards on the Liquidity page, always agree.
  */
-export function OrderModeToggle({ checked, onChange, compact = false }) {
+export function OrderModeToggle({ checked, onChange }) {
   return (
     <label
-      className={`${s.modeToggle} ${checked ? s.modeToggleOn : ''} ${compact ? s.modeToggleCompact : ''}`}
+      className={`${s.modeToggle} ${checked ? s.modeToggleOn : ''}`}
       title={
         checked
           ? 'Placed as an order that any miner fills for the executor fee'
           : 'Sent directly, spending the pool at once'
       }
     >
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        className={s.modeInput}
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className={s.modeSwitch} aria-hidden="true">
+        <span className={s.modeKnob} />
+      </span>
       <span>Use orders</span>
     </label>
   );
+}
+
+/**
+ * A swap's price impact, coloured by how much it costs: plain under 1%, then amber, orange and red at 3% and 10%.
+ * `impact` is a fraction, as the API reports it.
+ */
+export function ImpactValue({ impact }) {
+  const v = Number(impact ?? 0);
+  const tone = v >= 0.1 ? s.impactSevere : v >= 0.03 ? s.impactHigh : v >= 0.01 ? s.impactMid : s.impactLow;
+  return <span className={tone}>{(v * 100).toFixed(v >= 0.1 ? 1 : 2)}%</span>;
 }
 
 /** Gear icon for the Settings pill. */

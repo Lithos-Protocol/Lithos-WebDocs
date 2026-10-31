@@ -3,7 +3,7 @@ import s from './styles.module.css';
 import * as api from './api';
 import { useDex } from './DexLayout';
 import SwapPanel from './SwapPanel';
-import LiquidityPanel from './LiquidityPanel';
+import LiquidityPanel, { LiquidityModeBar } from './LiquidityPanel';
 import SwapAside from './SwapAside';
 import FeeHistoryPanel from './FeeHistoryPanel';
 import { PoolDepositCard, PoolRedeemCard, PoolSwapCard } from './PoolTrade';
@@ -32,21 +32,38 @@ function usePoolWallet() {
   return { balance, version, placed };
 }
 
-/** ERG:LIT keeps its own page, with direct swaps; any other pool trades through orders. */
+/**
+ * ERG:LIT keeps its own page. A verified pool shows its chart and activity beside the swap; an unverified one has
+ * none, so the pool's details take that column instead.
+ */
 export function SwapPage() {
   const { isCanonical, selected, selectedVault } = useDex();
   const { balance, version, placed } = usePoolWallet();
   if (!selected) return null;
   if (isCanonical) return <SwapPanel />;
+  const swap = (
+    <PoolSwapCard pool={selected} balance={balance} unsafe={poolTrust(selected) === 'unsafe'} onPlaced={placed} />
+  );
+  const info = <PoolInfoCard pool={selected} vault={selectedVault} />;
   return (
     <>
-      <div className={s.swapLayout}>
-        <div className={s.swapCol}>
-          <PoolSwapCard pool={selected} balance={balance} unsafe={poolTrust(selected) === 'unsafe'} onPlaced={placed} />
-          <PoolInfoCard pool={selected} vault={selectedVault} />
+      {selected.verified ? (
+        <div className={`${s.swapLayout} ${s.swapLayoutFill}`}>
+          <div className={s.swapCol}>
+            {swap}
+            {info}
+          </div>
+          <SwapAside />
         </div>
-        {selected.verified ? <SwapAside /> : <VerifiedOnlyCard title="Price charts and recent activity are kept for verified pools only" />}
-      </div>
+      ) : (
+        <div className={s.swapLayout}>
+          <div className={s.swapCol}>{swap}</div>
+          <div className={s.swapCol}>
+            <VerifiedOnlyCard title="Price charts and recent activity are kept for verified pools only" />
+            {info}
+          </div>
+        </div>
+      )}
       <PoolOrdersCard pool={selected} version={version} />
     </>
   );
@@ -65,6 +82,7 @@ export function LiquidityPage() {
     );
   return (
     <>
+      <LiquidityModeBar />
       <div className={s.cols}>
         <PoolDepositCard pool={selected} balance={balance} unsafe={poolTrust(selected) === 'unsafe'} onPlaced={placed} />
         <PoolRedeemCard pool={selected} version={version} onPlaced={placed} />
@@ -75,9 +93,15 @@ export function LiquidityPage() {
   );
 }
 
-/** Fee history is collected for verified pools only. */
+/** Fee history is collected for verified pools only; an unverified pool shows how its fees split instead. */
 export function HistoryPage() {
-  const { selected } = useDex();
+  const { selected, selectedVault } = useDex();
   if (!selected) return null;
-  return selected.verified ? <FeeHistoryPanel /> : <VerifiedOnlyCard title="Fee history is kept for verified pools only" />;
+  if (selected.verified) return <FeeHistoryPanel />;
+  return (
+    <div className={s.swapCol}>
+      <VerifiedOnlyCard title="Fee history is kept for verified pools only" />
+      <PoolInfoCard pool={selected} vault={selectedVault} wide />
+    </div>
+  );
 }

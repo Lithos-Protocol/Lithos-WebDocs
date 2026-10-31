@@ -102,6 +102,7 @@ const sidebars: SidebarsConfig = {
       items: [
         { type: "doc", id: "operations/failure-modes" },
         { type: "doc", id: "operations/reporting-issues" },
+        { type: "doc", id: "operations/renting-hashrate" },
       ],
     },
   ],

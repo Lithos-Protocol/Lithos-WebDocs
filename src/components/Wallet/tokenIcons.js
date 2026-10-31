@@ -78,3 +78,12 @@ export function tokenIconPath(tokenId) {
   const file = tokenId ? FILES.get(tokenId.toLowerCase()) : undefined;
   return file ? `/img/tokens/${file}` : null;
 }
+
+/** Icons drawn in a dark colour on a transparent ground, which vanish on this site's dark cards. */
+const PLATED = new Set(['erg.svg', 'rseth.svg']);
+
+/** Whether a token's icon needs a light plate behind it to be seen. */
+export const tokenIconPlated = (tokenId) => {
+  const path = tokenIconPath(tokenId);
+  return !!path && PLATED.has(path.slice(path.lastIndexOf('/') + 1));
+};

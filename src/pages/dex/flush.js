@@ -6,7 +6,7 @@ export default function DexFlushPage() {
   return (
     <DexLayout
       title="Flush"
-      description="Move accrued pool fees into the LithosDex fee vault."
+      description="Move this pool's pending fees into its vault."
     >
       <FlushPanel />
     </DexLayout>

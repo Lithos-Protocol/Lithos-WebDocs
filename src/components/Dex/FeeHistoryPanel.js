@@ -3,6 +3,7 @@ import s from './styles.module.css';
 import * as api from './api';
 import { useDex } from './DexLayout';
 import { fmtErg, fmtToken, fmtInt, fmtUnits, big, shortId } from './format';
+import { decimalsOf, tokenLabel } from './pools';
 import { Alert, Spinner, Row } from './ui';
 
 const W = 760;
@@ -196,7 +197,7 @@ function Chart({ points, decimals, color, colorDim, label, unit }) {
 }
 
 export default function FeeHistoryPanel() {
-  const { pool, tick } = useDex();
+  const { selected: pool, poolApi, tick } = useDex();
   const [scope, setScope] = useState('pool');
   const [asset, setAsset] = useState('erg');
   const [provisions, setProvisions] = useState([]);
@@ -205,29 +206,36 @@ export default function FeeHistoryPanel() {
   const [error, setError] = useState(null);
   const [partial, setPartial] = useState(false);
 
-  const dec = pool?.tokenDecimals ?? 0;
-  const name = pool?.tokenName ?? 'TOKEN';
+  const dec = decimalsOf(pool?.tokenY);
+  const decX = decimalsOf(pool?.tokenX);
+  const name = tokenLabel(pool?.tokenY);
+  const xName = tokenLabel(pool?.tokenX);
+  const [collectedFrom, setCollectedFrom] = useState(null);
 
   useEffect(() => {
-    api
+    if (!poolApi) return;
+    setScope("pool");
+    poolApi
       .listProvisions()
       .then((r) => setProvisions(r.provisions ?? []))
       .catch(() => setProvisions([]));
-  }, []);
+  }, [poolApi]);
 
   useEffect(() => {
+    if (!poolApi) return undefined;
     let alive = true;
     setLoading(true);
     setError(null);
     // `bucket` is a block count, not a number of buckets — 720 blocks ≈ a day.
     const p =
       scope === 'pool'
-        ? api.getFeeHistory({ bucket: 720 })
-        : api.getProvisionFeeHistory(scope, { bucket: 720 });
+        ? poolApi.getFeeHistory({ bucket: 720 })
+        : poolApi.getProvisionFeeHistory(scope, { bucket: 720 });
     p.then((r) => {
       if (!alive) return;
       setHistory(r.history ?? []);
       setPartial(!!r.partial);
+      setCollectedFrom(r.stats?.collectedFrom ?? null);
     })
       .catch((e) => {
         if (alive) {
@@ -239,7 +247,7 @@ export default function FeeHistoryPanel() {
     return () => {
       alive = false;
     };
-  }, [scope, tick]);
+  }, [scope, tick, poolApi]);
 
   const isErg = asset === 'erg';
   const points = (history ?? []).map((h) => ({
@@ -263,8 +271,8 @@ export default function FeeHistoryPanel() {
       BigInt(history.length)
     : 0n;
 
-  const fmt = (v) => (isErg ? fmtErg(v, 4) : fmtToken(v, dec, 4));
-  const unit = isErg ? 'ERG' : name;
+  const fmt = (v) => (isErg ? fmtToken(v, decX, 4) : fmtToken(v, dec, 4));
+  const unit = isErg ? xName : name;
 
   return (
     <>
@@ -302,9 +310,9 @@ export default function FeeHistoryPanel() {
           </span>
           <button
             className={`${s.chip} ${isErg ? s.chipActive : ''}`}
-            onClick={() => setAsset('erg')}
+            onClick={() => setAsset("erg")}
           >
-            ERG
+            {xName}
           </button>
           <button
             className={`${s.chip} ${!isErg ? s.chipActive : ''}`}
@@ -350,11 +358,18 @@ export default function FeeHistoryPanel() {
             <Row label="Scope" value={scope === 'pool' ? 'Whole pool' : shortId(scope)} />
           </div>
 
-          {partial && (
-            <Alert kind="warn" title="Partial series">
-              The index does not reach back to the pool's start, so this does not cover its whole
-              life. The points shown are still exact.
+          {collectedFrom != null ? (
+            <Alert kind="info" title={`Collected from block ${fmtInt(collectedFrom)}`}>
+              This pool joined the verified list at that block, and nothing earlier is collected, so fees before it
+              are uncertain. The points shown are still exact.
             </Alert>
+          ) : (
+            partial && (
+              <Alert kind="warn" title="Partial series">
+                The index does not reach back to the pool's start, so this does not cover its whole
+                life. The points shown are still exact.
+              </Alert>
+            )
           )}
 
           <Alert kind="info">

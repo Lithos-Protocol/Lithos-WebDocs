@@ -369,6 +369,9 @@ async function req(path, { method = 'GET', body, auth = false, query } = {}) {
   return data;
 }
 
+/** The request helper, for sections that share this client's base URL and key. */
+export const request = req;
+
 /* ============================================================
    Pool & vault state
    ============================================================ */
@@ -690,7 +693,166 @@ export const cancelOrder = (boxId) =>
  *
  * Needs an api_key; without one the balance reads as unavailable. `nanoErgs`
  * is the SPENDABLE balance: unreserved plain boxes, not the node's total, and
- * not unclaimed rewards. Each token carries `verified`, and verified tokens an
- * `icon` path on this client.
+ * not unclaimed rewards. Each token carries `verified`.
  */
 export const getWalletBalances = () => req('/wallet/balances', { auth: true });
+
+/* ============================================================
+   Any pool
+   Every LithosDex pool, ERG/token (n2t) and token/token (t2t), through
+   /dex/pools. Reads and quotes are open; this wallet's orders and
+   provisions, placements and creation need the key. Orders only: there is
+   no direct swap, deposit or redeem on these routes.
+   ============================================================ */
+
+const poolPath = (nft, rest = '') => `/dex/pools/${encodeURIComponent(nft)}${rest}`;
+
+/** GET /dex/pools — `status` is `building` until the client's first index completes. */
+export const listPools = () => req('/dex/pools');
+
+/** GET /dex/pools/{poolNft} — the pool as indexed, with its vault read now. */
+export const getPoolByNft = (nft) => req(poolPath(nft));
+
+/** GET /dex/pools/{poolNft}/orders */
+export const listPoolOrders = (nft) => req(poolPath(nft, '/orders'), { auth: true });
+
+/** GET /dex/pools/{poolNft}/provisions */
+export const listPoolProvisions = (nft) => req(poolPath(nft, '/provisions'), { auth: true });
+
+/** POST /dex/pools/{poolNft}/orders/swap/check — `tokenIn` is 'ERG' or one of the pool's token ids. */
+export const checkPoolSwap = (nft, { tokenIn, amountIn }) =>
+  req(poolPath(nft, '/orders/swap/check'), {
+    method: 'POST',
+    body: { tokenIn, amountIn: String(amountIn), ...orderFeeFields() },
+  });
+
+/** POST /dex/pools/{poolNft}/orders/swap — an unverified pool needs `acknowledgeUnverified`. */
+export const placePoolSwap = (nft, { tokenIn, amountIn, minOutput, acknowledgeUnverified }) =>
+  submitted(
+    req(poolPath(nft, '/orders/swap'), {
+      method: 'POST',
+      auth: true,
+      body: omitEmpty({
+        tokenIn,
+        amountIn: String(amountIn),
+        minOutput: String(minOutput),
+        acknowledgeUnverified,
+        ...orderFeeFields(),
+      }),
+    }),
+  );
+
+/** POST /dex/pools/{poolNft}/orders/deposit/check — X is ERG on an ERG/token pool. */
+export const checkPoolDeposit = (nft, { amountX, amountY }) =>
+  req(poolPath(nft, '/orders/deposit/check'), {
+    method: 'POST',
+    body: { amountX: String(amountX), amountY: String(amountY), ...orderFeeFields() },
+  });
+
+/** POST /dex/pools/{poolNft}/orders/deposit */
+export const placePoolDeposit = (nft, { amountX, amountY, minShares, acknowledgeUnverified }) =>
+  submitted(
+    req(poolPath(nft, '/orders/deposit'), {
+      method: 'POST',
+      auth: true,
+      body: omitEmpty({
+        amountX: String(amountX),
+        amountY: String(amountY),
+        minShares: String(minShares),
+        acknowledgeUnverified,
+        ...orderFeeFields(),
+      }),
+    }),
+  );
+
+/** POST /dex/pools/{poolNft}/orders/redeem/check */
+export const checkPoolRedeem = (nft, { provisionBoxId }) =>
+  req(poolPath(nft, '/orders/redeem/check'), {
+    method: 'POST',
+    body: { provisionBoxId, ...orderFeeFields() },
+  });
+
+/** POST /dex/pools/{poolNft}/orders/redeem — open on every pool, so liquidity can always leave. */
+export const placePoolRedeem = (nft, { provisionBoxId }) =>
+  submitted(
+    req(poolPath(nft, '/orders/redeem'), {
+      method: 'POST',
+      auth: true,
+      body: { provisionBoxId, ...orderFeeFields() },
+    }),
+  );
+
+/** POST /dex/pools/{poolNft}/flush/check */
+export const checkPoolFlush = (nft) => req(poolPath(nft, '/flush/check'), { method: 'POST' });
+
+/** POST /dex/pools/{poolNft}/flush — permissionless; pays the caller nothing. */
+export const flushPool = (nft, opts = {}) =>
+  submitted(
+    req(poolPath(nft, '/flush'), {
+      method: 'POST',
+      auth: true,
+      body: omitEmpty({ expectedPoolBoxId: opts.expectedPoolBoxId, expectedVaultBoxId: opts.expectedVaultBoxId }),
+    }),
+  );
+
+/** POST /dex/pools/{poolNft}/provisions/{boxId}/claim — the provision gets a new box id, `successorBoxId`. */
+export const claimPoolProvision = (nft, boxId, opts = {}) =>
+  submitted(
+    req(poolPath(nft, `/provisions/${encodeURIComponent(boxId)}/claim`), {
+      method: 'POST',
+      auth: true,
+      body: omitEmpty({
+        expectedVaultBoxId: opts.expectedVaultBoxId,
+        expectedProvisionBoxId: opts.expectedProvisionBoxId,
+        minAmountX: str(opts.minAmountX),
+        minAmountY: str(opts.minAmountY),
+      }),
+    }),
+  );
+
+/* Graphs and history, kept for verified pools only: an unverified pool answers 404. `stats.collectedFrom` names
+   the height a pool other than ERG:LIT joined the verified list; nothing before it is collected. */
+
+/** GET /dex/pools/{poolNft}/price/history */
+export const getPoolPriceHistory = (nft, { range = '24H', bucket } = {}) =>
+  req(poolPath(nft, '/price/history'), { query: { range, bucket } });
+
+/** GET /dex/pools/{poolNft}/fees/history */
+export const getPoolFeeHistory = (nft, { from, to, bucket } = {}) =>
+  req(poolPath(nft, '/fees/history'), { query: { from, to, bucket } });
+
+/** GET /dex/pools/{poolNft}/activity/recent */
+export const getPoolRecentActivity = (nft, { limit } = {}) =>
+  req(poolPath(nft, '/activity/recent'), { query: { limit } });
+
+/** GET /dex/pools/{poolNft}/provisions/{boxId}/fees/history */
+export const getPoolProvisionFeeHistory = (nft, boxId, { from, to, bucket } = {}) =>
+  req(poolPath(nft, `/provisions/${encodeURIComponent(boxId)}/fees/history`), { query: { from, to, bucket } });
+
+/** POST /dex/pools/create/check — `tokenX` is 'ERG' for an ERG/token pool. */
+export const checkCreatePool = ({ tokenX, tokenY, amountX, amountY, feeParams }) =>
+  req('/dex/pools/create/check', {
+    method: 'POST',
+    body: omitEmpty({ tokenX, tokenY, amountX: String(amountX), amountY: String(amountY), feeParams }),
+  });
+
+/**
+ * POST /dex/pools/create — four sends. `outcome` is the first step's that was not accepted, so a partial
+ * creation is reported, never thrown: the steps say which transactions went out.
+ */
+export const createPool = ({ tokenX, tokenY, amountX, amountY, feeParams }) =>
+  req('/dex/pools/create', {
+    method: 'POST',
+    auth: true,
+    body: omitEmpty({
+      tokenX,
+      tokenY,
+      amountX: String(amountX),
+      amountY: String(amountY),
+      feeParams,
+      acknowledgeLocked: true,
+    }),
+  });
+
+/** GET /wallet/tokens/verified — open. */
+export const getVerifiedTokens = () => req('/wallet/tokens/verified');

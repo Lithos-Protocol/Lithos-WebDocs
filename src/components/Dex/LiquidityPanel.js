@@ -199,7 +199,7 @@ function DepositCard() {
               setResult(null);
             }}
           />
-          <AssetChip isErg tokenName={name} />
+          <AssetChip isErg tokenName={name} tokenId={pool?.tokenY} />
         </div>
         <div className={s.chips}>
           {[0.25, 0.5, 0.75, 1].map((p) => (

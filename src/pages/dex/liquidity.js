@@ -1,14 +1,11 @@
 import React from 'react';
 import DexLayout from '@site/src/components/Dex/DexLayout';
-import LiquidityPanel from '@site/src/components/Dex/LiquidityPanel';
+import { LiquidityPage } from '@site/src/components/Dex/PoolPages';
 
 export default function DexLiquidityPage() {
   return (
-    <DexLayout
-      title="Liquidity"
-      description="Deposit into the pool or close a provision on LithosDex."
-    >
-      <LiquidityPanel />
+    <DexLayout title="Liquidity" description="Deposit into a pool or close one of your provisions.">
+      <LiquidityPage />
     </DexLayout>
   );
 }

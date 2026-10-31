@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import s from './styles.module.css';
 import { shortId } from './format';
 import { getRememberApiKey, setRememberApiKey } from './api';
+import TokenIcon from '../Wallet/TokenIcon';
 
 /**
  * "Remember API key in this browser", shown in every section's Settings panel. It acts when
@@ -140,10 +141,11 @@ export function CubeGlyph({ purple = false, size = 13 }) {
   );
 }
 
-export function AssetChip({ isErg, tokenName = 'TOKEN' }) {
+/** One side of a trade: the token's icon, matched by id, and its name. */
+export function AssetChip({ isErg, tokenName = 'TOKEN', tokenId }) {
   return (
     <span className={`${s.asset} ${isErg ? s.assetErg : s.assetTok}`}>
-      <CubeGlyph purple={!isErg} />
+      <TokenIcon tokenId={isErg ? 'ERG' : tokenId} label={tokenName} size={18} />
       {isErg ? 'ERG' : tokenName}
     </span>
   );

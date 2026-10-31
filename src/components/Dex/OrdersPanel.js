@@ -13,14 +13,14 @@ export const ORDERS_ANCHOR = 'your-orders';
  * How each status reads. Only PENDING and OPEN can be cancelled: the other two
  * already have an unconfirmed transaction spending the order.
  */
-const STATUS = {
+export const STATUS = {
   PENDING: { label: 'Placing', cls: 'orderStatusWait', unconfirmed: true, cancellable: true },
   OPEN: { label: 'Open', cls: 'orderStatusOpen', unconfirmed: false, cancellable: true },
   FILLING: { label: 'Filling', cls: 'orderStatusFill', unconfirmed: true, cancellable: false },
   CANCELLING: { label: 'Cancelling', cls: 'orderStatusCancel', unconfirmed: true, cancellable: false },
 };
 
-const TYPE_LABEL = { SWAP: 'Swap', DEPOSIT: 'Deposit', REDEEM: 'Redeem' };
+export const TYPE_LABEL = { SWAP: 'Swap', DEPOSIT: 'Deposit', REDEEM: 'Redeem' };
 
 /**
  * ERG and pool tokens sitting in this wallet's orders.
@@ -94,7 +94,7 @@ export function OrderPlacedResult({ result, rows, children, ordersHref }) {
   );
 }
 
-function StatusCell({ o }) {
+export function StatusCell({ o }) {
   const st = STATUS[o.status] ?? { label: o.status, cls: 'orderStatusOpen' };
   return (
     <span className={s.orderStatusCell}>

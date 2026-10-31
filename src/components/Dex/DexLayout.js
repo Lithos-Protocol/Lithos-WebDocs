@@ -1,51 +1,46 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
 import { useLocation } from '@docusaurus/router';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import s from './styles.module.css';
+import p from './pools.module.css';
 import * as api from './api';
 import FlowField, { cubeBetween } from '@site/src/components/FlowField';
-import {
-  fmtErg,
-  fmtToken,
-  fmtErgAmount,
-  fmtTokenAmount,
-  fmtInt,
-  fmtIntCompact,
-  fmtPct,
-  big,
-  ratio,
-} from './format';
 import { Spinner, Alert, GearIcon } from './ui';
 import SettingsPanel from './SettingsPanel';
 import useAutoRefresh from './useAutoRefresh';
+import { PoolSelector, PoolStrip, TrustNotes, canonicalSummary } from './PoolParts';
 
 const DexContext = createContext(null);
 export const useDex = () => useContext(DexContext);
 
 const BAND_LINES = [46, 89, 130, 169, 206, 243, 280];
 
+/** `pooled` tabs act on the selected pool and carry it in their links. */
 const NAV = [
-  { to: '/dex', label: 'Swap', exact: true },
-  { to: '/dex/liquidity', label: 'Liquidity' },
-  { to: '/dex/flush', label: 'Flush' },
-  { to: '/dex/fees', label: 'Fees' },
-  { to: '/dex/history', label: 'History' },
+  { to: '/dex', label: 'Swap', exact: true, pooled: true },
+  { to: '/dex/liquidity', label: 'Liquidity', pooled: true },
+  { to: '/dex/flush', label: 'Flush', pooled: true },
+  { to: '/dex/fees', label: 'Fees', pooled: true },
+  { to: '/dex/history', label: 'History', pooled: true },
+  { to: '/dex/pools', label: 'Pools', also: ['/dex/create'] },
 ];
 
-function SubNav() {
+function SubNav({ query }) {
   const { pathname } = useLocation();
   const base = useBaseUrl('/');
-  const strip = (p) => p.replace(/\/+$/, '') || '/';
+  const strip = (x) => x.replace(/\/+$/, '') || '/';
   const cur = strip(pathname.replace(new RegExp(`^${base.replace(/\/$/, '')}`), '') || '/');
 
   return (
     <div className={s.tabs}>
       {NAV.map((n) => {
-        const active = n.exact ? cur === strip(n.to) : cur.startsWith(strip(n.to));
+        const active = n.exact
+          ? cur === strip(n.to)
+          : cur.startsWith(strip(n.to)) || (n.also ?? []).includes(cur);
         return (
-          <Link key={n.to} to={n.to} className={`${s.tab} ${active ? s.tabActive : ''}`}>
+          <Link key={n.to} to={n.pooled ? `${n.to}${query}` : n.to} className={`${s.tab} ${active ? s.tabActive : ''}`}>
             {n.label}
           </Link>
         );
@@ -55,110 +50,16 @@ function SubNav() {
 }
 
 /**
- * Six glass cells. Both reserves share one cell so the row divides evenly at every
- * breakpoint — seven items left an orphan.
+ * Every LithosDex page. The pages that act on one pool read it from `?pool=`, ERG:LIT when absent, and get it from
+ * the context with a `poolApi` that calls ERG:LIT's own routes for ERG:LIT and the `/dex/pools/{nft}` routes for
+ * any other pool, so a panel is written once for both.
+ *
+ * @param pooled false on the pool list and the create page, which show no pool strip or selector
  */
-function StatStrip({ pool, vault, loading }) {
-  if (loading || !pool) {
-    return (
-      <div className={s.stats}>
-        <div className={s.stat}>
-          <div className={s.statLabel}>Pool</div>
-          <div className={s.statValue}>
-            {loading ? (
-              <>
-                <Spinner /> Loading…
-              </>
-            ) : (
-              'Unavailable'
-            )}
-          </div>
-          {!loading && <div className={s.statSub}>could not reach the client</div>}
-        </div>
-      </div>
-    );
-  }
-
-  const dec = pool.tokenDecimals ?? 0;
-  const name = pool.tokenName ?? 'TOKEN';
-  const price = ratio(big(pool.reservesY) * 10n ** 9n, big(pool.reservesX) * 10n ** BigInt(dec));
-  const fp = pool.feeParams;
-  const feePct = (fp.feeDenom - fp.dexFeeNum + fp.ergFeeNum) / fp.feeDenom;
-
-  return (
-    <div className={s.stats}>
-      {/* Every amount carries its denomination, and each ERG figure is paired with
-          the token side in its subtitle — the pool always has two sides and showing
-          one without the other invites reading a number as the whole picture. */}
-      <div className={s.stat}>
-        <div className={s.statLabel}>Pool reserves</div>
-        <div
-          className={`${s.statValue} ${s.statValueSoft}`}
-          title={`${fmtErg(pool.reservesX, 9)} ERG`}
-        >
-          {fmtErgAmount(pool.reservesX, 2)} <span className={s.statUnit}>ERG</span>
-        </div>
-        <div className={s.statSub} title={`${fmtToken(pool.reservesY, dec, dec)} ${name}`}>
-          {fmtTokenAmount(pool.reservesY, dec, 2)} {name}
-        </div>
-      </div>
-
-      <div className={s.stat}>
-        <div className={s.statLabel}>Spot price</div>
-        <div className={`${s.statValue} ${s.statValueCyan}`}>
-          {price.toLocaleString('en-US', { maximumFractionDigits: 4 })}
-        </div>
-        <div className={s.statSub}>{name} per ERG</div>
-      </div>
-
-      <div className={s.stat}>
-        <div className={s.statLabel}>Swap fee</div>
-        <div className={s.statValue}>{fmtPct(feePct, 2)}</div>
-        <div className={s.statSub}>dex + side fee</div>
-      </div>
-
-      {/* Fee amounts run small — a fixed 2dp would render a live balance as "0". */}
-      <div className={`${s.stat} ${s.statPurple}`}>
-        <div className={s.statLabel}>Awaiting flush</div>
-        <div className={`${s.statValue} ${s.statValuePurple}`}>
-          {fmtErgAmount(pool.pendingX, 6)} <span className={s.statUnit}>ERG</span>
-        </div>
-        <div className={s.statSub} title={`${fmtToken(pool.pendingY, dec, dec)} ${name}`}>
-          {fmtTokenAmount(pool.pendingY, dec, 4)} {name}
-        </div>
-      </div>
-
-      <div className={s.stat}>
-        <div className={s.statLabel}>Vault balance</div>
-        <div className={s.statValue}>
-          {vault ? (
-            <>
-              {fmtErgAmount(vault.payableX, 6)} <span className={s.statUnit}>ERG</span>
-            </>
-          ) : (
-            '—'
-          )}
-        </div>
-        <div className={s.statSub}>
-          {vault ? `${fmtTokenAmount(vault.payableY, dec, 4)} ${name} claimable` : 'claimable'}
-        </div>
-      </div>
-
-      <div className={s.stat}>
-        <div className={s.statLabel}>LP supply</div>
-        <div className={s.statValue} title={fmtInt(pool.supply)}>
-          {fmtIntCompact(pool.supply)}
-        </div>
-        <div className={s.statSub}>shares outstanding</div>
-      </div>
-    </div>
-  );
-}
-
-export default function DexLayout({ title, description, children }) {
+export default function DexLayout({ title, description, children, pooled = true }) {
   // The design places the Settings pill above the swap page's price chart. The
-  // other four pages have no such anchor, so it falls back to the header there.
-  const { pathname } = useLocation();
+  // other pages have no such anchor, so it falls back to the header there.
+  const { pathname, search } = useLocation();
   const baseForSettings = useBaseUrl('/');
   const rel =
     (pathname.replace(new RegExp(`^${baseForSettings.replace(/\/$/, '')}`), '') || '/').replace(
@@ -167,37 +68,59 @@ export default function DexLayout({ title, description, children }) {
     ) || '/';
   const isSwapPage = rel === '/dex';
 
-  const [pool, setPool] = useState(null);
-  const [vault, setVault] = useState(null);
+  const wanted = (new URLSearchParams(search).get('pool') ?? '').trim().toLowerCase();
+  const wantedNft = /^[0-9a-f]{64}$/.test(wanted) ? wanted : null;
+
+  const [pool, setPool] = useState(null); // ERG:LIT, from /dex/pool
+  const [vault, setVault] = useState(null); // ERG:LIT's vault, read only while it is selected
+  const [pools, setPools] = useState(null);
+  const [detail, setDetail] = useState(null); // the selected pool and its vault
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
 
-  const refresh = useCallback(() => {
-    setLoading(true);
-    Promise.all([api.getPool(), api.getVault()])
-      .then(([p, v]) => {
-        setPool(p);
-        setVault(v);
-        setError(null);
-      })
-      .catch((e) => {
-        setPool(null);
-        setVault(null);
-        setError(e.message);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const canonicalNft = pool?.poolNFT ?? null;
+  const poolNft = wantedNft ?? canonicalNft;
+  const isCanonical = !!poolNft && poolNft === canonicalNft;
 
-  useEffect(refresh, [refresh]);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [canonical, list] = await Promise.all([api.getPool().catch(() => null), api.listPools().catch(() => null)]);
+      setPool(canonical);
+      setPools(list);
+      const nft = wantedNft ?? canonical?.poolNFT;
+      if (!nft) throw new Error('Could not read the ERG:LIT pool from the client.');
+      const ownPool = !!canonical && nft === canonical.poolNFT;
+      const [d, v] = await Promise.all([
+        // While the pool index builds after a restart, ERG:LIT still renders from its own routes
+        api.getPoolByNft(nft).catch((e) => {
+          if (ownPool) return null;
+          throw e;
+        }),
+        ownPool ? api.getVault().catch(() => null) : Promise.resolve(null),
+      ]);
+      setDetail(d);
+      setVault(v);
+      setError(null);
+    } catch (e) {
+      setDetail(null);
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [wantedNft]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   /*
    * Auto-refresh.
    *
    * `tick` is what read-only panels watch. Quotes deliberately do not: a price
    * you were shown has to stay put until you change an input, or a figure could
-   * move between reading it and signing for it. Anything driven by user input
-   * beyond the API key is left alone for the same reason.
+   * move between reading it and signing for it.
    */
   const [autoSecs, setAutoSecs] = useState(0);
   const [tick, setTick] = useState(0);
@@ -210,10 +133,10 @@ export default function DexLayout({ title, description, children }) {
   });
 
   /* ---- Orders ----
-     One "Use orders" choice for the Swap and Liquidity pages, and one read of
+     One "Use orders" choice for ERG:LIT's Swap and Liquidity pages, and one read of
      GET /dex/orders shared by the Your orders table, the balance's "in orders"
-     figure and the activity feed's own-fill highlight — three views of the same
-     list should never disagree about it. */
+     figure and the activity feed's own-fill highlight. Other pools are orders only
+     and list their own orders on their pages. */
   const [ordersOn, setOrdersOnState] = useState(true);
   const [orderFees, setOrderFees] = useState(null);
   const [orders, setOrders] = useState(null); // null: not loaded, or no key
@@ -236,9 +159,10 @@ export default function DexLayout({ title, description, children }) {
   // Read during render, like the panels do: saving Settings re-renders through
   // the tick, which is when a newly entered key becomes visible here.
   const hasKey = api.hasApiKey();
+  const readsOrders = pooled && isCanonical;
 
   const reloadOrders = useCallback(() => {
-    if (!api.hasApiKey()) {
+    if (!readsOrders || !api.hasApiKey()) {
       setOrders(null);
       setOrdersError(null);
       return Promise.resolve();
@@ -254,12 +178,11 @@ export default function DexLayout({ title, description, children }) {
       })
       .catch((e) => {
         // Keep the last good list: the endpoint never returns a partial one, so a
-        // failed read says nothing about the orders themselves. The error is shown
-        // beside it rather than blanking the table.
+        // failed read says nothing about the orders themselves.
         setOrdersError(e.message);
       })
       .finally(() => setOrdersLoading(false));
-  }, []);
+  }, [readsOrders]);
 
   useEffect(() => {
     reloadOrders();
@@ -270,12 +193,44 @@ export default function DexLayout({ title, description, children }) {
     setOrderFees(api.getOrderFees());
     refresh();
     // Saving can change the base URL or the key, so everything read from the
-    // client is now suspect — including panels that only watch the tick.
+    // client is now suspect, including panels that only watch the tick.
     setTick((n) => n + 1);
   }, [refresh]);
 
+  const selected = detail?.pool ?? (isCanonical ? canonicalSummary(pool) : null);
+  const selectedVault = detail?.vault ?? (isCanonical && vault ? { ...vault } : null);
+
+  const poolApi = useMemo(() => {
+    if (!poolNft) return null;
+    if (isCanonical) {
+      return {
+        checkFlush: () => api.checkFlush(),
+        flush: (o) => api.flush(o),
+        listProvisions: () => api.listProvisions(),
+        claimProvision: (boxId, o) => api.claimProvision(boxId, o),
+        getFeeHistory: (q) => api.getFeeHistory(q),
+        getProvisionFeeHistory: (boxId, q) => api.getProvisionFeeHistory(boxId, q),
+        getPriceHistory: (q) => api.getPriceHistory(q),
+        getRecentActivity: (q) => api.getRecentActivity(q),
+      };
+    }
+    return {
+      checkFlush: () => api.checkPoolFlush(poolNft),
+      flush: (o) => api.flushPool(poolNft, o),
+      listProvisions: () => api.listPoolProvisions(poolNft),
+      claimProvision: (boxId, o) => api.claimPoolProvision(poolNft, boxId, o),
+      getFeeHistory: (q) => api.getPoolFeeHistory(poolNft, q),
+      getProvisionFeeHistory: (boxId, q) => api.getPoolProvisionFeeHistory(poolNft, boxId, q),
+      getPriceHistory: (q) => api.getPoolPriceHistory(poolNft, q),
+      getRecentActivity: (q) => api.getPoolRecentActivity(poolNft, q),
+    };
+  }, [poolNft, isCanonical]);
+
+  const query = poolNft && !isCanonical ? `?pool=${poolNft}` : '';
+  const notFound = error?.status === 404;
+
   return (
-    <Layout title={`LithosDex — ${title}`} description={description}>
+    <Layout title={`LithosDex · ${title}`} description={description}>
       <div className={s.page}>
         {/* Decorative band. Cubes float in open space above the first content row. */}
         <FlowField
@@ -298,6 +253,7 @@ export default function DexLayout({ title, description, children }) {
               <p className={s.subtitle}>{description}</p>
             </div>
             <div className={s.headerMeta}>
+              {pooled && <PoolSelector selected={selected} pools={pools?.pools ?? null} canonicalNft={canonicalNft} />}
               {!isSwapPage && (
                 <button
                   className={`${s.btn} ${s.btnGhost} ${s.btnSm}`}
@@ -312,20 +268,37 @@ export default function DexLayout({ title, description, children }) {
             </div>
           </div>
 
-          <StatStrip pool={pool} vault={vault} loading={loading} />
-          <SubNav />
+          {pooled &&
+            (selected ? (
+              <PoolStrip pool={selected} vault={selectedVault} />
+            ) : (
+              loading && (
+                <div className={p.stripLoading}>
+                  <Spinner /> Loading the pool…
+                </div>
+              )
+            ))}
+          <SubNav query={query} />
+          {pooled && selected && !selected.verified && <TrustNotes pool={selected} />}
 
           {showSettings && (
             <SettingsPanel onClose={() => setShowSettings(false)} onSaved={onSettingsSaved} />
           )}
 
-          {error && !loading && (
-            <Alert kind="error" title="Could not load pool state">
-              {error}
-              <div style={{ marginTop: '0.5rem' }}>
-                Check that the Lithos client is running and that the base URL under Settings points
-                at it.
-              </div>
+          {pooled && error && !loading && (
+            <Alert kind="error" title={notFound ? 'No LithosDex pool with that NFT' : 'Could not load the pool'}>
+              {notFound ? (
+                <>
+                  The client's pool index does not list it. <Link to="/dex/pools">Pick one from the pool list.</Link>
+                </>
+              ) : (
+                <>
+                  {error.message}
+                  <div style={{ marginTop: '0.5rem' }}>
+                    Check that the Lithos client is running and that the base URL under Settings points at it.
+                  </div>
+                </>
+              )}
             </Alert>
           )}
 
@@ -347,6 +320,13 @@ export default function DexLayout({ title, description, children }) {
               ordersLoading,
               reloadOrders,
               ownOrderIds: ownOrderIds.current,
+              poolNft,
+              isCanonical,
+              selected,
+              selectedVault,
+              pools,
+              poolApi,
+              query,
             }}
           >
             {children}

@@ -96,6 +96,11 @@ const config: Config = {
             to: "/extensions/forwards",
           },
           {
+            label: "Wallet",
+            position: "left",
+            to: "/wallet",
+          },
+          {
             href: "https://github.com/Lithos-Protocol",
             label: "GitHub",
             position: "right",

@@ -6,7 +6,7 @@ export default function DexFeesPage() {
   return (
     <DexLayout
       title="Fees"
-      description="Outstanding fees for each of your liquidity provisions."
+      description="Outstanding fees for each of your provisions on this pool."
     >
       <ProvisionFeesPanel />
     </DexLayout>

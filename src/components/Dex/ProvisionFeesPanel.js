@@ -4,27 +4,40 @@ import s from './styles.module.css';
 import { ORDERS_ANCHOR } from './OrdersPanel';
 import * as api from './api';
 import { useDex } from './DexLayout';
-import { fmtErgMin, fmtTokenMin, fmtInt, fmtPct, big, hasAny } from './format';
+import { fmtTokenMin, fmtUnitsMin, fmtInt, fmtPct, big, hasAny } from './format';
+import { decimalsOf, tokenLabel } from './pools';
 import { Alert, TxResult, Row, Spinner, IdText } from './ui';
 
 export default function ProvisionFeesPanel() {
-  const { pool, vault, refresh, tick } = useDex();
+  const { selected: pool, selectedVault, vault: canonicalVault, poolApi, query, refresh, tick } = useDex();
+  const vault = selectedVault ?? canonicalVault;
   const [provisions, setProvisions] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState({});
   const [msg, setMsg] = useState({});
 
-  const dec = pool?.tokenDecimals ?? 0;
-  const name = pool?.tokenName ?? 'TOKEN';
+  const dec = decimalsOf(pool?.tokenY);
+  const xName = tokenLabel(pool?.tokenX);
+  const fmtXMin = (v, dp = 4) => fmtUnitsMin(v, decimalsOf(pool?.tokenX), dp);
+  const name = tokenLabel(pool?.tokenY);
+
+  const [listError, setListError] = useState(null);
 
   const load = useCallback(() => {
+    if (!poolApi) return;
     setLoading(true);
-    api
+    poolApi
       .listProvisions()
-      .then((r) => setProvisions(r.provisions ?? []))
-      .catch(() => setProvisions([]))
+      .then((r) => {
+        setProvisions(r.provisions ?? []);
+        setListError(null);
+      })
+      .catch((e) => {
+        setProvisions([]);
+        setListError(e.message);
+      })
       .finally(() => setLoading(false));
-  }, [tick]);
+  }, [tick, poolApi]);
 
   useEffect(load, [load]);
 
@@ -32,7 +45,7 @@ export default function ProvisionFeesPanel() {
     setBusy((b) => ({ ...b, [boxId]: true }));
     setMsg((m) => ({ ...m, [boxId]: null }));
     try {
-      const r = await api.claimProvision(boxId, {
+      const r = await poolApi.claimProvision(boxId, {
         expectedProvisionBoxId: boxId,
         expectedVaultBoxId: vault?.utxoId,
       });
@@ -106,22 +119,22 @@ export default function ProvisionFeesPanel() {
           <div className={s.totalsGrid}>
             <div className={s.totalCard}>
               <div className={s.totalLabel}>Earned</div>
-              <div className={s.totalValue}>{fmtErgMin(totals.accruedX, 4)}</div>
-              <div className={s.totalSub}>ERG</div>
+              <div className={s.totalValue}>{fmtXMin(totals.accruedX, 4)}</div>
+              <div className={s.totalSub}>{xName}</div>
               <div className={s.totalValueAlt}>{fmtTokenMin(totals.accruedY, dec, 4)}</div>
               <div className={s.totalSub}>{name}</div>
             </div>
             <div className={`${s.totalCard} ${s.totalCardOk}`}>
               <div className={s.totalLabel}>Claimable now</div>
-              <div className={s.totalValue}>{fmtErgMin(totals.claimableX, 4)}</div>
-              <div className={s.totalSub}>ERG</div>
+              <div className={s.totalValue}>{fmtXMin(totals.claimableX, 4)}</div>
+              <div className={s.totalSub}>{xName}</div>
               <div className={s.totalValueAlt}>{fmtTokenMin(totals.claimableY, dec, 4)}</div>
               <div className={s.totalSub}>{name}</div>
             </div>
             <div className={`${s.totalCard} ${anyUnflushed ? s.totalCardWarn : ''}`}>
               <div className={s.totalLabel}>Awaiting flush</div>
-              <div className={s.totalValue}>{fmtErgMin(totals.unflushedX, 4)}</div>
-              <div className={s.totalSub}>ERG</div>
+              <div className={s.totalValue}>{fmtXMin(totals.unflushedX, 4)}</div>
+              <div className={s.totalSub}>{xName}</div>
               <div className={s.totalValueAlt}>{fmtTokenMin(totals.unflushedY, dec, 4)}</div>
               <div className={s.totalSub}>{name}</div>
             </div>
@@ -143,6 +156,12 @@ export default function ProvisionFeesPanel() {
           Each provision settles independently against its own entry accumulator. Claiming moves the
           entry up to the vault's current accumulator without touching your share.
         </p>
+
+        {listError && (
+          <Alert kind="error" title="Could not read your provisions">
+            {listError}
+          </Alert>
+        )}
 
         {loading ? (
           <div className={s.empty}>
@@ -183,19 +202,19 @@ export default function ProvisionFeesPanel() {
                       <div className={s.itemCellValue}>{fmtInt(p.shares)}</div>
                     </div>
                     <div className={s.itemCell}>
-                      <div className={s.itemCellLabel}>Earned ERG</div>
-                      <div className={s.itemCellValue}>{fmtErgMin(p.accruedX)}</div>
+                      <div className={s.itemCellLabel}>Earned {xName}</div>
+                      <div className={s.itemCellValue}>{fmtXMin(p.accruedX)}</div>
                     </div>
                     <div className={s.itemCell}>
-                      <div className={s.itemCellLabel}>Claimable ERG</div>
+                      <div className={s.itemCellLabel}>Claimable {xName}</div>
                       <div className={`${s.itemCellValue} ${s.valueOk}`}>
-                        {fmtErgMin(p.claimableX)}
+                        {fmtXMin(p.claimableX)}
                       </div>
                     </div>
                     <div className={s.itemCell}>
                       <div className={s.itemCellLabel}>Awaiting flush</div>
                       <div className={`${s.itemCellValue} ${hasUnflushed ? s.valueWarn : ''}`}>
-                        {fmtErgMin(p.unflushedX)}
+                        {fmtXMin(p.unflushedX)}
                       </div>
                     </div>
                     <div className={s.itemCell}>
@@ -240,7 +259,7 @@ export default function ProvisionFeesPanel() {
                       This provision's owner NFT is held by a redeem order, so it cannot be claimed
                       until that order fills or is cancelled. Any fees already settled were claimed
                       when the order was placed.{' '}
-                      <Link to={`/dex/liquidity#${ORDERS_ANCHOR}`}>View the order</Link>
+                      <Link to={`/dex/liquidity${query}#${ORDERS_ANCHOR}`}>View the order</Link>
                     </Alert>
                   )}
 
@@ -262,7 +281,7 @@ export default function ProvisionFeesPanel() {
                       title="Permanent fees claimed"
                       outcome={m.data.outcome}
                       rows={[
-                        ['ERG claimed', `${fmtErgMin(m.data.claimedX)} ERG`],
+                        [`${xName} claimed`, `${fmtXMin(m.data.claimedX)} ${xName}`],
                         [`${name} claimed`, `${fmtTokenMin(m.data.claimedY, dec)} ${name}`],
                         ['New provision box', m.data.successorBoxId],
                       ]}

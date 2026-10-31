@@ -16,6 +16,7 @@ import {
   ratio,
 } from './format';
 import { Spinner, PartialTag, GearIcon } from './ui';
+import { decimalsOf, fmtSide, fmtSideFull, tokenLabel } from './pools';
 
 const RANGES = ['1H', '24H', '7D', '30D'];
 
@@ -296,7 +297,7 @@ function SwapPairIcon() {
 }
 
 function PriceCard() {
-  const { pool, tick } = useDex();
+  const { selected: pool, poolApi, tick } = useDex();
   const [range, setRange] = useState('24H');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -322,21 +323,23 @@ function PriceCard() {
     }
   };
 
-  const dec = pool?.tokenDecimals ?? 0;
-  const name = pool?.tokenName ?? 'TOKEN';
-  const pairLabel = inverted ? `ERG / ${name}` : `${name} / ERG`;
+  const dec = decimalsOf(pool?.tokenY);
+  const decX = decimalsOf(pool?.tokenX);
+  const name = tokenLabel(pool?.tokenY);
+  const xName = tokenLabel(pool?.tokenX);
+  const pairLabel = inverted ? `${xName} / ${name}` : `${name} / ${xName}`;
 
   /*
    * Spot straight off the reserves. The server already ends the series at the
-   * current price, so this only has to agree with it — it is never used to
+   * current price, so this only has to agree with it; it is never used to
    * adjust the chart. Inverted, it is computed from the reserves the other way
    * up rather than as 1/spot, and to more places, since ~0.05 at the default six
    * would keep only four significant digits.
    */
   const spot = pool
     ? inverted
-      ? ratio(big(pool.reservesX) * 10n ** BigInt(dec), big(pool.reservesY) * 10n ** 9n, 12)
-      : ratio(big(pool.reservesY) * 10n ** 9n, big(pool.reservesX) * 10n ** BigInt(dec))
+      ? ratio(big(pool.reservesX) * 10n ** BigInt(dec), big(pool.reservesY) * 10n ** BigInt(decX), 12)
+      : ratio(big(pool.reservesY) * 10n ** BigInt(decX), big(pool.reservesX) * 10n ** BigInt(dec))
     : 0;
 
   /*
@@ -370,9 +373,10 @@ function PriceCard() {
   // Re-read when the pool box moves: a new box id means a swap landed, so the
   // series has a new point on the end.
   useEffect(() => {
+    if (!poolApi) return undefined;
     let alive = true;
     setLoading(true);
-    api
+    poolApi
       .getPriceHistory({ range })
       .then((r) => {
         if (!alive) return;
@@ -388,9 +392,11 @@ function PriceCard() {
     return () => {
       alive = false;
     };
-  }, [range, pool?.utxoId, tick]);
+  }, [range, pool?.utxoId, tick, poolApi]);
 
   const up = (change ?? 0) >= 0;
+  // A pool verified after launch is collected only from the height it joined the list
+  const collectedFrom = data?.stats?.collectedFrom;
 
   return (
     <div className={s.priceCard}>
@@ -402,7 +408,7 @@ function PriceCard() {
               type="button"
               className={s.pairToggle}
               onClick={flipPair}
-              title={inverted ? `Showing ERG per ${name}. Switch to ${name} per ERG` : `Showing ${name} per ERG. Switch to ERG per ${name}`}
+              title={inverted ? `Showing ${xName} per ${name}. Switch to ${name} per ${xName}` : `Showing ${name} per ${xName}. Switch to ${xName} per ${name}`}
               aria-label={`Price shown as ${pairLabel}. Switch pair`}
             >
               {pairLabel}
@@ -440,73 +446,20 @@ function PriceCard() {
       ) : error ? (
         <div className={s.empty}>{error}</div>
       ) : (
-        <PriceChart points={points} range={range} pairLabel={pairLabel} />
+        <>
+          {collectedFrom != null && data?.partial && (
+            <div className={s.collectedNote}>
+              Collected from block {fmtInt(collectedFrom)}, when this pool joined the verified list. Earlier prices
+              are not collected, so the range before that point is uncertain.
+            </div>
+          )}
+          <PriceChart points={points} range={range} pairLabel={pairLabel} />
+        </>
       )}
     </div>
   );
 }
 
-export function PoolCompositionCard() {
-  const { pool, tick } = useDex();
-  const [share, setShare] = useState(null);
-
-  const dec = pool?.tokenDecimals ?? 0;
-  const name = pool?.tokenName ?? 'TOKEN';
-
-  // "Your share" is real — sum of this wallet's provisions over supply.
-  useEffect(() => {
-    api
-      .listProvisions()
-      .then((r) =>
-        setShare((r.provisions ?? []).reduce((a, p) => a + (Number(p.shareOfSupply) || 0), 0)),
-      )
-      .catch(() => setShare(null));
-  }, [pool?.utxoId, tick]);
-
-  if (!pool) return null;
-
-  // Split the bar by each side's value at the current spot price, which makes a
-  // balanced pool read as roughly 50/50 rather than by raw unit counts.
-  const ergHuman = Number(big(pool.reservesX)) / 1e9;
-  const spot = ratio(big(pool.reservesY) * 10n ** 9n, big(pool.reservesX) * 10n ** BigInt(dec));
-  const tokHuman = Number(big(pool.reservesY)) / 10 ** dec;
-  const tokInErg = spot > 0 ? tokHuman / spot : 0;
-  const total = ergHuman + tokInErg;
-  const ergPct = total > 0 ? (ergHuman / total) * 100 : 50;
-
-  return (
-    <div className={s.card}>
-      <div className={s.sectionLabel} style={{ marginBottom: 14 }}>
-        Pool composition
-      </div>
-
-      <div className={s.compRow}>
-        <div className={s.compHead}>
-          <span>ERG</span>
-          <span className={s.compAmount}>{fmtErg(pool.reservesX, 2)}</span>
-        </div>
-        <div className={s.compTrack}>
-          <div className={`${s.compFill} ${s.compFillErg}`} style={{ width: `${ergPct}%` }} />
-        </div>
-      </div>
-
-      <div className={s.compRow}>
-        <div className={s.compHead}>
-          <span>{name}</span>
-          <span className={s.compAmount}>{fmtToken(pool.reservesY, dec, 2)}</span>
-        </div>
-        <div className={s.compTrack}>
-          <div className={`${s.compFill} ${s.compFillTok}`} style={{ width: `${100 - ergPct}%` }} />
-        </div>
-      </div>
-
-      <div className={s.compFoot}>
-        <span>Your share</span>
-        <span className={s.compFootValue}>{share === null ? '—' : fmtPct(share, 2)}</span>
-      </div>
-    </div>
-  );
-}
 
 /** How often the list re-reads. The mempool moves, and so do the ages shown. */
 const ACTIVITY_POLL_MS = 30_000;
@@ -525,26 +478,29 @@ const KIND_LABEL = {
  * whose direction depends on the kind — added by a deposit, returned by a redeem,
  * either way by a resize (sign of `shares`), and moved to the vault by a flush.
  */
-function describeActivity(a, dec, name) {
-  const erg = (v) => fmtErgAmount(v, 4);
-  const tok = (v) => fmtTokenAmount(v, dec, 4);
+function describeActivity(a, pool) {
+  const [tx, ty] = [pool?.tokenX, pool?.tokenY];
+  const [xn, yn] = [tokenLabel(tx), tokenLabel(ty)];
+  const xs = (v) => fmtSide(v, tx, 4);
+  const ys = (v) => fmtSide(v, ty, 4);
+  // `ergIn` means the X side was sold, which is ERG on an ERG/token pool
   if (a.type === 'SWAP') {
-    const line = a.ergIn ? `${erg(a.amountIn)} ERG → ${name}` : `${tok(a.amountIn)} ${name} → ERG`;
+    const line = a.ergIn ? `${xs(a.amountIn)} ${xn} → ${yn}` : `${ys(a.amountIn)} ${yn} → ${xn}`;
     const full = a.ergIn
-      ? `${fmtErg(a.amountIn, 9)} ERG in → ${fmtToken(a.amountOut, dec, dec)} ${name} out`
-      : `${fmtToken(a.amountIn, dec, dec)} ${name} in → ${fmtErg(a.amountOut, 9)} ERG out`;
+      ? `${fmtSideFull(a.amountIn, tx)} ${xn} in → ${fmtSideFull(a.amountOut, ty)} ${yn} out`
+      : `${fmtSideFull(a.amountIn, ty)} ${yn} in → ${fmtSideFull(a.amountOut, tx)} ${xn} out`;
     return { line, full, tone: a.ergIn ? 'erg' : 'tok' };
   }
-  const fullPair = `${fmtErg(a.amountX, 9)} ERG · ${fmtToken(a.amountY, dec, dec)} ${name}`;
+  const fullPair = `${fmtSideFull(a.amountX, tx)} ${xn} · ${fmtSideFull(a.amountY, ty)} ${yn}`;
   if (a.type === 'FLUSH') {
-    return { line: `${erg(a.amountX)} ERG · ${tok(a.amountY)} ${name} → vault`, full: `${fullPair} moved to the vault` };
+    return { line: `${xs(a.amountX)} ${xn} · ${ys(a.amountY)} ${yn} → vault`, full: `${fullPair} moved to the vault` };
   }
   const shrinking = a.type === 'REDEEM' || (a.type === 'RESIZE' && big(a.shares) < 0n);
   const sign = shrinking ? '−' : '+';
   const sharesAbs = big(a.shares) < 0n ? -big(a.shares) : big(a.shares);
   return {
     // Signed on both sides: the pool always moves by a pair.
-    line: `${sign}${erg(a.amountX)} ERG · ${sign}${tok(a.amountY)} ${name}`,
+    line: `${sign}${xs(a.amountX)} ${xn} · ${sign}${ys(a.amountY)} ${yn}`,
     full: `${shrinking ? 'Returned' : 'Added'} ${fullPair}${
       a.shares != null ? `, ${sign}${fmtInt(sharesAbs)} shares` : ''
     }`,
@@ -552,7 +508,7 @@ function describeActivity(a, dec, name) {
 }
 
 function RecentActivityCard() {
-  const { pool, tick, orders, ownOrderIds } = useDex();
+  const { selected: pool, poolApi, tick, orders, ownOrderIds } = useDex();
   const [activity, setActivity] = useState(null);
   const [error, setError] = useState(null);
   // With auto-flush on, most blocks that carry orders end in a flush, which
@@ -560,13 +516,12 @@ function RecentActivityCard() {
   const [showFlushes, setShowFlushes] = useState(false);
   // Ages are derived at render, so they need a clock to move them along.
   const [now, setNow] = useState(() => Date.now());
-  const dec = pool?.tokenDecimals ?? 0;
-  const name = pool?.tokenName ?? 'TOKEN';
 
   useEffect(() => {
+    if (!poolApi) return undefined;
     let alive = true;
     const load = () => {
-      api
+      poolApi
         .getRecentActivity({ limit: 12 })
         .then((r) => {
           if (!alive) return;
@@ -588,7 +543,7 @@ function RecentActivityCard() {
       alive = false;
       clearInterval(id);
     };
-  }, [pool?.utxoId, tick]);
+  }, [pool?.utxoId, tick, poolApi]);
 
   /*
    * Your own fills. While a fill is unconfirmed its order is FILLING and names the
@@ -632,7 +587,7 @@ function RecentActivityCard() {
       ) : (
         <div className={s.swapList}>
           {rows.map((a, i) => {
-            const d = describeActivity(a, dec, name);
+            const d = describeActivity(a, pool);
             const own = isOwn(a);
             const mempool = a.status === 'MEMPOOL';
             return (

@@ -4,7 +4,8 @@ import * as api from './api';
 import { useDex } from './DexLayout';
 import { fmtErg, fmtToken, fmtNum, fmtPct, parseErg, parseToken, big, lessSlippage } from './format';
 import { Alert, TxResult, Row, AssetChip, Spinner, OrderModeToggle, SLIPPAGE_OPTIONS } from './ui';
-import SwapAside, { PoolCompositionCard } from './SwapAside';
+import SwapAside from './SwapAside';
+import { PoolInfoCard } from './PoolParts';
 import OrdersCard, { OrderPlacedResult, lockedInOrders } from './OrdersPanel';
 
 /** 46×52 connector: a streamline behind a disc with a cyan arrow. Static — no particles. */
@@ -51,7 +52,7 @@ function DirectionConnector({ onClick }) {
 }
 
 export default function SwapPanel() {
-  const { pool, refresh, tick, ordersOn, setOrdersOn, orderFees, orders, reloadOrders } = useDex();
+  const { pool, refresh, tick, ordersOn, setOrdersOn, orderFees, orders, reloadOrders, selected, selectedVault } = useDex();
   /* `hasApiKey()` is a module read, not state, but it is read during render —
      so this flips false->true on the re-render Settings triggers and the
      balance loads once a key exists. The balance is a display; the quote below
@@ -275,7 +276,7 @@ export default function SwapPanel() {
                         setResult(null); // starting a new trade retires the last receipt
                       }}
                     />
-                    <AssetChip isErg={ergIn} tokenName={name} />
+                    <AssetChip isErg={ergIn} tokenName={name} tokenId={pool?.tokenY} />
                   </div>
                   <div className={s.chips}>
                     {[0.25, 0.5, 0.75, 1].map((p) => (
@@ -312,7 +313,7 @@ export default function SwapPanel() {
                       disabled
                       readOnly
                     />
-                    <AssetChip isErg={!ergIn} tokenName={name} />
+                    <AssetChip isErg={!ergIn} tokenName={name} tokenId={pool?.tokenY} />
                   </div>
                 </div>
               </div>
@@ -455,7 +456,7 @@ export default function SwapPanel() {
           {/* Pool composition sits under the swap card: it describes the pool you
               are trading against, so it belongs beside the trade, not in the
               analytics column. */}
-          <PoolCompositionCard />
+          {selected && <PoolInfoCard pool={selected} vault={selectedVault} />}
         </div>
 
         {/* ---------- RIGHT COLUMN ---------- */}

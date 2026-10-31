@@ -464,6 +464,9 @@ function PriceCard() {
 /** How often the list re-reads. The mempool moves, and so do the ages shown. */
 const ACTIVITY_POLL_MS = 30_000;
 
+/** Entries per read: enough to fill a column as tall as the swap card, each one a node read for the client. */
+const ACTIVITY_LIMIT = 25;
+
 const KIND_LABEL = {
   SWAP: 'Swap',
   DEPOSIT: 'Deposit',
@@ -522,7 +525,7 @@ function RecentActivityCard() {
     let alive = true;
     const load = () => {
       poolApi
-        .getRecentActivity({ limit: 12 })
+        .getRecentActivity({ limit: ACTIVITY_LIMIT })
         .then((r) => {
           if (!alive) return;
           setActivity(r.activity ?? []);
@@ -585,7 +588,7 @@ function RecentActivityCard() {
           {activity.length ? 'Only flushes in this window.' : 'No recent activity.'}
         </div>
       ) : (
-        <div className={s.swapList}>
+        <div className={`${s.swapList} ${s.activityList}`}>
           {rows.map((a, i) => {
             const d = describeActivity(a, pool);
             const own = isOwn(a);

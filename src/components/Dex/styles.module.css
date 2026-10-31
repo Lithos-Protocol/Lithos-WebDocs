@@ -892,6 +892,17 @@
 
 .activityFill {
   flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The list takes the height the column leaves and scrolls past it. Size containment keeps a long list from
+   growing the row itself, so the swap column sets the height. */
+.activityFill .activityList {
+  flex: 1 1 0;
+  min-height: 268px;
+  max-height: none;
+  contain: size;
 }
 
 .rightCol {
@@ -1452,6 +1463,14 @@
 @media screen and (max-width: 1100px) {
   .swapLayout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Stacked, there is no column to match: back to a list that shrinks to its rows. */
+  .activityFill .activityList {
+    flex: initial;
+    min-height: 0;
+    max-height: 268px;
+    contain: none;
   }
 
   .stats {

@@ -174,6 +174,11 @@ stratum {
 | `stratum.niceHashMode` | `false` | `true` | Sends the share difficulty in the message NiceHash checks. With `false`, NiceHash refuses the pool as "pool difficulty too low" |
 | `stratum.diff` | `"4.0M"` | Your planned commitment | Served until your first difficulty commitment takes effect. The default times 100 is below NiceHash's 4,000,000,000 minimum |
 
+If [Lithos Launcher](../configuration/overview.mdx#if-you-use-lithos-launcher) writes your `lithos.conf`,
+set the difficulty and the stratum port in the launcher. Add only `bindAddress`, `reduceShareMessages`,
+`reductionMultiplier` and `niceHashMode` below its block, because a value written there overrides the
+launcher's and later launcher changes to it stop taking effect.
+
 To set up the client and the order:
 
 1. **Run the latest Lithos client against your own synced, mining-enabled Ergo node.** Leave storage rent
@@ -190,9 +195,9 @@ To set up the client and the order:
    **Commitment**, or send [`POST /mining/commitment`](../lithosapi/commit-difficulty.api.mdx) with your
    API key. Registration locks 0.001 ERG and pays a 0.001 ERG fee. Commitments from the API need
    `state.autoCommit = false`, the default.
-6. **Add the pool on NiceHash.** Use `stratum+tcp://YOUR_HOST:4444` with any worker name. Lithos pays the
-   Lithos client's wallet, not the worker. Check the pool with NiceHash's pool verifier, which needs a
-   NiceHash account.
+6. **Add the pool on NiceHash.** Choose the Autolykos algorithm, and use `stratum+tcp://YOUR_HOST:4444`
+   with any worker name and password. Lithos pays the Lithos client's wallet, not the worker. Check the
+   pool with NiceHash's pool verifier, which needs a NiceHash account.
 7. **Run a test order for one commitment cycle.** Commit for 5 GH/s at 17 super shares per window (212M)
    and order 5 GH/s with the 0.001 BTC minimum.
 

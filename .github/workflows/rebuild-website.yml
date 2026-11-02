@@ -1,0 +1,53 @@
+# The Lithos website (Lithos-Protocol/Lithos-Website) pulls docs/, sidebars.ts,
+# static/img/ and examples/lithosapi.yaml from this repo when it builds, so a
+# change here only reaches lithosprotocol.org/docs once the site is rebuilt.
+# This calls the site Worker's Cloudflare Deploy Hook, which builds and deploys
+# the site's main branch the same way a push to Lithos-Website does.
+#
+# Needs the repository secret WEBSITE_DEPLOY_HOOK_URL: the hook URL from
+# Workers & Pages > lithos-website > Settings > Builds > Deploy Hooks.
+# https://developers.cloudflare.com/workers/ci-cd/builds/deploy-hooks/
+
+name: Rebuild website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      # Generated API pages; the site renders the spec itself.
+      - "!docs/lithosapi/**"
+      - "sidebars.ts"
+      - "static/img/**"
+      - "examples/lithosapi.yaml"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  deploy-hook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the website's Deploy Hook
+        env:
+          HOOK_URL: ${{ secrets.WEBSITE_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK_URL" ]; then
+            echo "::error::Repository secret WEBSITE_DEPLOY_HOOK_URL is not set"
+            exit 1
+          fi
+          # A hook fired while an earlier build is still queued returns that
+          # build (already_exists) instead of starting another; it will sync
+          # this commit anyway, since docs are fetched when the build runs.
+          if ! body=$(curl --silent --show-error --fail-with-body --retry 3 --max-time 30 -X POST "$HOOK_URL"); then
+            echo "$body"
+            echo "::error::Deploy Hook request failed"
+            exit 1
+          fi
+          echo "$body"
+          if [ "$(jq -r .success <<<"$body")" != "true" ]; then
+            echo "::error::Deploy Hook did not report success"
+            exit 1
+          fi
+          echo "Website build $(jq -r .result.build_uuid <<<"$body") queued; its log is in the lithos-website Worker's build history." >> "$GITHUB_STEP_SUMMARY"

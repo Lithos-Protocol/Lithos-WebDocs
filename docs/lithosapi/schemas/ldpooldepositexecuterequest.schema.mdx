@@ -1,0 +1,33 @@
+---
+id: ldpooldepositexecuterequest
+title: "LDPoolDepositExecuteRequest"
+description: "A deposit order on any pool"
+sidebar_label: "LDPoolDepositExecuteRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"amountX":"string","amountY":"string","minShares":"string","executorFee":"string","maxMinerFee":"string","acknowledgeUnverified":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDepositExecuteRequest"}
+>
+</Heading>
+
+
+
+A deposit order on any pool
+
+<Schema
+  schema={{"description":"A deposit order on any pool","type":"object","x-tags":"lithosdex","required":["amountX","amountY","minShares"],"properties":{"amountX":{"type":"string"},"amountY":{"type":"string"},"minShares":{"type":"string","description":"Fewest shares the order accepts"},"executorFee":{"type":"string","description":"nanoERG the filler keeps. Omitted, from lithosdex.orders."},"maxMinerFee":{"type":"string","description":"Most of the executor fee a broadcast fill may pay as a network fee. Below executorFee."},"acknowledgeUnverified":{"type":"boolean","description":"Must be true to trade with a pool the verified list does not name"}},"title":"LDPoolDepositExecuteRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

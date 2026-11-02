@@ -1,0 +1,33 @@
+---
+id: ldpooldepositquote
+title: "LDPoolDepositQuote"
+description: "The fill a deposit order would get now. Amounts are decimal strings in base units."
+sidebar_label: "LDPoolDepositQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"poolNFT":"string","shares":"string","takenX":"string","takenY":"string","excessX":"string","excessY":"string","shareOfSupply":0,"provisionBoxValue":"string","executorFee":"string","maxMinerFee":"string","totalErgRequired":"string","tokensRequired":[{"tokenId":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3","amount":"152000000"}],"ergReturned":"string","networkFee":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDepositQuote"}
+>
+</Heading>
+
+
+
+The fill a deposit order would get now. Amounts are decimal strings in base units.
+
+<Schema
+  schema={{"description":"The fill a deposit order would get now. Amounts are decimal strings in base units.","type":"object","x-tags":"lithosdex","required":["poolNFT","shares","takenX","takenY","excessX","excessY","shareOfSupply","provisionBoxValue","executorFee","maxMinerFee","totalErgRequired","tokensRequired","ergReturned","networkFee"],"properties":{"poolNFT":{"type":"string"},"shares":{"type":"string"},"takenX":{"type":"string"},"takenY":{"type":"string"},"excessX":{"type":"string","description":"Returned, since the pool cannot match it"},"excessY":{"type":"string"},"shareOfSupply":{"type":"number","format":"double"},"provisionBoxValue":{"type":"string"},"executorFee":{"type":"string"},"maxMinerFee":{"type":"string"},"totalErgRequired":{"type":"string","description":"nanoERG the order box holds"},"tokensRequired":{"type":"array","description":"Tokens the order box holds","items":{"description":"An amount of one token","type":"object","x-tags":"lithosdex","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string","example":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3"},"amount":{"type":"string","description":"Raw token units. Decimal string.","example":"152000000"}},"title":"LDTokenAmount"}},"ergReturned":{"type":"string"},"networkFee":{"type":"string"}},"title":"LDPoolDepositQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

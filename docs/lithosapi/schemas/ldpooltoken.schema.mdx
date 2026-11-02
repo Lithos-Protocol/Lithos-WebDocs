@@ -1,0 +1,34 @@
+---
+id: ldpooltoken
+title: "LDPoolToken"
+description: "One side of a pool. A verified token's name, ticker and decimals come from the client's verified list; any other token's from the node's token index, where whoever minted the token chose them."
+sidebar_label: "LDPoolToken"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"tokenId":"c1980d829988229516430a47a5eca376060b6ce859616db0936e78ab25cb6de7","name":"LIT","ticker":"LIT","decimals":9,"verified":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolToken"}
+>
+</Heading>
+
+
+
+One side of a pool. A verified token's name, ticker and decimals come from the client's verified list; any other token's from the node's token index, where whoever minted the token chose them.
+
+
+<Schema
+  schema={{"description":"One side of a pool. A verified token's name, ticker and decimals come from the client's verified list; any other token's from the node's token index, where whoever minted the token chose them.\n","type":"object","x-tags":"lithosdex","required":["tokenId","verified"],"properties":{"tokenId":{"type":"string","description":"Token id, or `ERG` for the X side of an ERG/token pool","example":"c1980d829988229516430a47a5eca376060b6ce859616db0936e78ab25cb6de7"},"name":{"type":"string","example":"LIT"},"ticker":{"type":"string","description":"Short symbol. Verified tokens and ERG only.","example":"LIT"},"decimals":{"type":"integer","format":"int32","example":9},"verified":{"type":"boolean","example":true}},"title":"LDPoolToken"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

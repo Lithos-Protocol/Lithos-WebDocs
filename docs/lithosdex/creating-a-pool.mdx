@@ -1,0 +1,133 @@
+---
+sidebar_position: 5
+tags:
+  - lithosdex
+description: Creating an ERG/token or token/token LithosDex pool, what it costs, what is locked for good, and what you get back.
+---
+
+# Creating a pool
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you know what a provision is and how a pool's price follows its reserves. Read [Providing liquidity](./liquidity.mdx) first.*
+
+Any wallet can create a LithosDex pool, ERG against a token or two tokens, from the web interface or
+the API. This page covers what creating a pool does, what it costs, and how to create one. Telling pools
+apart once they exist is in [Choosing a pool](./pools.mdx).
+
+## What creating a pool does
+
+Creating a pool sends the following four transactions from your node wallet, in order:
+
+1. Mint the pool NFT.
+2. Mint the vault NFT.
+3. Mint the NFT that owns your provision.
+4. Send the genesis, which creates the pool, its vault and your provision.
+
+Everything you put in becomes the pool's reserves, and the ratio of your two amounts sets the opening
+price. The genesis gives you a provision for every share of the pool but a millionth. That millionth is
+locked in the pool for good, so a millionth of each reserve can never be taken out.
+
+:::danger The opening price is yours to get right
+Anyone can trade against the pool once its genesis is in a block. If your price differs from the market
+price, the first trades buy the cheap side until the pool's price matches the market, and that
+difference comes out of your reserves.
+:::
+
+## What it costs
+
+Creating a pool charges no fee of its own. You pay the network fees on the four transactions, and the
+new boxes hold the following ERG:
+
+| Box | ERG it holds | Returned |
+|---|---|---|
+| Token/token pool | 6.3 ERG | Never |
+| Token/token vault | 2.3 ERG | Never |
+| ERG/token vault | 0.1 ERG | Never |
+| Your provision | 0.6 ERG | When you redeem the provision |
+
+An ERG/token pool box holds your ERG reserve and nothing more, so that ERG leaves as providers redeem.
+The pool box must always keep over 0.01 ERG, so the reserve you put in must be at least 0.01 ERG.
+
+**A full exit can leave a little behind.** Unless an ERG/token pool starts with more than 10,000 ERG,
+its locked millionth is 0.01 ERG or less. While you are its only provider, redeeming everything then
+leaves about 0.01 ERG in the pool, and its share of the token. The quote warns you when this applies.
+
+## Choosing the fees
+
+Each swap pays three fees, each a percentage of what the trader puts in:
+
+| Fee | Default | Where it goes |
+|---|---|---|
+| Kept by the pool | 0.15% | Stays in the reserves, raising the value of every share |
+| To providers, selling the first asset | 0.15% | Set aside for providers to claim |
+| To providers, selling the second asset | 0.15% | Set aside for providers to claim |
+
+The defaults match ERG:LIT. Each fee may be any percentage from 0 up to, but not including, 100. A
+pool's fees never change after its genesis.
+
+## Creating a pool from the web interface
+
+Creating a pool spends your wallet's funds, so the interface needs the client's API key, entered under
+**Settings**. To create a pool, follow these steps:
+
+1. Open **LithosDex**, then the **Pools** tab, and select **Create a pool**.
+2. Choose **ERG / token** or **Token / token**.
+3. Pick each token from your wallet, and enter how much of each goes into the pool.
+4. Select **Fees** to change the split, if you want to.
+5. Read **What creating it does**: the opening price, your provision, the share locked for good, each
+   box's ERG, the network fees and what leaves your wallet.
+6. Read any warnings under the quote, such as a pool that already trades the same pair.
+7. Tick **The pool's boxes and the locked share can never be taken back.**
+8. Select **Create pool**.
+
+The token lists show what your wallet holds, verified tokens first. Check each token id before you
+create the pool, since an unverified token's name was chosen by whoever minted it.
+
+## After you send it
+
+The result lists each of the four transactions as accepted or unsent:
+
+- **All accepted.** The pool appears in the pool list once its genesis is in a block. The result names
+  the NFT that owns your provision. Keep it: whoever holds it owns the provision.
+- **One not accepted.** The client sends none of the later transactions and gives back the wallet boxes
+  it held for them. NFTs already minted stay in your wallet and do nothing on their own. Create the pool
+  again to start over.
+
+A new pool is **Unverified** until a client release adds it to the verified list. Traders must consent
+before trading on it, as [Choosing a pool](./pools.mdx#trading-on-an-unverified-pool) describes.
+
+## Creating a pool through the API
+
+`POST /dex/pools/create/check` returns the quote, and `POST /dex/pools/create` sends the four
+transactions. Both need the API key. The request takes the following fields:
+
+| Field | What it holds |
+|---|---|
+| `tokenX` | `ERG` for an ERG/token pool, otherwise the first token's id |
+| `tokenY` | The other token's id |
+| `amountX`, `amountY` | What goes into the pool, in raw token units. ERG is in nanoERG |
+| `feeParams` | Optional. Fee numerators over a `feeDenom` of `10000`. Leaving it out takes the defaults |
+| `acknowledgeLocked` | Required by `POST /dex/pools/create`. Must be `true` |
+
+In `feeParams`, `dexFeeNum` is 10,000 less the share kept by the pool, and `ergFeeNum` and `tokenFeeNum`
+are the provider fees on the first and second asset. The defaults look like this:
+
+```json title="POST /dex/pools/create"
+{
+  "tokenX": "ERG",
+  "tokenY": "TOKEN_ID",
+  "amountX": "100000000000",
+  "amountY": "5000000",
+  "feeParams": { "dexFeeNum": 9985, "ergFeeNum": 15, "tokenFeeNum": 15, "feeDenom": 10000 },
+  "acknowledgeLocked": true
+}
+```
+
+See [Quote a new LithosDex pool](../lithosapi/check-ld-pool-create.api.mdx) and
+[Create a LithosDex pool](../lithosapi/create-ld-pool.api.mdx) for every response field.
+
+## Next steps
+
+- [Providing liquidity](./liquidity.mdx): what your provision earns and how to close it.
+- [Choosing a pool](./pools.mdx): how other traders see your new pool.

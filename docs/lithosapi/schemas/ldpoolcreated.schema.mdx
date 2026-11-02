@@ -1,0 +1,33 @@
+---
+id: ldpoolcreated
+title: "LDPoolCreated"
+description: "A pool creation, as far as it went"
+sidebar_label: "LDPoolCreated"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"outcome":"accepted","kind":"n2t","poolNFT":"string","vaultNFT":"string","provToken":"string","ownerNFT":"string","provisionBoxId":"string","steps":[{"step":"POOL_NFT","txId":"string","outcome":"accepted","reason":"string"}]}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolCreated"}
+>
+</Heading>
+
+
+
+A pool creation, as far as it went
+
+<Schema
+  schema={{"description":"A pool creation, as far as it went","type":"object","x-tags":"lithosdex","required":["outcome","kind","poolNFT","vaultNFT","provToken","ownerNFT","provisionBoxId","steps"],"properties":{"outcome":{"type":"string","enum":["accepted","rejected","uncertain","unsent"],"description":"accepted when all four were, else the first step's that was not"},"kind":{"type":"string","enum":["n2t","t2t"]},"poolNFT":{"type":"string"},"vaultNFT":{"type":"string"},"provToken":{"type":"string"},"ownerNFT":{"type":"string","description":"The NFT in this wallet that owns the creator's provision"},"provisionBoxId":{"type":"string","description":"The creator's provision, which genesis creates"},"steps":{"type":"array","items":{"description":"One of a pool creation's four transactions","type":"object","x-tags":"lithosdex","required":["step","txId","outcome"],"properties":{"step":{"type":"string","enum":["POOL_NFT","VAULT_NFT","OWNER_NFT","GENESIS"]},"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain","unsent"],"description":"unsent: an earlier transaction was not accepted"},"reason":{"type":"string","description":"The node's refusal, or why the transaction was not sent"}},"title":"LDPoolCreateStep"}}},"title":"LDPoolCreated"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

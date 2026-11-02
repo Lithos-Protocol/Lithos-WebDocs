@@ -1,12 +1,12 @@
 ---
 id: wallettoken
 title: "WalletToken"
-description: "A token balance held by the wallet"
+description: "A token balance held by the wallet. For a verified token, `name`, `ticker` and `decimals` come from the client's verified list. For any other token they come from the node's token index, where whoever minted the token chose them, and are absent if the node has no index."
 sidebar_label: "WalletToken"
 hide_title: true
 hide_table_of_contents: true
 schema: true
-sample: {"tokenId":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3","name":"LIT","decimals":4,"amount":"5420000000"}
+sample: {"tokenId":"c1980d829988229516430a47a5eca376060b6ce859616db0936e78ab25cb6de7","name":"LIT","ticker":"LIT","decimals":9,"amount":"5420000000","verified":true}
 custom_edit_url: null
 ---
 
@@ -22,10 +22,11 @@ import Heading from "@theme/Heading";
 
 
 
-A token balance held by the wallet
+A token balance held by the wallet. For a verified token, `name`, `ticker` and `decimals` come from the client's verified list. For any other token they come from the node's token index, where whoever minted the token chose them, and are absent if the node has no index.
+
 
 <Schema
-  schema={{"description":"A token balance held by the wallet","type":"object","x-tags":"lithosdex","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string","example":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3"},"name":{"type":"string","example":"LIT"},"decimals":{"type":"integer","format":"int32","example":4},"amount":{"type":"string","description":"Raw token units held. Decimal string.","example":"5420000000"}},"title":"WalletToken"}}
+  schema={{"description":"A token balance held by the wallet. For a verified token, `name`, `ticker` and `decimals` come from the client's verified list. For any other token they come from the node's token index, where whoever minted the token chose them, and are absent if the node has no index.\n","type":"object","x-tags":"wallet","required":["tokenId","amount","verified"],"properties":{"tokenId":{"type":"string","example":"c1980d829988229516430a47a5eca376060b6ce859616db0936e78ab25cb6de7"},"name":{"type":"string","example":"LIT"},"ticker":{"type":"string","description":"Short symbol. Verified tokens only.","example":"LIT"},"decimals":{"type":"integer","format":"int32","example":9},"amount":{"type":"string","description":"Raw token units held. Decimal string.","example":"5420000000"},"verified":{"type":"boolean","description":"Whether the token is on the client's verified list","example":true}},"title":"WalletToken"}}
   schemaType={"response"}
 >
   

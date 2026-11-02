@@ -1,0 +1,34 @@
+---
+id: ldpooldirectresult
+title: "LDPoolDirectResult"
+description: "A direct spend sent. For a swap `amountX` is what was sold and `amountY` what came back; for a deposit and a redemption, X and Y in pool order."
+sidebar_label: "LDPoolDirectResult"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"outcome":"string","txId":"string","poolNFT":"string","kind":"SWAP","amountX":"string","amountY":"string","shares":"string","ownerNFT":"string","provisionBoxId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDirectResult"}
+>
+</Heading>
+
+
+
+A direct spend sent. For a swap `amountX` is what was sold and `amountY` what came back; for a deposit and a redemption, X and Y in pool order.
+
+
+<Schema
+  schema={{"description":"A direct spend sent. For a swap `amountX` is what was sold and `amountY` what came back; for a deposit and a redemption, X and Y in pool order.\n","type":"object","x-tags":"lithosdex","required":["outcome","txId","poolNFT","kind","amountX","amountY"],"properties":{"outcome":{"type":"string"},"txId":{"type":"string"},"poolNFT":{"type":"string"},"kind":{"type":"string","enum":["SWAP","DEPOSIT","REDEEM"]},"amountX":{"type":"string"},"amountY":{"type":"string"},"shares":{"type":"string"},"ownerNFT":{"type":"string"},"provisionBoxId":{"type":"string"}},"title":"LDPoolDirectResult"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

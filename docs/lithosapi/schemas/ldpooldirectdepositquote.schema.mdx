@@ -1,0 +1,33 @@
+---
+id: ldpooldirectdepositquote
+title: "LDPoolDirectDepositQuote"
+description: "What a direct deposit would take and issue against the pool now."
+sidebar_label: "LDPoolDirectDepositQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"poolNFT":"string","shares":"string","takenX":"string","takenY":"string","excessX":"string","excessY":"string","shareOfSupply":0,"provisionBoxValue":"string","totalErgRequired":"string","networkFee":"string","poolBoxId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDirectDepositQuote"}
+>
+</Heading>
+
+
+
+What a direct deposit would take and issue against the pool now.
+
+<Schema
+  schema={{"description":"What a direct deposit would take and issue against the pool now.","type":"object","x-tags":"lithosdex","required":["poolNFT","shares","takenX","takenY","excessX","excessY","shareOfSupply","provisionBoxValue","totalErgRequired","networkFee","poolBoxId"],"properties":{"poolNFT":{"type":"string"},"shares":{"type":"string"},"takenX":{"type":"string"},"takenY":{"type":"string"},"excessX":{"type":"string"},"excessY":{"type":"string"},"shareOfSupply":{"type":"number","format":"double"},"provisionBoxValue":{"type":"string","description":"nanoERG in the new provision box, returned on redemption"},"totalErgRequired":{"type":"string","description":"nanoERG leaving the wallet, X itself included on an ERG/token pool"},"networkFee":{"type":"string"},"poolBoxId":{"type":"string"}},"title":"LDPoolDirectDepositQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

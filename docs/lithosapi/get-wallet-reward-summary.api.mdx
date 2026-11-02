@@ -1,0 +1,64 @@
+---
+id: get-wallet-reward-summary
+title: "Your block rewards"
+description: "Coinbase reward boxes held by this wallet: how many are still behind the 720-block timelock, how many are spendable now, and the ERG totals."
+sidebar_label: "Your block rewards"
+hide_title: true
+hide_table_of_contents: true
+api: eJztV11v2zYU/SsX92Uviu2m7YbpzW2zNthaFGmCYUiNhZauLbYUqZJXiTVD/324pPwRx1mBPg1F8+DYIu/nOYe8WmOgovWaO8yv1zht9O/UTVuuML+e9bMMSwqF1w1rZzHHl07buQoEnu6UL2HuVhSgIlPCvAOudIA7ZQxxDpW7g1rZDpQnCKyNgTlV2pbAFcEvp5OTuXHFZ2Bdk3zJDiwasqWaGwLr7jJQg93ZxWtgx8qE0UeLGbqGvJLkzkvMcUn8Zwx/EdP70Na18h1myGoZML/GlBzOMvQUGmcDBczXeDqZyL/7tV5sS4TCtZZDSiIGxwwLZ5ksi51qGqOLmMb4UxDjNYaiolo99Hq569FPAYr7/RS/3DWEObr5JyoYM1ydpOQ3uUvqX1rtqZSCIgCYYWulh1S+GH7HNN8p6878cn99+2iWYeOle6xTD5KnfL1JQFumJXnMcOF8rTg9enqKh5y4OKRCBtoWpi21XYKzFB6iv8EcM6SVqhtDmD/rD6v4hlzePEqh/VCn/WGDdqECe22XDxyf3ZLv9lgP7JbEFfkRvKJC18pAshztB8Inp5PNH/ZHUPhq3MuKoFGeoVGBQXPY9u6/A/98L25UWriyrM1v2ge+inl8S4NfRE/QiqsIJSlvNAVOIJ+k+mKHasWtpzCC6TyQZbiryIJ1liI4aeMIe8FCc0z6mHb7XnY8mzx9KKW3OoTIMQ933tklqEb//Zm6bxfnmffOw+ZogIV3NUzfnx9R5b4GSaziMyX+pWWstHkosbTxWNePpVG4kvYxfT6Z9NsgXyds9FFTCGpJQKvGKG2lWwJacgJukSAc8t+x59wyeSvUIn9LftjRbys7Et22xojWMGff0mE2r6IdlckT7C/uE2Da6LMUKqL+/Bjq71xJEfJIFmitulU6hh7BBbHvRj/w/07wL2mhWsOP4PQD5u8C5j7Dmrhyw/yGGTZKxk8cJ4WPd6NRSjPESbX1BnOsmJt8PDauUKZygfNf5cY7TOsPzZUL8NJouYcEaZlsN4PvB2FJQm5//D0kzbTR8Jk6UC1Xzut/ItWgDRRH3xRiBHJfVypUqek6RJO6DQxzgsaogkrQFjrXCvJ2oZcZtLYkDzcmuVAxhzcqVDfJ3aACuFWmJdABbioyxt2kAXgAKFkJQKoefg9XoZbkK1Il+QiCtgt3pLr35/DKFW1NllNlC+cjbYbmFbF5I3jrSjIh1v3RVuTTbU6rhgomGY+l0MLZoINIE1ThXZDRuQMn8xJoId82TNiw836YWJpgnbJ7MpqMBNYNgR4Cms4CVcSzYMeNkI/HS81VOx8Vrh4nu5P33rErnIn9aFzgWkWpDb37S8BJLyc77t1r13p38vz/XokGRjCteByPgzh5+ijnJK3r/XeJVOAsQ9GPrK3XUs6VN30vj7+05OXlcJbhrfI6if961mcbUokahWo5TouCGvEaqRpZeHAoi+62an99dokZqkFtOyIn3g5fxPtmyXb3fG8YnoLLZ589snm9TgLp++3+tPSoxVDcZrd0cdb3/b/F60bh
+sidebar_class_name: "get api-method"
+info_path: docs/lithosapi/lithos-client-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Your block rewards"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/wallet/rewards"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Coinbase reward boxes held by this wallet: how many are still behind the 720-block timelock, how many are spendable now, and the ERG totals.
+
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Reward box counts and totals","content":{"application/json":{"schema":{"description":"This wallet's coinbase rewards","type":"object","x-tags":"wallet","required":["boxes","unlockedBoxes","totalNanoErgs","unlockedNanoErgs"],"properties":{"boxes":{"type":"integer","format":"int32","description":"Reward boxes held, including ones still behind the timelock","example":4},"unlockedBoxes":{"type":"integer","format":"int32","description":"How many are spendable now","example":2},"totalNanoErgs":{"type":"string","description":"Every reward box together. Decimal string.","example":"12000000000"},"unlockedNanoErgs":{"type":"string","description":"The part past its timelock. Decimal string.","example":"6000000000"},"blocksUntilFirstUnlock":{"type":"integer","format":"int32","description":"Blocks until the earliest still-locked box matures. Absent when none are locked."}},"title":"WalletRewardSummary"}}}},"403":{"description":"Missing or wrong api_key","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"503":{"description":"Node or wallet unavailable. Retry.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"default":{"description":"Error","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

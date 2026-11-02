@@ -1,0 +1,33 @@
+---
+id: ldpoolswapexecuterequest
+title: "LDPoolSwapExecuteRequest"
+description: "A swap order on any pool"
+sidebar_label: "LDPoolSwapExecuteRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"tokenIn":"ERG","amountIn":"1000000000","minOutput":"string","executorFee":"string","maxMinerFee":"string","acknowledgeUnverified":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolSwapExecuteRequest"}
+>
+</Heading>
+
+
+
+A swap order on any pool
+
+<Schema
+  schema={{"description":"A swap order on any pool","type":"object","x-tags":"lithosdex","required":["tokenIn","amountIn","minOutput"],"properties":{"tokenIn":{"type":"string","description":"ERG, or one of the pool's tokens","example":"ERG"},"amountIn":{"type":"string","description":"Base units sold","example":"1000000000"},"minOutput":{"type":"string","description":"Least of the other side the order accepts, net of the fee when that is ERG"},"executorFee":{"type":"string","description":"nanoERG the filler keeps. Omitted, from lithosdex.orders."},"maxMinerFee":{"type":"string","description":"Most of the executor fee a broadcast fill may pay as a network fee. Below executorFee."},"acknowledgeUnverified":{"type":"boolean","description":"Must be true to trade with a pool the verified list does not name"}},"title":"LDPoolSwapExecuteRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -43,8 +43,10 @@ const sidebars: SidebarsConfig = {
       label: "LithosDex",
       link: { type: "doc", id: "lithosdex/overview" },
       items: [
+        { type: "doc", id: "lithosdex/pools" },
         { type: "doc", id: "lithosdex/orders" },
         { type: "doc", id: "lithosdex/liquidity" },
+        { type: "doc", id: "lithosdex/creating-a-pool" },
       ],
     },
     {
@@ -103,6 +105,7 @@ const sidebars: SidebarsConfig = {
         { type: "doc", id: "operations/failure-modes" },
         { type: "doc", id: "operations/reporting-issues" },
         { type: "doc", id: "operations/renting-hashrate" },
+        { type: "doc", id: "operations/wallet-page" },
       ],
     },
   ],

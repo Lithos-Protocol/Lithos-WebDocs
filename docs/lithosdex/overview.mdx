@@ -10,21 +10,22 @@ description: What LithosDex is, how a trade is priced, what it costs, and how or
 
 <span className="badge badge--success">Standard</span>
 
-*For anyone trading ERG and LIT through the Lithos client. No Ergo or smart contract experience needed.*
+*For anyone trading through the Lithos client. No Ergo or smart contract experience needed.*
 
-LithosDex is a decentralized exchange for ERG and LIT. It runs entirely on Ergo smart contracts, and
-your Lithos client includes a web interface for it. This page explains how a trade is priced, what it
-costs, and how your trade reaches the exchange.
+LithosDex is a decentralized exchange for ERG, LIT and other Ergo tokens. It runs entirely on Ergo
+smart contracts, and your Lithos client includes a web interface for it. This page explains how a trade
+is priced, what it costs, and how your trade reaches the exchange, using the ERG:LIT pool as the
+example.
 
-It does not cover depositing into the exchange, which is in
-[Providing liquidity](./liquidity.mdx), or the settings a miner uses to fill other people's orders,
-which are in [Batching and orders](../configuration/batching.mdx).
+It does not cover the other pools, which are in [Choosing a pool](./pools.mdx), depositing into a pool,
+which is in [Providing liquidity](./liquidity.mdx), or the settings a miner uses to fill other people's
+orders, which are in [Batching and orders](../configuration/batching.mdx).
 
 ## How the price is set
 
-LithosDex holds its ERG and LIT together in one **pool**, which is a single box on Ergo. You trade
-against the pool, not against another person, so a trade never waits for someone to take the other
-side.
+The ERG:LIT pool holds ERG and LIT together in a single box on Ergo. You trade against the pool, not
+against another person, so a trade never waits for someone to take the other side. Every other
+LithosDex pool works the same way with its own pair, either ERG and a token or two tokens.
 
 The pool sets its price from its own reserves. It keeps the product of its ERG and its LIT constant
 across a trade, before fees. Two things follow from that:
@@ -39,7 +40,8 @@ trades pay.
 
 ## What a trade costs
 
-Every swap pays about 0.3% of what you put in, in two equal parts:
+Every swap on ERG:LIT pays about 0.3% of what you put in, in two equal parts. Other pools set their
+own fees, shown on each pool's page:
 
 | Fee | Share of your input | Where it goes |
 |---|---|---|
@@ -86,15 +88,17 @@ client, so leave it unless you have a reason to change it.
 
 ## Using the web interface
 
-Open **LithosDex** in the client's navigation bar. The interface has the following tabs:
+Open **LithosDex** in the client's navigation bar. Every tab but **Pools** acts on the pool chosen in
+the header, ERG:LIT by default. The interface has the following tabs:
 
 | Tab | What you do there |
 |---|---|
-| **Swap** | Trade ERG for LIT or LIT for ERG, and follow or cancel your orders |
-| **Liquidity** | Deposit into the pool, or close a position |
+| **Swap** | Trade one side of the pool for the other, and follow or cancel your orders |
+| **Liquidity** | Deposit into the pool, close a position, or look up a provision NFT |
 | **Flush** | Move the permanent fees the pool has collected into the vault, where providers claim them |
 | **Fees** | See and claim the permanent fees your positions have earned |
-| **History** | Chart the fees earned over time, for the whole pool or one position |
+| **History** | Chart the fees earned over time, for the whole pool or one position. Verified pools only |
+| **Pools** | Find a pool, check its badge, or create a pool |
 
 Anything that sends a transaction needs the client's API key. Enter it under **Settings** on the Swap
 tab. The key is kept in memory, so you enter it again after refreshing the page, unless you turn on
@@ -109,6 +113,7 @@ internet, and change the shipped API key. See [Node connection and security](../
 
 ## Next steps
 
+- [Choosing a pool](./pools.mdx): the other pools, and what the client checks before you trade on them.
 - [Trading with orders](./orders.mdx): placing, following and cancelling an order.
-- [Providing liquidity](./liquidity.mdx): depositing into the pool and claiming its fees.
+- [Providing liquidity](./liquidity.mdx): depositing into a pool and claiming its fees.
 - [Batching and orders](../configuration/batching.mdx): the settings for filling other people's orders.

@@ -1,0 +1,33 @@
+---
+id: ldpoolcreatestep
+title: "LDPoolCreateStep"
+description: "One of a pool creation's four transactions"
+sidebar_label: "LDPoolCreateStep"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"step":"POOL_NFT","txId":"string","outcome":"accepted","reason":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolCreateStep"}
+>
+</Heading>
+
+
+
+One of a pool creation's four transactions
+
+<Schema
+  schema={{"description":"One of a pool creation's four transactions","type":"object","x-tags":"lithosdex","required":["step","txId","outcome"],"properties":{"step":{"type":"string","enum":["POOL_NFT","VAULT_NFT","OWNER_NFT","GENESIS"]},"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain","unsent"],"description":"unsent: an earlier transaction was not accepted"},"reason":{"type":"string","description":"The node's refusal, or why the transaction was not sent"}},"title":"LDPoolCreateStep"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

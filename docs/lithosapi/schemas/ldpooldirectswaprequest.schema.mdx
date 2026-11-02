@@ -1,0 +1,33 @@
+---
+id: ldpooldirectswaprequest
+title: "LDPoolDirectSwapRequest"
+description: "A direct swap against any pool, spending it now rather than placing an order."
+sidebar_label: "LDPoolDirectSwapRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"tokenIn":"string","amountIn":"string","minOutput":"string","expectedPoolBoxId":"string","acknowledgeUnverified":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDirectSwapRequest"}
+>
+</Heading>
+
+
+
+A direct swap against any pool, spending it now rather than placing an order.
+
+<Schema
+  schema={{"description":"A direct swap against any pool, spending it now rather than placing an order.","type":"object","x-tags":"lithosdex","required":["tokenIn","amountIn","minOutput"],"properties":{"tokenIn":{"type":"string","description":"The token sold: `ERG` or the pool's token on an ERG/token pool, either token on a token/token pool"},"amountIn":{"type":"string"},"minOutput":{"type":"string","description":"The least of the other side to accept, checked against the pool box this spends. Must be positive."},"expectedPoolBoxId":{"type":"string","description":"The pool box the quote was read from. A pool that has moved since answers 409."},"acknowledgeUnverified":{"type":"boolean","description":"Required on a pool the verified list does not name."}},"title":"LDPoolDirectSwapRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

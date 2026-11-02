@@ -1,0 +1,33 @@
+---
+id: ldpoolvault
+title: "LDPoolVault"
+description: "A pool's fee vault. Amounts are decimal strings in base units."
+sidebar_label: "LDPoolVault"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"vaultNFT":"string","utxoId":"string","accX":"string","accY":"string","balanceX":"string","balanceY":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolVault"}
+>
+</Heading>
+
+
+
+A pool's fee vault. Amounts are decimal strings in base units.
+
+<Schema
+  schema={{"description":"A pool's fee vault. Amounts are decimal strings in base units.","type":"object","x-tags":"lithosdex","required":["vaultNFT","utxoId","accX","accY","balanceX","balanceY"],"properties":{"vaultNFT":{"type":"string"},"utxoId":{"type":"string"},"accX":{"type":"string","description":"Fee per share of X, scaled by 1e27, as of the last flush"},"accY":{"type":"string"},"balanceX":{"type":"string","description":"Fees held for provisions to claim"},"balanceY":{"type":"string"}},"title":"LDPoolVault"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

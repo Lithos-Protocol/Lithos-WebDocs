@@ -1,0 +1,33 @@
+---
+id: ldpoolredeemquote
+title: "LDPoolRedeemQuote"
+description: "What closing a provision returns now. Amounts are decimal strings in base units."
+sidebar_label: "LDPoolRedeemQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"poolNFT":"string","provisionBoxId":"string","shares":"string","amountX":"string","amountY":"string","claimableX":"string","claimableY":"string","provisionValue":"string","ergReturned":"string","withinMinSupply":true,"executorFee":"string","maxMinerFee":"string","totalErgRequired":"string","networkFee":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolRedeemQuote"}
+>
+</Heading>
+
+
+
+What closing a provision returns now. Amounts are decimal strings in base units.
+
+<Schema
+  schema={{"description":"What closing a provision returns now. Amounts are decimal strings in base units.","type":"object","x-tags":"lithosdex","required":["poolNFT","provisionBoxId","shares","amountX","amountY","claimableX","claimableY","provisionValue","ergReturned","withinMinSupply","executorFee","maxMinerFee","totalErgRequired","networkFee"],"properties":{"poolNFT":{"type":"string"},"provisionBoxId":{"type":"string"},"shares":{"type":"string"},"amountX":{"type":"string","description":"The provision's share of reserve X; nanoERG for an ERG/token pool"},"amountY":{"type":"string"},"claimableX":{"type":"string","description":"Claimed from the vault by the placement. A fill forfeits anything unclaimed."},"claimableY":{"type":"string"},"provisionValue":{"type":"string"},"ergReturned":{"type":"string","description":"nanoERG back beside the reserves, net of the fee where it comes out of them"},"withinMinSupply":{"type":"boolean","description":"False when the pool refuses to close this provision"},"executorFee":{"type":"string"},"maxMinerFee":{"type":"string"},"totalErgRequired":{"type":"string"},"networkFee":{"type":"string"}},"title":"LDPoolRedeemQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

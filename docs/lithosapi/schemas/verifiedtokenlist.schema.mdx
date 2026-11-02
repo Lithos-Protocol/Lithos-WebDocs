@@ -1,0 +1,33 @@
+---
+id: verifiedtokenlist
+title: "VerifiedTokenList"
+description: "Every token the client marks verified"
+sidebar_label: "VerifiedTokenList"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"tokens":[{"tokenId":"c1980d829988229516430a47a5eca376060b6ce859616db0936e78ab25cb6de7","name":"LIT","ticker":"LIT","decimals":9}]}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"VerifiedTokenList"}
+>
+</Heading>
+
+
+
+Every token the client marks verified
+
+<Schema
+  schema={{"description":"Every token the client marks verified","type":"object","x-tags":"wallet","required":["tokens"],"properties":{"tokens":{"type":"array","items":{"description":"A token on the client's verified list","type":"object","x-tags":"wallet","required":["tokenId","name","ticker","decimals"],"properties":{"tokenId":{"type":"string","example":"c1980d829988229516430a47a5eca376060b6ce859616db0936e78ab25cb6de7"},"name":{"type":"string","example":"LIT"},"ticker":{"type":"string","example":"LIT"},"decimals":{"type":"integer","format":"int32","example":9}},"title":"VerifiedToken"}}},"title":"VerifiedTokenList"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -1,0 +1,33 @@
+---
+id: ldpoolswaprequest
+title: "LDPoolSwapRequest"
+description: "A swap order quote request on any pool"
+sidebar_label: "LDPoolSwapRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"tokenIn":"ERG","amountIn":"1000000000","executorFee":"string","maxMinerFee":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolSwapRequest"}
+>
+</Heading>
+
+
+
+A swap order quote request on any pool
+
+<Schema
+  schema={{"description":"A swap order quote request on any pool","type":"object","x-tags":"lithosdex","required":["tokenIn","amountIn"],"properties":{"tokenIn":{"type":"string","description":"ERG, or one of the pool's tokens","example":"ERG"},"amountIn":{"type":"string","description":"Base units sold","example":"1000000000"},"executorFee":{"type":"string","description":"nanoERG the filler keeps. Omitted, from lithosdex.orders."},"maxMinerFee":{"type":"string","description":"Most of the executor fee a broadcast fill may pay as a network fee. Below executorFee."}},"title":"LDPoolSwapRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

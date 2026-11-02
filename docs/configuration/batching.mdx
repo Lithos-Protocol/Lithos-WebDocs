@@ -51,7 +51,7 @@ These keys exist under both `batching.ergodex` and `batching.lithosdex`:
 | Setting | Default | Range | What it does |
 |---|---|---|---|
 | `enabled` | `true` | `true` or `false` | Run this batcher at all |
-| `scanIntervalMs` | 8000 | 5000 to 3600000 ms | Milliseconds between confirmed-order scans. Each pages the node's indexer |
+| `scanIntervalMs` | 8000 | 5000 to 3600000 ms | Milliseconds between confirmed-order scans. The node's indexer is read again only once it has indexed a new block |
 | `maxTrackedOrders` | 512 | 1 to 4096 | Order ids retained between scans. Boxes are reloaded before execution |
 | `maxOrdersPerBlock` | 20 | 0 to 100 | Transaction slots per candidate build or broadcast pass, carried ancestors included |
 | `minRevenueNanoErg` | 1000000 | 0 to 1000000000000 | Minimum gross revenue per fill. An opening fill must also fund a takings box |
@@ -124,6 +124,23 @@ is one wasted signature, which is why the bounds exist at all.
 
 ## ErgoDEX only
 
+The ErgoDEX batcher fills the following orders:
+
+| Orders | Pools | What a fill does |
+|---|---|---|
+| ErgoDEX swaps, deposits and redemptions | ERG/token pools | Executes the order against its pool |
+| ErgoDEX swaps, deposits and redemptions that pay their executor fee in ERG | Token/token pools | Executes the order against its pool |
+| Machina Finance limit and grid orders between ERG and a token | ERG/token pools | Trades with the order and the pool in one transaction |
+
+The ErgoDEX batcher covers MewDex too, since MewDex is the same contracts under a different interface.
+ErgoDEX orders that pay their executor fee in SPF are not filled.
+
+**A Machina Finance fill needs no capital either.** One transaction buys from the order and sells into
+an ErgoDEX pool, or the reverse, and the price gap between the two is your revenue, in ERG. The client
+fills only the newest Machina contracts, and never token/token grid orders. A Machina fill joins the run
+on its pool beside the ErgoDEX orders, so it uses the `batching.ergodex` settings and candidate source
+and has none of its own. Statistics count it under ErgoDEX.
+
 ErgoDEX executes against many pools, so it bounds how many it tracks and skips idle ones:
 
 | Setting | Default | Range | What it does |
@@ -131,21 +148,19 @@ ErgoDEX executes against many pools, so it bounds how many it tracks and skips i
 | `batching.ergodex.maxTrackedPools` | 256 | 1 to 1024 | Pools tracked, newest first |
 | `batching.ergodex.maxPoolAgeBlocks` | 20160 | 1 to 10000000 | Skip pools whose current box was included more than this many blocks ago |
 
-The ErgoDEX batcher covers MewDex too, since MewDex is the same contracts under a different interface.
-
 **Its candidate source ships on**, so ErgoDEX executions reach your blocks. To keep them out, set
 `stratum.candidate.sources.ergodex.enabled = false`. The batcher keeps scanning to broadcast, since
 `batching.ergodex.broadcast` ships on. Set that to `false` as well and it stops scanning.
 
 ## LithosDex only
 
-LithosDex always executes against the ERG:LIT pool. Anyone can deploy another LithosDex pool from the
-same contracts, and the batcher can serve those too:
+LithosDex always executes against the ERG:LIT pool. Anyone can create another LithosDex pool, ERG/token
+or token/token, and the batcher can serve those too:
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
 | `batching.lithosdex.autoFlush` | `true` | `true` or `false` | Close each candidate run with a flush, moving the pool's pending fees to the vault |
-| `batching.lithosdex.discoverPools` | `true` | `true` or `false` | Also execute orders for LithosDex pools other than ERG:LIT, in your own blocks and by broadcast |
+| `batching.lithosdex.discoverPools` | `true` | `true` or `false` | Also execute orders for LithosDex pools of either kind other than ERG:LIT, in your own blocks and by broadcast |
 | `batching.lithosdex.maxTrackedPools` | 256 | 1 to 1024 | With `discoverPools` on, the most pools served besides ERG:LIT, newest first |
 
 A flush is what lets liquidity providers claim the fees the pool has accumulated. It pays you nothing
@@ -154,9 +169,10 @@ permanent fees are moved quickly. **It is never broadcast**, because a broadcast
 
 **A discovered pool is served only when it checks out.** The client rebuilds the pool and vault
 contracts from the pool's own token ids and requires them to match what is on chain exactly. A pool
-that fails the check is ignored, so a look-alike box cannot draw your executions. To exclude a pool that
-passes, add its NFT id to `batching.lithosdex.deniedPools`. For what LithosDex is and how its orders
-work, see [LithosDex](../lithosdex/overview.mdx).
+that fails the check is ignored, so a look-alike box cannot draw your executions. The verified list and
+`lithosdex.pools.hidden` play no part here: the batcher serves any pool that passes. To exclude a pool
+that passes, add its NFT id to `batching.lithosdex.deniedPools`. For what LithosDex is and how its
+orders work, see [LithosDex](../lithosdex/overview.mdx).
 
 ## Difficulty forwards
 

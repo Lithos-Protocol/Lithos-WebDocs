@@ -2,7 +2,7 @@
 sidebar_position: 3
 tags:
   - lithosdex
-description: Depositing ERG and LIT into the LithosDex pool, the two ways it earns, and closing a position without losing fees.
+description: Depositing into a LithosDex pool, the two ways a position earns, checking a provision NFT, and closing a position without losing fees.
 ---
 
 # Providing liquidity
@@ -11,15 +11,15 @@ description: Depositing ERG and LIT into the LithosDex pool, the two ways it ear
 
 *Assumes you know what an automated market maker is and what price movement does to a liquidity position. Read the [LithosDex overview](./overview.mdx) first.*
 
-Liquidity providers own the LithosDex pool's reserves and earn the fees every swap pays. This page
-covers opening a position, the two ways it earns, claiming those earnings, and closing it again. How to
-place orders in general is in [Trading with orders](./orders.mdx).
+Liquidity providers own a LithosDex pool's reserves and earn the fees every swap pays. This page covers
+opening a position, the two ways it earns, claiming those earnings, and closing it again. It applies to
+every pool, ERG:LIT included. How to place orders in general is in [Trading with orders](./orders.mdx).
 
 ## What a position is
 
 A position on LithosDex is a **provision**: a box of its own on Ergo that records how many **shares**
-of the pool you own. It holds no ERG or LIT of yours beyond a fixed 0.6 ERG floor. Your ERG and LIT sit
-in the pool, and your shares say how much of them is yours.
+of one pool you own. It holds none of the pool's assets, only a 0.6 ERG floor. The assets you deposited
+sit in the pool, and your shares say how much of them is yours.
 
 Each provision comes with an **owner NFT**, a token minted for that provision alone and sent to your
 wallet. Claiming the provision's fees and closing it both require the NFT as an input.
@@ -31,14 +31,16 @@ another address hands all of that over. Losing it loses the position, and nothin
 
 ## Opening a position
 
-A deposit adds ERG and LIT to the pool at its current ratio. To deposit from the web interface, follow
+A deposit adds both sides of the pool at its current ratio. To deposit from the web interface, follow
 these steps:
 
-1. Open **LithosDex**, then the **Liquidity** tab.
-2. Under **Add liquidity**, enter the **ERG to deposit**. The interface works out the LIT that matches it
-   at the current price.
-3. Check the quote, including the shares you receive and, for an order, the **Minimum shares**.
-4. Select **Place order**, or **Deposit liquidity** when **Use orders** is off.
+1. Open **LithosDex**, choose the pool in the header, then open the **Liquidity** tab.
+2. Under **Add liquidity**, enter one side. The interface fills in the other side at the current
+   price. On pools other than ERG:LIT, it does so while **Balanced** is ticked.
+3. Check the quote, including the shares you receive and, for an order, the fewest shares it accepts.
+4. On an unverified pool, tick **I understand this pool is not on the verified list**.
+5. Select the deposit button. With **Use orders** on, it places a deposit order. With it off, it sends
+   the deposit directly.
 
 The deposit also funds the new provision box with 0.6 ERG, which comes back to you when you close it.
 If the pool moves before your deposit lands, whatever does not match the new ratio is returned rather
@@ -49,7 +51,8 @@ the same block: a deposit that would buy fewer shares than your minimum does not
 
 ## How a position earns
 
-Each swap pays two fees to providers, and they reach you in different ways:
+Each swap pays two fees to providers, and they reach you in different ways. The rates below are
+ERG:LIT's. Every other pool sets its own, shown on its **About this pool** card:
 
 | Fee | Share of each swap | How you receive it |
 |---|---|---|
@@ -76,6 +79,16 @@ listed as **Awaiting flush** and become claimable after the next flush.
 Each provision is owed its own share of every fee that arrived while it existed. Claiming takes nothing
 from anyone else, and what you do not claim stays owed to you.
 
+## Checking a provision NFT
+
+Anyone can mint a token and name it like an owner NFT, so a token's name proves nothing. To check one,
+enter its token id under **Look up a provision NFT** on the **Liquidity** tab. The client confirms the
+NFT owns an open provision, and shows that provision's pool, shares, fees and share of the reserves. A
+redeemed provision's NFT is reported as redeemed.
+
+The **Wallet** page checks the NFTs in your own wallet the same way. See
+[Checking your wallet](../operations/wallet-page.mdx).
+
 ## Closing a position
 
 Closing redeems your shares for their part of the reserves, returns the provision box's 0.6 ERG, and
@@ -101,10 +114,15 @@ longer than that:
   again.
 - **Anyone may refresh an old one.** After 525,600 blocks, about two years on mainnet, anyone may
   replace a provision box with an identical new one. A refresh moves nothing and changes no owner.
-- **The 0.6 ERG floor covers the rest.** If neither of the above happens, the floor pays for two
-  storage-rent collections, and the provision survives both with a smaller floor.
+- **On a token/token pool, a refresh pays the refresher.** The refresher may take up to 0.01 ERG from
+  the provision box, but never take the box below 0.4 ERG. That is about 20 refreshes, or 40 years.
+- **The 0.6 ERG floor covers the rest.** If neither of the above happens, the floor pays storage
+  rent, and the provision survives with a smaller floor. It covers two collections on an ERG/token
+  pool, and one on a token/token pool, whose provision box is larger.
 
 ## Next steps
 
 - [Trading with orders](./orders.mdx): order fees, statuses and cancelling.
+- [Creating a pool](./creating-a-pool.mdx): starting a pool of your own, with yourself as its first
+  provider.
 - [LithosDex overview](./overview.mdx): how the price and fees work.

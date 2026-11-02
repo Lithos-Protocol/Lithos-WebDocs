@@ -1,0 +1,33 @@
+---
+id: ldpoolswapquote
+title: "LDPoolSwapQuote"
+description: "What a swap order would fill at now. Amounts are decimal strings in base units."
+sidebar_label: "LDPoolSwapQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"poolNFT":"string","tokenIn":"string","tokenOut":"string","amountIn":"string","amountOut":"string","minAmountIn":"string","netOutput":"string","executable":true,"executorFee":"string","maxMinerFee":"string","totalErgRequired":"string","tokensRequired":[{"tokenId":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3","amount":"152000000"}],"ergReturned":"string","networkFee":"string","priceImpact":0,"protocolFee":"string","ammFee":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolSwapQuote"}
+>
+</Heading>
+
+
+
+What a swap order would fill at now. Amounts are decimal strings in base units.
+
+<Schema
+  schema={{"description":"What a swap order would fill at now. Amounts are decimal strings in base units.","type":"object","x-tags":"lithosdex","required":["poolNFT","tokenIn","tokenOut","amountIn","amountOut","netOutput","executable","executorFee","maxMinerFee","totalErgRequired","tokensRequired","ergReturned","networkFee"],"properties":{"poolNFT":{"type":"string"},"tokenIn":{"type":"string"},"tokenOut":{"type":"string","description":"ERG, or the pool's other token"},"amountIn":{"type":"string"},"amountOut":{"type":"string","description":"What the pool gives for amountIn"},"minAmountIn":{"type":"string","description":"The least input that still buys amountOut. Anything above it buys nothing more, which matters for a token whose single unit is worth a lot. Absent when nothing comes out."},"netOutput":{"type":"string","description":"What the owner receives"},"executable":{"type":"boolean","description":"Whether the pool can fill this at all"},"executorFee":{"type":"string"},"maxMinerFee":{"type":"string"},"totalErgRequired":{"type":"string","description":"nanoERG the order box holds"},"tokensRequired":{"type":"array","description":"Tokens the order box holds","items":{"description":"An amount of one token","type":"object","x-tags":"lithosdex","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string","example":"86e272f770aa4ef48ad7e6d6dbe98b5069edd8383a403a8edb3ceed8a3d5cea3"},"amount":{"type":"string","description":"Raw token units. Decimal string.","example":"152000000"}},"title":"LDTokenAmount"}},"ergReturned":{"type":"string","description":"nanoERG returned beside the fill"},"networkFee":{"type":"string","description":"The placement's own fee"},"priceImpact":{"type":"number","format":"double","description":"How far the fill falls short of the pool's price before it, fees included, as a fraction"},"protocolFee":{"type":"string","description":"Of tokenIn, set aside for the pool's providers"},"ammFee":{"type":"string","description":"Of tokenIn, the curve's own fee, which stays in the reserves"}},"title":"LDPoolSwapQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

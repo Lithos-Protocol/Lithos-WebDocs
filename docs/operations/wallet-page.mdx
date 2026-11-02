@@ -1,0 +1,85 @@
+---
+sidebar_position: 4
+tags:
+  - operations
+  - wallet
+description: Reading your node wallet in the web panel's Wallet page, checking tokens and provision NFTs, and claiming lending rewards.
+---
+
+# Checking your wallet
+
+<span className="badge badge--success">Standard</span>
+
+*For anyone running the Lithos client with its web panel. No Ergo experience needed.*
+
+The web panel's **Wallet** page shows what the node wallet your client signs with holds: its ERG, its
+tokens, the boxes the client is holding for transactions, and your lending rewards. This page covers
+reading it, checking tokens, and claiming rewards. The settings that control how the client uses the
+wallet are in [Wallet and consolidation](../configuration/wallet.mdx).
+
+## Opening the Wallet page
+
+Open **Wallet** in the client's navigation bar. The page reads your wallet through the client's API, so
+it needs the API key, entered under **Settings**. The key is kept in memory, so you enter it again
+after refreshing the page, unless you turn on **Remember API key in this browser**. Read
+[Remembering the key in the web panel](../configuration/node.mdx#remembering-the-key-in-the-web-panel)
+before you do.
+
+## Reading the summary
+
+The top of the page shows the following figures:
+
+| Figure | What it shows |
+|---|---|
+| **Spendable** | ERG in plain boxes the client is not holding for anything. A join quote is priced against this |
+| **Held for transactions** | ERG and boxes held for transactions in flight, or kept for your own blocks |
+| **Tokens** | How many tokens the wallet holds, and how many are verified |
+| **Claimable rewards** | Lending rewards you can claim now, and how many reward boxes have unlocked |
+
+Held boxes come back once the transaction they fund confirms or fails.
+[When held boxes are released](../configuration/wallet.mdx#when-held-boxes-are-released) explains how
+long that can take.
+
+## Checking your tokens
+
+The **Tokens** list shows every token the wallet holds, verified tokens first. Filter it by
+**Verified**, **Unverified** or **NFTs**, or search by name, ticker or id. Hover over a token to see its
+full details.
+
+A **Verified** badge means the token is on the verified list that ships with the client. Any other
+token's name and ticker were chosen by whoever minted it, and another token can carry the same name.
+Check the token id before you trust a name.
+
+## Checking provision NFTs
+
+A LithosDex position is owned by an NFT, and anyone can mint a token named like one. The page checks
+the single-unit tokens in your wallet against the LithosDex pools and marks each one as follows:
+
+| Badge | What it means |
+|---|---|
+| **LD-NFT** | The NFT owns an open provision. Hover to see the pool and the provision's stats, or follow the link to the pool's **Liquidity** tab |
+| **Not an LD-NFT** | The token is named like a provision NFT, but owns no open provision |
+
+The check runs by itself when the wallet holds 100 tokens or fewer. Above that, tick
+**Check provision NFTs automatically**, or select the tokens to check and select **Check selected**.
+**Select LD-NFT names** selects every token named like a provision NFT.
+[Providing liquidity](../lithosdex/liquidity.mdx#checking-a-provision-nft) covers checking an NFT you do
+not hold.
+
+## Claiming lending rewards
+
+When a block spends one of your collateral boxes, the block's reward is paid to you and locked for 720
+blocks, about a day at Ergo's 2-minute block time. **Lending rewards** shows what is **Claimable now**
+and what is **Still locked**.
+
+Select **Claim** to move every unlocked reward to your primary address at once, where it becomes
+spendable ERG. The client also does this on a timer, as
+[Sweeping lending rewards](../configuration/wallet.mdx#sweeping-lending-rewards) describes.
+
+**Primary address** shows the address that receives change and swept rewards.
+
+## Next steps
+
+- [Wallet and consolidation](../configuration/wallet.mdx): how the client selects, holds and merges
+  your wallet's boxes.
+- [Choosing a pool](../lithosdex/pools.mdx): what the verified list means for LithosDex pools.

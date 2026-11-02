@@ -1,0 +1,33 @@
+---
+id: ldpoolorderplaced
+title: "LDPoolOrderPlaced"
+description: "A placed order"
+sidebar_label: "LDPoolOrderPlaced"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"outcome":"accepted","txId":"string","poolNFT":"string","kind":"SWAP","orderBoxId":"string","claimedX":"string","claimedY":"string","provisionBoxId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolOrderPlaced"}
+>
+</Heading>
+
+
+
+A placed order
+
+<Schema
+  schema={{"description":"A placed order","type":"object","x-tags":"lithosdex","required":["outcome","txId","poolNFT","kind","orderBoxId"],"properties":{"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"txId":{"type":"string"},"poolNFT":{"type":"string"},"kind":{"type":"string","enum":["SWAP","DEPOSIT","REDEEM"]},"orderBoxId":{"type":"string"},"claimedX":{"type":"string","description":"A redeem placement: what it claimed from the vault"},"claimedY":{"type":"string"},"provisionBoxId":{"type":"string","description":"A redeem placement that claimed: the provision's successor"}},"title":"LDPoolOrderPlaced"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

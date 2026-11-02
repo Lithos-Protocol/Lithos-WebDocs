@@ -1,0 +1,33 @@
+---
+id: ldpooldirectredeemquote
+title: "LDPoolDirectRedeemQuote"
+description: "What a direct redemption returns now, and the fees it would lose."
+sidebar_label: "LDPoolDirectRedeemQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"poolNFT":"string","provisionBoxId":"string","shares":"string","amountX":"string","amountY":"string","ergReturned":"string","unclaimedX":"string","unclaimedY":"string","withinMinSupply":true,"networkFee":"string","poolBoxId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDirectRedeemQuote"}
+>
+</Heading>
+
+
+
+What a direct redemption returns now, and the fees it would lose.
+
+<Schema
+  schema={{"description":"What a direct redemption returns now, and the fees it would lose.","type":"object","x-tags":"lithosdex","required":["poolNFT","provisionBoxId","shares","amountX","amountY","ergReturned","unclaimedX","unclaimedY","withinMinSupply","networkFee","poolBoxId"],"properties":{"poolNFT":{"type":"string"},"provisionBoxId":{"type":"string"},"shares":{"type":"string"},"amountX":{"type":"string"},"amountY":{"type":"string"},"ergReturned":{"type":"string","description":"The provision box's ERG, which comes back beside the reserves"},"unclaimedX":{"type":"string","description":"Fees the vault owes the provision now, lost when its box is spent"},"unclaimedY":{"type":"string"},"withinMinSupply":{"type":"boolean"},"networkFee":{"type":"string"},"poolBoxId":{"type":"string"}},"title":"LDPoolDirectRedeemQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

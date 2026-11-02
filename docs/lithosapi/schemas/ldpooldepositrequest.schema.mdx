@@ -1,0 +1,33 @@
+---
+id: ldpooldepositrequest
+title: "LDPoolDepositRequest"
+description: "A deposit order quote request on any pool. X is ERG for an ERG/token pool."
+sidebar_label: "LDPoolDepositRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"amountX":"string","amountY":"string","executorFee":"string","maxMinerFee":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDepositRequest"}
+>
+</Heading>
+
+
+
+A deposit order quote request on any pool. X is ERG for an ERG/token pool.
+
+<Schema
+  schema={{"description":"A deposit order quote request on any pool. X is ERG for an ERG/token pool.","type":"object","x-tags":"lithosdex","required":["amountX","amountY"],"properties":{"amountX":{"type":"string"},"amountY":{"type":"string"},"executorFee":{"type":"string","description":"nanoERG the filler keeps. Omitted, from lithosdex.orders."},"maxMinerFee":{"type":"string","description":"Most of the executor fee a broadcast fill may pay as a network fee. Below executorFee."}},"title":"LDPoolDepositRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

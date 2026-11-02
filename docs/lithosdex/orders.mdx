@@ -32,13 +32,16 @@ you cancel it.
 
 To place a swap order from the web interface, follow these steps:
 
-1. Open **LithosDex**, then the **Swap** tab.
+1. Open **LithosDex**, choose the pool in the header, then open the **Swap** tab.
 2. Check that **Use orders** is on.
-3. Enter the amount you want to trade. Use the arrow between the two fields to switch between buying
-   and selling LIT.
+3. Enter the amount you want to trade. Use the arrow between the two fields to switch which side you
+   sell.
 4. Choose a **Slippage** allowance. The interface turns it into the **Minimum received** written into
    your order.
-5. Check the quote, then select **Place order**.
+5. On an unverified pool, tick **I understand this pool is not on the verified list**.
+6. Check the quote, then select **Place order**.
+
+[Choosing a pool](./pools.mdx) explains the verified list and why the client asks.
 
 The order is placed by an ordinary transaction from your node wallet. It appears under **Your orders**
 as soon as the client has sent it.
@@ -79,7 +82,8 @@ own minimum. The default is set to clear every miner running this client with it
 
 ## Following an order
 
-**Your orders** lists every outstanding order your wallet owns, with one of the following statuses:
+**Your orders** lists every outstanding order your wallet owns on the chosen pool, with one of the
+following statuses:
 
 | Status | What it means | Can you cancel? |
 |---|---|---|
@@ -106,6 +110,7 @@ the result of the trade rather than your funds back. That trade still met your m
 
 ## Next steps
 
-- [Providing liquidity](./liquidity.mdx): depositing into the pool, and placing deposits and
+- [Providing liquidity](./liquidity.mdx): depositing into a pool, and placing deposits and
   redemptions as orders.
+- [Choosing a pool](./pools.mdx): the badges on other pools, and what the client checks.
 - [LithosDex overview](./overview.mdx): how the price and fees work.

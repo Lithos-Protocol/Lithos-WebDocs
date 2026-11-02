@@ -185,8 +185,8 @@ The five sources and what they ship as:
 |---|---|---|---|
 | `rollups` | on | 5 | Non-Interactive Share Proof (NISP) submissions, phase transforms, fraud proofs and payouts |
 | `emissions` | on | 20 | Clear and Activate on the collateral queue. Activates alone stop at [`emission.candidateActivates`](./emission.mdx#queue-work-in-your-own-blocks) |
-| `lithosdex` | on | 20 | LithosDex order executions, their placements and the closing flush |
-| `ergodex` | on | 20 | Native ErgoDEX swaps, deposits and redemptions, including ancestors |
+| `lithosdex` | on | 20 | LithosDex order executions on pools of either kind, their placements and the closing flush |
+| `ergodex` | on | 20 | ErgoDEX swaps, deposits and redemptions on ERG/token and token/token pools, and Machina Finance fills, including ancestors |
 | `rent` | on | 2 | Storage rent collection |
 
 `maxBytes` ships at 262144 for all five. `maxCost` ships at 1000000 for all but `rent`, which ships at

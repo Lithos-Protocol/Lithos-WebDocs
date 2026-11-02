@@ -1,0 +1,33 @@
+---
+id: verifiedtoken
+title: "VerifiedToken"
+description: "A token on the client's verified list"
+sidebar_label: "VerifiedToken"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"tokenId":"c1980d829988229516430a47a5eca376060b6ce859616db0936e78ab25cb6de7","name":"LIT","ticker":"LIT","decimals":9}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"VerifiedToken"}
+>
+</Heading>
+
+
+
+A token on the client's verified list
+
+<Schema
+  schema={{"description":"A token on the client's verified list","type":"object","x-tags":"wallet","required":["tokenId","name","ticker","decimals"],"properties":{"tokenId":{"type":"string","example":"c1980d829988229516430a47a5eca376060b6ce859616db0936e78ab25cb6de7"},"name":{"type":"string","example":"LIT"},"ticker":{"type":"string","example":"LIT"},"decimals":{"type":"integer","format":"int32","example":9}},"title":"VerifiedToken"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

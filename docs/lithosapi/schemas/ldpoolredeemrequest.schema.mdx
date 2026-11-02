@@ -1,0 +1,33 @@
+---
+id: ldpoolredeemrequest
+title: "LDPoolRedeemRequest"
+description: "A redeem order on any pool"
+sidebar_label: "LDPoolRedeemRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"provisionBoxId":"string","executorFee":"string","maxMinerFee":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolRedeemRequest"}
+>
+</Heading>
+
+
+
+A redeem order on any pool
+
+<Schema
+  schema={{"description":"A redeem order on any pool","type":"object","x-tags":"lithosdex","required":["provisionBoxId"],"properties":{"provisionBoxId":{"type":"string","description":"The live provision box to close"},"executorFee":{"type":"string","description":"nanoERG the filler keeps. Omitted, from lithosdex.orders."},"maxMinerFee":{"type":"string","description":"Most of the executor fee a broadcast fill may pay as a network fee. Below executorFee."}},"title":"LDPoolRedeemRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -1,0 +1,33 @@
+---
+id: ldpooldirectredeemrequest
+title: "LDPoolDirectRedeemRequest"
+description: "A direct redemption of one of this wallet's provisions."
+sidebar_label: "LDPoolDirectRedeemRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"provisionBoxId":"string","acknowledgeUnclaimedFees":true,"expectedPoolBoxId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDirectRedeemRequest"}
+>
+</Heading>
+
+
+
+A direct redemption of one of this wallet's provisions.
+
+<Schema
+  schema={{"description":"A direct redemption of one of this wallet's provisions.","type":"object","x-tags":"lithosdex","required":["provisionBoxId"],"properties":{"provisionBoxId":{"type":"string"},"acknowledgeUnclaimedFees":{"type":"boolean","description":"Required when the vault owes the provision fees, which the redemption destroys."},"expectedPoolBoxId":{"type":"string"}},"title":"LDPoolDirectRedeemRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

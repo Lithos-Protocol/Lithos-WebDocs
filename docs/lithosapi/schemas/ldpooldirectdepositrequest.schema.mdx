@@ -1,0 +1,33 @@
+---
+id: ldpooldirectdepositrequest
+title: "LDPoolDirectDepositRequest"
+description: "A direct deposit offering both sides. The pool takes the balanced part; the rest stays in the wallet."
+sidebar_label: "LDPoolDirectDepositRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"amountX":"string","amountY":"string","minShares":"string","expectedPoolBoxId":"string","acknowledgeUnverified":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDirectDepositRequest"}
+>
+</Heading>
+
+
+
+A direct deposit offering both sides. The pool takes the balanced part; the rest stays in the wallet.
+
+<Schema
+  schema={{"description":"A direct deposit offering both sides. The pool takes the balanced part; the rest stays in the wallet.","type":"object","x-tags":"lithosdex","required":["amountX","amountY","minShares"],"properties":{"amountX":{"type":"string","description":"nanoERG on an ERG/token pool"},"amountY":{"type":"string"},"minShares":{"type":"string","description":"Refused when the pool would issue fewer. Must be positive."},"expectedPoolBoxId":{"type":"string"},"acknowledgeUnverified":{"type":"boolean"}},"title":"LDPoolDirectDepositRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

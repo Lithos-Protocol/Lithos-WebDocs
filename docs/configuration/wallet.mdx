@@ -94,7 +94,7 @@ reports the held boxes in the following fields:
 
 The spendable balance, `nanoErgs` on the same response, leaves held boxes out, and a join quote is
 priced against it. If a quote reports a shortfall while your node wallet shows enough ERG, these two
-fields show how much is held. See [Wallet balances and lending status](../lithosapi/get-wallet-balances.api.mdx).
+fields show how much is held. See [Wallet balances](../lithosapi/get-wallet-balances.api.mdx).
 
 ### When held boxes are released
 
@@ -233,9 +233,9 @@ with the box count.
 A sweep takes the smallest rewards first, up to `max-inputs` per transaction, so dust merges into the
 early transactions. Each transaction pays the 0.001 ERG minimum fee.
 
-**Claim** in the Collateral web panel, or `POST /wallet/rewards/claim`, sweeps at once whatever
-`interval-ms` says. With the sweep off, unlocked rewards stay where they are until you claim them. See
-[Claim unlocked block rewards](../lithosapi/claim-collateral-rewards.api.mdx).
+**Claim** on the web panel's Wallet page or Collateral portfolio, or `POST /wallet/rewards/claim`,
+sweeps at once whatever `interval-ms` says. With the sweep off, unlocked rewards stay where they are
+until you claim them. See [Claim unlocked block rewards](../lithosapi/claim-wallet-rewards.api.mdx).
 
 ## Next steps
 

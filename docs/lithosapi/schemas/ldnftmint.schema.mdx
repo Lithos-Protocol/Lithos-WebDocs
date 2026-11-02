@@ -1,0 +1,33 @@
+---
+id: ldnftmint
+title: "LDNftMint"
+description: "How a provision NFT was minted: by a deposit, or by its pool's genesis for the pool's creator"
+sidebar_label: "LDNftMint"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"height":0,"shares":"string","amountX":"string","amountY":"string","genesis":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDNftMint"}
+>
+</Heading>
+
+
+
+How a provision NFT was minted: by a deposit, or by its pool's genesis for the pool's creator
+
+<Schema
+  schema={{"description":"How a provision NFT was minted: by a deposit, or by its pool's genesis for the pool's creator","type":"object","x-tags":"lithosdex","required":["height","shares","amountX","amountY","genesis"],"properties":{"height":{"type":"integer"},"shares":{"type":"string","description":"Shares the provision was created with"},"amountX":{"type":"string","description":"What went in on the X side, nanoERG for an ERG/token pool. For a genesis, the whole reserve, a millionth of which stays locked"},"amountY":{"type":"string"},"genesis":{"type":"boolean"}},"title":"LDNftMint"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

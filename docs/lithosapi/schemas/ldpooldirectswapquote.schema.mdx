@@ -1,0 +1,33 @@
+---
+id: ldpooldirectswapquote
+title: "LDPoolDirectSwapQuote"
+description: "What a direct swap would return against the pool now."
+sidebar_label: "LDPoolDirectSwapQuote"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"poolNFT":"string","tokenIn":"string","tokenOut":"string","amountIn":"string","amountOut":"string","minAmountIn":"string","executable":true,"priceImpact":0,"protocolFee":"string","ammFee":"string","networkFee":"string","poolBoxId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"LDPoolDirectSwapQuote"}
+>
+</Heading>
+
+
+
+What a direct swap would return against the pool now.
+
+<Schema
+  schema={{"description":"What a direct swap would return against the pool now.","type":"object","x-tags":"lithosdex","required":["poolNFT","tokenIn","tokenOut","amountIn","amountOut","executable","priceImpact","protocolFee","ammFee","networkFee","poolBoxId"],"properties":{"poolNFT":{"type":"string"},"tokenIn":{"type":"string"},"tokenOut":{"type":"string"},"amountIn":{"type":"string"},"amountOut":{"type":"string"},"minAmountIn":{"type":"string","description":"The least input that still buys `amountOut`. Absent when nothing comes out."},"executable":{"type":"boolean"},"priceImpact":{"type":"number","format":"double","description":"How far the swap falls short of the pool's price before it, fees included, as a fraction."},"protocolFee":{"type":"string","description":"Of `tokenIn`, set aside for the pool's providers."},"ammFee":{"type":"string","description":"Of `tokenIn`, the curve's own fee, which stays in the reserves."},"networkFee":{"type":"string"},"poolBoxId":{"type":"string","description":"The pool box quoted against, to send back as `expectedPoolBoxId`."}},"title":"LDPoolDirectSwapQuote"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

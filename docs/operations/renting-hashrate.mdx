@@ -160,6 +160,7 @@ stratum {
   stratumPort = 4444
   reduceShareMessages = true
   reductionMultiplier = 100
+  niceHashMode = true
   diff = "947.0M"
 }
 ```
@@ -170,6 +171,7 @@ stratum {
 | `stratum.stratumPort` | `4444` | Any open port | Open it in your firewall and router |
 | `stratum.reduceShareMessages` | `true` | `true` | Sends a higher share difficulty than your commitment. What Lithos pays you is unchanged |
 | `stratum.reductionMultiplier` | `10000` | `100` | The stratum sends this multiple of your difficulty commitment. At 100 and 25 GH/s you get a share about every 4 seconds, enough for a speed reading. At 10000 you get about 10 an hour |
+| `stratum.niceHashMode` | `false` | `true` | Sends the share difficulty in the message NiceHash checks. With `false`, NiceHash refuses the pool as "pool difficulty too low" |
 | `stratum.diff` | `"4.0M"` | Your planned commitment | Served until your first difficulty commitment takes effect. The default times 100 is below NiceHash's 4,000,000,000 minimum |
 
 To set up the client and the order:
@@ -179,7 +181,8 @@ To set up the client and the order:
    the Lithos premium.
 2. **Open the stratum to the internet.** Use a static IP address or a DNS name, and open
    `stratum.stratumPort` in your firewall and router.
-3. **Set the share difficulty.** Apply the `reductionMultiplier` and `diff` values from the table above.
+3. **Set the share difficulty.** Apply the `reductionMultiplier`, `niceHashMode` and `diff` values from
+   the table above. Connect no other mining software to this stratum while `niceHashMode` is on.
 4. **Fund the miner wallet with at least 5 ERG.** Each Non-Interactive Share Proof (NISP) posts a
    refundable bond of score ÷ 25 nanoERG, which is 0.038 ERG at a 950M commitment, held for about 24
    hours until its rollup pays. Each rollup also costs 0.002 ERG in fees.
@@ -480,7 +483,7 @@ What you keep is gross revenue minus rental cost:
 Run the following checklist before scaling up a rental:
 
 - [ ] Latest Lithos client, rent collection on, Ergo node synced and mining-enabled
-- [ ] Stratum reachable from the internet, `reductionMultiplier = 100`, `stratum.diff` set to the planned commitment
+- [ ] Stratum reachable from the internet, `reductionMultiplier = 100`, `niceHashMode = true`, `stratum.diff` set to the planned commitment
 - [ ] Wallet funded with at least 5 ERG and registered
 - [ ] One-cycle test at 212M and 5 GH/s showing about 8.5 super shares an hour and a NISP in nearly every rollup
 - [ ] Rental sized from Lithos's current hashrate and the rent coming due

@@ -67,6 +67,7 @@ accepted. The setting exists to measure hardware, not to run on.
 | `stratum.blockRefreshInterval` | 1000 | 100 to 600000 ms. **Required** | How often the server checks whether it has new work to push |
 | `stratum.reduceShareMessages` | `true` | `true` or `false`. **Required** | Raise the difficulty reported to your mining software without changing what Lithos pays you at |
 | `stratum.reductionMultiplier` | 10000 | `10`, `100`, `1000` or `10000` | How many times your committed difficulty the stratum sends while `reduceShareMessages` is on |
+| `stratum.niceHashMode` | `false` | `true` or `false` | Announce each job's share difficulty in `mining.set_difficulty` instead of 1. Turn it on only when NiceHash connects to this stratum |
 
 ### Which rigs can connect
 
@@ -121,6 +122,20 @@ software, and the Mining panel, more shares to measure from. Every share is stil
 super-share difficulty, so NISPs are built the same at any setting.
 
 It ships on at `10000`. There is generally no reason to turn it off outside debugging.
+
+### Connecting NiceHash
+
+NiceHash reads the share difficulty from the stratum's `mining.set_difficulty` message. NiceHash refuses
+a pool whose difficulty there is below its Autolykos minimum of 4,000,000,000. With `niceHashMode` off,
+the stratum sends a difficulty of 1 and puts the real share target in each job, which is where mining
+software reads it.
+
+Set `niceHashMode = true` when you rent hashrate on NiceHash. The stratum then sends each job's share
+difficulty, which is your committed difficulty times `reductionMultiplier` while `reduceShareMessages` is
+on. If that product is below 4,000,000,000, the client logs a warning and NiceHash still refuses the
+pool. Connect no other mining software to a stratum with `niceHashMode` on, because it may submit shares
+at the wrong difficulty. [Renting hashrate into Lithos](../operations/renting-hashrate.mdx) covers the
+rest of a rental setup.
 
 ## Extra nonce
 

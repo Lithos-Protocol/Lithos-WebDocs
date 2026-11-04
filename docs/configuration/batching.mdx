@@ -2,7 +2,7 @@
 sidebar_position: 5
 tags:
   - configuration
-description: Filling other people's DEX orders for their executor fee, and the fees your own orders carry.
+description: Filling other people's DEX orders for their executor fee, arbitrage in your own blocks, and the fees your own orders carry.
 ---
 
 # Batching and orders
@@ -13,8 +13,9 @@ description: Filling other people's DEX orders for their executor fee, and the f
 
 A batcher finds orders that other people have placed, executes them correctly, and keeps the executor
 fee the order's own script pays. This page covers the `batching` block, which configures the two DEX
-batchers and the difficulty forwards batcher, `lithosdex.orders`, which sets the fees on orders
-**you** place, and `forwards.offers`, which limits the difficulty forwards you offer or fill.
+batchers, the difficulty forwards batcher and arbitrage in your own blocks, `lithosdex.orders`, which
+sets the fees on orders **you** place, and `forwards.offers`, which limits the difficulty forwards you
+offer or fill.
 
 ## How a batcher earns
 
@@ -179,7 +180,8 @@ orders work, see [LithosDex](../lithosdex/overview.mdx).
 The `batching.forwards` block runs the work that keeps [difficulty forwards](../extensions/difficulty-forwards.mdx)
 going. Once per difficulty epoch it records Ergo's difficulty into the forwards accumulator, and it
 settles every position whose window has been recorded. Each recording and each settlement pays you
-5 LIT. It does nothing on a network where no accumulator is deployed.
+5 LIT. **Mining > Payments** lists that LIT under Tokens to you, apart from ERG. It does nothing on a
+network where no accumulator is deployed.
 
 Each epoch of 128 blocks is split in two. Before `broadcastAfterBlocks`, the work is left to Lithos
 blocks, yours included, which carry it fee-less. From then on your client broadcasts it with a
@@ -208,6 +210,74 @@ In your own blocks the work also needs `stratum.candidate.sources.forwards`, whi
 in your block with no settlement to carry it holds one confirmed wallet box of yours, at least
 0.001 ERG, for that block. The box comes back to you whole with the reward, whether or not the block is
 found.
+
+## Arbitrage in your own blocks
+
+When one token trades at different prices in two pools, a cycle of swaps that starts and ends in ERG
+can return more ERG than it put in. The `batching.arb` block runs those cycles in your own blocks, and
+ships on.
+
+Each cycle is two to four swaps through ErgoDEX and LithosDex pools, of both the ERG/token and
+token/token kinds. Each swap is one transaction, and every swap of a cycle goes into the same block.
+Nothing arbitrage builds is broadcast. The client builds cycles after both DEX batchers have built their
+runs, so a cycle trades against each pool as those runs leave it and never spends a box a run spends.
+
+**Unlike order execution, arbitrage needs capital.** The client holds one wallet box as the stake, under
+the following rules:
+
+- The stake is the smallest plain wallet box with no tokens that holds at least `stakeNanoErg`.
+- The stake is never one of the boxes pinned for fraud proofs, and never the last plain box the mempool
+  path needs.
+- The stake stays out of the client's other transactions and out of your reported spendable balance.
+- The stake leaves your wallet only inside one of your own blocks. Each cycle returns it whole to your
+  wallet in that block, and the returned box becomes the next stake.
+- If no box qualifies, the client makes one, as [Making the stake box](#making-the-stake-box) explains.
+  A box that arrives later is taken without a restart.
+
+The stake limits how large one cycle can be, not how many cycles a block holds, because each cycle
+hands the stake on to the next. The following settings control arbitrage:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| `batching.arb.enabled` | `true` | `true` or `false` | Run arbitrage at all |
+| `batching.arb.stakeNanoErg` | 10000000000 | 100000000 to 10000000000000 | Least ERG in the stake box, and the most one cycle puts in |
+| `batching.arb.minProfitNanoErg` | 1000000 | 0 to 1000000000000 | Least profit, in nanoERG, a cycle must leave to be built. Below 1000000 it acts as 1000000, since the profit needs a box of its own |
+| `batching.arb.autoReserve` | `true` | `true` or `false` | Merge plain wallet boxes into a stake box when none can be held |
+
+Arbitrage runs only while all four of the following are on. All four ship on:
+
+- The stratum task, `lithos-tasks.stratum-server`
+- `stratum.candidate.blockTransactions`
+- The `arb` source, `stratum.candidate.sources.arb`, with 80 slots
+- `batching.arb.enabled`
+
+Both batchers' `deniedPools` lists apply to arbitrage as well, and so does
+`batching.ergodex.maxPoolAgeBlocks`. A LithosDex pool other than ERG:LIT is traded only when it passes
+the same contract check the LithosDex batcher applies.
+
+**A cycle's profit goes to the pool, not to you alone.** It is added to the holding box your block's
+genesis transaction creates, with your executor fees, so every miner who submits to that rollup is paid
+a share of it by score. On **Mining > Payments** it appears as Arb, under Into the pool.
+
+### Making the stake box
+
+With `autoReserve` on, the client makes a stake box whenever your wallet has none it can hold, for
+any reason. Every plain box may be smaller than `stakeNanoErg`, or the only large box may be needed for
+a fraud-proof pin or by the mempool path. The client acts only while your confirmed plain boxes hold
+at least twice `stakeNanoErg`, which is 20 ERG at the default, so as much again stays free for
+everything else.
+
+It sends one transaction that pays the 0.001 ERG minimum fee, built as follows:
+
+- It spends your largest plain boxes first, as few as cover the stake, the fee and any extra box below.
+- It creates one box of exactly `stakeNanoErg`, your change, and a 0.05 ERG box when the fraud-proof pins
+  would otherwise leave the stake without a second free box.
+- Every box stays at your first address, so only the fee leaves your wallet.
+
+The client takes the new box as the stake once it confirms. It checks at most every 10 minutes, about
+5 blocks, so one merge confirms before the next check. If your confirmed plain boxes hold less than
+twice the stake, the client logs one warning with what they hold. Send ERG to your first address, or
+lower `stakeNanoErg`. With `autoReserve` off, no arbitrage runs until a box qualifies.
 
 ## Fees on orders you place
 

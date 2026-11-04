@@ -141,9 +141,9 @@ in refreshes once they respond.
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `stratum.candidate.blockShare` | 0.5 | 0.0 to 1.0 | Fraction of the node's block byte and cost limits this client's whole package may claim |
+| `stratum.candidate.blockShare` | 0.75 | 0.0 to 1.0 | Fraction of the node's block byte and cost limits this client's whole package may claim |
 
-**The default is well under 1 on purpose.** The node adds transactions this client never sees and picks
+**The default stays under 1 on purpose.** The node adds transactions this client never sees and picks
 a remainder you have no visibility into, and an unconfirmed ancestor carried into the package reports
 no execution cost at all. Claiming the whole block would mean the node dropping part of what you built.
 
@@ -166,9 +166,9 @@ Each source is bounded on its own **before** the package is bounded as a whole, 
 crowd out a quieter one that matters more. A source that is off is never asked, so it costs no build
 and no node read.
 
-**Revenue the package earns goes to the pool, not to you alone.** Executor fees and collected storage
-rent are added to the holding box your block's genesis transaction creates, so every miner who submits
-to that rollup is paid a share of them by score. You submit to it too.
+**Revenue the package earns goes to the pool, not to you alone.** Executor fees, arbitrage profit and
+collected storage rent are added to the holding box your block's genesis transaction creates, so every
+miner who submits to that rollup is paid a share of them by score. You submit to it too.
 
 Every source takes the same four keys under `stratum.candidate.sources.<name>`:
 
@@ -179,25 +179,33 @@ Every source takes the same four keys under `stratum.candidate.sources.<name>`:
 | `maxBytes` | 0 to 8388608 | Serialized bytes it may claim, counting unconfirmed ancestors it carries |
 | `maxCost` | 0 to 100000000 | Execution cost it may claim |
 
-The five sources and what they ship as:
+The seven sources and what they ship as:
 
 | Source | Ships | `maxTxs` | What it inserts |
 |---|---|---|---|
 | `rollups` | on | 5 | Non-Interactive Share Proof (NISP) submissions, phase transforms, fraud proofs and payouts |
 | `emissions` | on | 20 | Clear and Activate on the collateral queue. Activates alone stop at [`emission.candidateActivates`](./emission.mdx#queue-work-in-your-own-blocks) |
-| `lithosdex` | on | 20 | LithosDex order executions on pools of either kind, their placements and the closing flush |
-| `ergodex` | on | 20 | ErgoDEX swaps, deposits and redemptions on ERG/token and token/token pools, and Machina Finance fills, including ancestors |
-| `rent` | on | 2 | Storage rent collection |
+| `lithosdex` | on | 40 | LithosDex order executions on pools of either kind, their placements and the closing flush |
+| `ergodex` | on | 40 | ErgoDEX swaps, deposits and redemptions on ERG/token and token/token pools, and Machina Finance fills, including ancestors |
+| `forwards` | on | 10 | Difficulty forward recordings and settlements |
+| `arb` | on, asked only while `batching.arb.enabled` is on, which ships on | 80 | [Arbitrage cycles](./batching.mdx#arbitrage-in-your-own-blocks), one transaction per swap |
+| `rent` | on | 8 | Storage rent collection |
 
-`maxBytes` ships at 262144 for all five. `maxCost` ships at 1000000 for all but `rent`, which ships at
-2000000.
+`maxBytes` ships at 262144 for all seven. `maxCost` ships at 1000000 for all but `rent` and `arb`, which
+ship at 2000000. The `arb` source has the most slots because each swap of a cycle takes one, and most
+blocks leave much of their space unused.
+
+The `arb` source is asked after the `lithosdex` and `ergodex` sources, and its cycles are admitted after
+every other source's work. A cycle is admitted whole or not at all, so a cycle that
+does not fit in the slots left takes none of them.
 
 :::warning Every slot is block space not earning a fee
 Transactions you insert pay no transaction fee, because they are yours. That is the point for rollups
 and emissions, which are protocol work you want in the block regardless. It also means each slot is
-space that could have held a fee-paying transaction, so keep the counts small. Although fees do not directly
-pay Lithos miners, failing to include fee paying transactions can reflect in lower fee priority values on
-collateral boxes, which may reduce your total reward over time.
+space that could have held a fee-paying transaction. Most blocks leave much of their space unused,
+which is what the shipped counts rely on. Although fees do not directly pay Lithos miners, failing to
+include fee-paying transactions can lower the priority fees lenders bid on collateral boxes, which may
+reduce your total reward over time. If your blocks start to fill, lower the counts.
 :::
 
 ### Rollup work

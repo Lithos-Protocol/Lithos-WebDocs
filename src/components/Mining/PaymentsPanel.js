@@ -51,6 +51,35 @@ const BOUNTIES_PER_PAGE = 10;
 const fmtLit = (raw, dp = 4) => fmtTokenMin(raw, LIT_DECIMALS, dp);
 const sum = (values) => values.reduce((a, b) => a + b, 0n);
 
+/** Tokens shown by name before the rest are summed into a count. */
+const TOP_TOKENS = 5;
+/** A verified token's ticker, else its name, else the start of its id. */
+const tokenLabel = (meta, tokenId) => meta?.ticker ?? meta?.name ?? tokenId.slice(0, 6);
+/** Tokens by how much was kept in whole units, most first, since their decimals differ. */
+const rankTokens = (tokens, meta) => {
+  const whole = (t) => Number(t.amount) / 10 ** (meta?.[t.tokenId]?.decimals ?? 0);
+  return [...(tokens ?? [])].sort((a, b) => whole(b) - whole(a));
+};
+
+/** Up to `limit` token amounts, each with its icon and ticker, then a count of the rest. */
+function TokenChips({ tokens, meta, limit = TOP_TOKENS }) {
+  return (
+    <span className={s.tokenChips}>
+      {tokens.slice(0, limit).map((t) => {
+        const label = tokenLabel(meta?.[t.tokenId], t.tokenId);
+        return (
+          <span key={t.tokenId} className={s.tokenChip}>
+            <TokenIcon tokenId={t.tokenId} label={label} size={14} />
+            <b>{fmtTokenMin(t.amount.toString(), meta?.[t.tokenId]?.decimals ?? 0, 4)}</b>
+            {label}
+          </span>
+        );
+      })}
+      {tokens.length > limit && <span className={s.tokenChipMore}>+{tokens.length - limit} more</span>}
+    </span>
+  );
+}
+
 /**
  * What was earned, in nanoERG: payout rewards and surplus, fraud-proof bounties, and executor fees
  * this client kept directly. Pooled executor fees are not added — they already arrive inside the
@@ -124,8 +153,9 @@ function payoutDelay(p) {
    Hero
    ============================================================ */
 
-function EarnedCard({ totals, rangeId, perDay, busy }) {
+function EarnedCard({ totals, received, rangeId, perDay, busy }) {
   const earned = earnedErg(totals);
+  const tokens = rankTokens(received?.tokens, received?.meta);
   const gross = earned + totals.bond;
   const parts = [
     { id: 'reward', label: 'Reward', color: REWARD, v: totals.reward },
@@ -202,9 +232,16 @@ function EarnedCard({ totals, rangeId, perDay, busy }) {
           </div>
         )}
       </div>
+      {tokens.length > 0 && (
+        <div className={s.payTokens}>
+          <span className={s.label}>From batching</span>
+          <TokenChips tokens={tokens} meta={received.meta} />
+        </div>
+      )}
       <p className={s.cardNote} style={{ marginTop: 12 }}>
         <b>Earned</b> is payout reward, surplus, executor fees you kept directly, and fraud-proof bounties.
-        A returned bond is your own deposit coming back, so it's shown but isn't counted.
+        A returned bond is your own deposit coming back, so it's shown but isn't counted. Tokens your
+        executions kept are listed apart, since they never enter the pool.
       </p>
     </div>
   );
@@ -842,7 +879,8 @@ function ProfileCard({ payments, days }) {
 const PROTOCOLS = [
   { id: 'lithosdex', label: 'LithosDex', color: LITHOSDEX, ergFees: true },
   { id: 'ergodex', label: 'ErgoDEX', color: ERGODEX, ergFees: true },
-  { id: 'forwards', label: 'Forwards', color: FORWARDS },
+  // Its builders keep LIT, which goes to each block's finder rather than the pool
+  { id: 'forwards', label: 'Forwards', color: FORWARDS, paidIn: 'LIT' },
   // Cycles in this miner's own Lithos blocks, fee-less with their profit to the pot, so never direct
   { id: 'arb', label: 'Arb', color: ARB, paint: stripes(ARB), poolOnly: true },
 ];
@@ -874,6 +912,7 @@ function ProtocolCell({ row }) {
  */
 function BatchingCard({ batching, received, rangeId }) {
   const rows = PROTOCOLS.map((p) => ({ ...p, ...batching[p.id] }));
+  const tokens = rankTokens(received?.tokens, received?.meta);
   const fees = rows.filter((r) => r.ergFees);
   const directRows = rows.filter((r) => !r.poolOnly || r.directOrders > 0n);
   const pooled = sum(rows.map((r) => r.poolGross));
@@ -908,10 +947,18 @@ function BatchingCard({ batching, received, rangeId }) {
           <div key={r.id} className={`${s.batchTr} ${s.batchTrPool}`}>
             <ProtocolCell row={r} />
             <span className={s.num}>{fmtInt(r.poolOrders)}</span>
-            <span className={s.num}>{fmtErgMin(r.poolGross, 4)}</span>
-            <span className={`${s.num} ${s.kvValDim}`}>
-              {r.poolOrders > 0n ? fmtErgMin(r.poolGross / r.poolOrders, 5) : '—'}
-            </span>
+            {r.paidIn && r.poolGross === 0n ? (
+              <span className={`${s.num} ${s.kvValDim}`} style={{ gridColumn: 'span 2' }}>
+                in {r.paidIn}, to the finder
+              </span>
+            ) : (
+              <>
+                <span className={s.num}>{fmtErgMin(r.poolGross, 4)}</span>
+                <span className={`${s.num} ${s.kvValDim}`}>
+                  {r.poolOrders > 0n ? fmtErgMin(r.poolGross / r.poolOrders, 5) : '—'}
+                </span>
+              </>
+            )}
           </div>
         ))}
       </div>
@@ -953,21 +1000,29 @@ function BatchingCard({ batching, received, rangeId }) {
           <div className={s.batchHead} style={{ marginTop: 16 }}>
             <div>
               <div className={s.label}>Tokens to you</div>
-              <div className={s.batchSub}>verified tokens only · in your own Lithos blocks too</div>
+              <div className={s.batchSub}>verified tokens · never pooled, so your own Lithos blocks pay them to you too</div>
+            </div>
+            <div className={s.batchTotal} style={{ color: 'var(--cur-muted)' }}>
+              {fmtInt(tokens.length)} <span>{tokens.length === 1 ? 'TOKEN' : 'TOKENS'}</span>
             </div>
           </div>
           <div className={s.batchTable}>
-            {received.tokens.map((t) => {
+            <div className={`${s.batchTr} ${s.batchTrPool} ${s.payTh}`}>
+              <span>Token</span>
+              <span className={s.num} style={{ gridColumn: 'span 2' }}>Amount</span>
+              <span className={s.num}>From</span>
+            </div>
+            {tokens.slice(0, TOP_TOKENS).map((t) => {
               const meta = received.meta[t.tokenId];
-              const label = meta?.ticker ?? meta?.name ?? t.tokenId.slice(0, 6);
+              const label = tokenLabel(meta, t.tokenId);
               return (
                 <div key={t.tokenId} className={`${s.batchTr} ${s.batchTrPool}`}>
-                  <span className={s.payPart}>
+                  <span className={s.payPart} title={meta?.name ?? t.tokenId}>
                     <TokenIcon tokenId={t.tokenId} label={label} size={16} />
-                    {label}
+                    <b className={s.tokenTicker}>{label}</b>
                   </span>
                   <span className={s.num} style={{ gridColumn: 'span 2' }}>
-                    {fmtTokenMin(t.amount.toString(), meta?.decimals ?? 0, 4)}
+                    {fmtTokenMin(t.amount.toString(), meta?.decimals ?? 0, 4)} {label}
                   </span>
                   <span className={`${s.num} ${s.kvValDim}`}>
                     {[...t.protocols].map((id) => PROTOCOLS.find((p) => p.id === id)?.label ?? id).join(', ')}
@@ -976,9 +1031,11 @@ function BatchingCard({ batching, received, rangeId }) {
               );
             })}
           </div>
-          {received.otherTokens > 0n && (
+          {(tokens.length > TOP_TOKENS || received.otherTokens > 0n) && (
             <p className={s.cardNote} style={{ marginTop: 6 }}>
-              Plus {fmtInt(received.otherTokens)} takings in tokens not on the verified list.
+              {tokens.length > TOP_TOKENS && `Plus ${fmtInt(tokens.length - TOP_TOKENS)} more verified token(s). `}
+              {received.otherTokens > 0n &&
+                `Plus ${fmtInt(received.otherTokens)} takings in tokens not on the verified list.`}
             </p>
           )}
         </>
@@ -1604,7 +1661,7 @@ export default function PaymentsPanel() {
     <>
       {/* ---- Hero ---- */}
       <div className={s.payHero}>
-        <EarnedCard totals={totals} rangeId={rangeId} perDay={perDay} busy={busy} />
+        <EarnedCard totals={totals} received={model?.received} rangeId={rangeId} perDay={perDay} busy={busy} />
         <UnpaidCard claims={claims} height={height} pace={pace} />
         <ShareCard totals={totals} payments={sample} />
       </div>

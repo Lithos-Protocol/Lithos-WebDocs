@@ -3351,3 +3351,48 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- Batching tokens ---- */
+
+.payTokens {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--cur-border-cool);
+}
+
+.tokenChips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.tokenChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--cur-font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 11.5px;
+  color: var(--cur-muted);
+  white-space: nowrap;
+}
+
+.tokenChip b {
+  color: var(--cur-text);
+  font-weight: 600;
+}
+
+.tokenChipMore {
+  font-size: 11px;
+  color: var(--cur-dim);
+}
+
+.tokenTicker {
+  color: var(--cur-text);
+  font-weight: 600;
+}

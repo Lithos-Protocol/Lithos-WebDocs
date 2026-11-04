@@ -109,32 +109,54 @@ function makeShader(yaw, pitch) {
   };
 }
 
+/** Stripes per footprint edge on a striped slab, and their ink: the card's dark, as the swatches use. */
+const STRIPES = 12;
+const STRIPE_INK = 'rgba(6,9,19,0.6)';
+
+const segment = (a, b) => ({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] });
+
 /**
  * The five faces of a slab spanning [y0, y1] of a W x D column, centred on its own axis so a yaw
  * turns the box rather than swinging it around the origin.
  *
  * `verticals` are the four corner posts, and every face carries its depth so the caller can paint
  * far-to-near: at an arbitrary yaw any of the four walls can be the one facing the camera.
+ *
+ * With `striped`, each face also carries stripe lines in the box's own frame, so they turn with it:
+ * diagonals across the lid, and verticals down each wall from where those diagonals meet its edge.
  */
-function slabFaces(W, D, y0, y1, project, shadeOf) {
+function slabFaces(W, D, y0, y1, project, shadeOf, striped = false) {
   const p = (fx, y, fz) => project(fx * W - W / 2, y, fz * D - D / 2);
+  const steps = striped ? Array.from({ length: STRIPES - 1 }, (_, k) => (k + 1) / STRIPES) : [];
   const sides = FOOTPRINT.map((a, i) => {
     const b = FOOTPRINT[(i + 1) % 4];
     const pts = [p(a[0], y0, a[1]), p(b[0], y0, b[1]), p(b[0], y1, b[1]), p(a[0], y1, a[1])];
     // Outward normal of this wall, in the box's own frame: walls are vertical, so it is horizontal.
     const normal = WALL_NORMALS[i];
+    const at = (t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
     return {
       points: poly(pts),
       toViewer: pts.reduce((sum, q) => sum + q[2], 0) / 4,
       shade: shadeOf(normal[0], normal[1]),
+      stripes: steps.map((t) => {
+        const [x, z] = at(t);
+        return segment(p(x, y0, z), p(x, y1, z));
+      }),
     };
   });
   const topPts = FOOTPRINT.map(([x, z]) => p(x, y1, z));
   const bottomPts = FOOTPRINT.map(([x, z]) => p(x, y0, z));
+  // The lid's diagonals x + z = c, each running between the two edges it crosses
+  const topStripes = striped
+    ? Array.from({ length: 2 * STRIPES - 1 }, (_, k) => (k + 1) / STRIPES).map((c) =>
+        c <= 1 ? segment(p(c, y1, 0), p(0, y1, c)) : segment(p(1, y1, c - 1), p(c - 1, y1, 1)),
+      )
+    : [];
   return {
     // Ascending: the furthest wall is painted first and the nearest last.
     sides: sides.sort((a, b) => a.toViewer - b.toViewer),
     top: poly(topPts),
+    topStripes,
     bottom: poly(bottomPts),
     verticals: FOOTPRINT.map(([x, z]) => {
       const a = p(x, y0, z);
@@ -241,7 +263,13 @@ export default function BlockCube({
       const thickness = slab.value > 0 ? Math.max(raw, 1.1) : 0;
       const y0 = Math.min(cursor, H);
       cursor = Math.min(cursor + thickness, H);
-      return { ...slab, y0, y1: cursor, faces: slabFaces(W, D, y0, cursor, project, shadeOf), exact: raw };
+      return {
+        ...slab,
+        y0,
+        y1: cursor,
+        faces: slabFaces(W, D, y0, cursor, project, shadeOf, slab.striped),
+        exact: raw,
+      };
     });
     const filled = Math.min(cursor, H);
     return {
@@ -476,12 +504,12 @@ export default function BlockCube({
 
         {model.placed.map((slab, i) => {
           const dim = hovered != null && hovered !== i;
-          return ( <>
-            {/*
-              Hover only. Clicking a slab used to frame it, but the box is also the drag surface —
-              so every orbit that ended on a slab zoomed into it. Framing belongs to the list,
-              where a click is unambiguous.
-            */}
+          /*
+           * Hover only. Clicking a slab used to frame it, but the box is also the drag surface —
+           * so every orbit that ended on a slab zoomed into it. Framing belongs to the list,
+           * where a click is unambiguous.
+           */
+          return (
             <g
               key={slab.id}
               className={s.cubeSlab}
@@ -489,12 +517,12 @@ export default function BlockCube({
               onMouseEnter={() => onHover(i)}
             >
               {slab.faces.sides.map((face, f) => (
-                <polygon
-                  key={f}
-                  points={face.points}
-                  fill={slab.color}
-                  fillOpacity={face.shade}
-                />
+                <React.Fragment key={f}>
+                  <polygon points={face.points} fill={slab.color} fillOpacity={face.shade} />
+                  {face.stripes.map((line, k) => (
+                    <line key={k} {...line} stroke={STRIPE_INK} strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+                  ))}
+                </React.Fragment>
               ))}
               <polygon
                 points={slab.faces.top}
@@ -504,6 +532,9 @@ export default function BlockCube({
                 strokeWidth="0.6"
                 vectorEffect="non-scaling-stroke"
               />
+              {slab.faces.topStripes.map((line, k) => (
+                <line key={`t${k}`} {...line} stroke={STRIPE_INK} strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+              ))}
               {/* An unproven leaf is outlined rather than recoloured: the colour already means kind. */}
               {slab.ghost && (
                 <polygon
@@ -516,7 +547,7 @@ export default function BlockCube({
                 />
               )}
             </g>
-          </>);
+          );
         })}
 
         {/*

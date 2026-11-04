@@ -14,7 +14,7 @@ import { big, fmtInt } from './format';
  */
 export default function TxStackList({
   txs,
-  colorOf,
+  paintOf,
   labelOf,
   hovered,
   onHover,
@@ -72,7 +72,7 @@ export default function TxStackList({
               onMouseLeave={() => onHover(null)}
               onClick={() => onFocus(focused === i ? null : i)}
             >
-              <span className={s.stackSwatch} style={{ background: colorOf(tx.kind) }} />
+              <span className={s.stackSwatch} style={{ background: paintOf(tx.kind) }} />
               <span className={s.stackKind}>{labelOf(tx.kind)}</span>
               <span className={`${s.stackVal} ${unreported ? s.stackValDim : ''}`}>
                 {unreported

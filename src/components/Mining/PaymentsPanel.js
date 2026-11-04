@@ -21,6 +21,7 @@ import {
   shortId,
   timeLabel,
 } from './format';
+import { ARB, stripes } from './paint';
 
 /*
  * One colour per part of a payout, fixed for the whole page. Green is what was earned; indigo is
@@ -834,10 +835,16 @@ function ProfileCard({ payments, days }) {
    Batching
    ============================================================ */
 
+/*
+ * `ergFees` marks the protocols whose executors are paid in ERG, the only ones the pooled share of Ergo counts:
+ * forwards builders are paid in LIT, and arb is profit rather than a fee.
+ */
 const PROTOCOLS = [
-  { id: 'lithosdex', label: 'LithosDex', color: LITHOSDEX },
-  { id: 'ergodex', label: 'ErgoDEX', color: ERGODEX },
+  { id: 'lithosdex', label: 'LithosDex', color: LITHOSDEX, ergFees: true },
+  { id: 'ergodex', label: 'ErgoDEX', color: ERGODEX, ergFees: true },
   { id: 'forwards', label: 'Forwards', color: FORWARDS },
+  // Cycles in this miner's own Lithos blocks, fee-less with their profit to the pot, so never direct
+  { id: 'arb', label: 'Arb', color: ARB, paint: stripes(ARB), poolOnly: true },
 ];
 
 /**
@@ -850,7 +857,7 @@ const directNet = (b, id) =>
 function ProtocolCell({ row }) {
   return (
     <span className={s.payPart}>
-      <span className={s.swatch} style={{ background: row.color }} />
+      <span className={s.swatch} style={{ background: row.paint ?? row.color }} />
       {row.label}
     </span>
   );
@@ -859,17 +866,20 @@ function ProtocolCell({ row }) {
 /**
  * Executor fees, split by where they went.
  *
- * Into the pool: a Lithos block's own executions pay no transaction fee, and their takings top up
- * its rollup, so they reach a miner through payouts in proportion to its share — already inside
- * Earned. Direct: executions this client broadcast, or put in a block it mined without Lithos, keep
- * their takings in its wallet after paying their own fee. Other executors' fills are neither.
+ * Into the pool: a Lithos block's own executions and arb cycles pay no transaction fee, and their
+ * takings top up its rollup, so they reach a miner through payouts in proportion to its share,
+ * already inside Earned. Direct: executions this client broadcast, or put in a block it mined
+ * without Lithos, keep their takings in its wallet after paying their own fee. Other executors'
+ * fills are neither.
  */
 function BatchingCard({ batching, received, rangeId }) {
   const rows = PROTOCOLS.map((p) => ({ ...p, ...batching[p.id] }));
+  const fees = rows.filter((r) => r.ergFees);
+  const directRows = rows.filter((r) => !r.poolOnly || r.directOrders > 0n);
   const pooled = sum(rows.map((r) => r.poolGross));
   const direct = sum(rows.map((r) => r.directNet));
-  const all = sum(rows.map((r) => r.allGross));
-  const capture = shareOf(pooled, all);
+  const all = sum(fees.map((r) => r.allGross));
+  const capture = shareOf(sum(fees.map((r) => r.poolGross)), all);
 
   return (
     <div className={s.card}>
@@ -923,7 +933,7 @@ function BatchingCard({ batching, received, rangeId }) {
           <span className={s.num}>Tx fees</span>
           <span className={s.num}>Net</span>
         </div>
-        {rows.map((r) => (
+        {directRows.map((r) => (
           <div key={r.id} className={s.batchTr}>
             <ProtocolCell row={r} />
             <span className={s.num}>{fmtInt(r.directOrders)}</span>

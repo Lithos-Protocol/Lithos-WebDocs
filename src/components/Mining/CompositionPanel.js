@@ -17,7 +17,7 @@ import { big, fmtErgMin, fmtInt, fmtNum, fmtPct } from './format';
  * Transactions reporting no cost — carried mempool ancestors the node never measured — contribute
  * nothing to the cost bar, so its segments are floors. That is called out rather than hidden.
  */
-export default function CompositionPanel({ txs, colorOf, labelOf, hovered, onHover }) {
+export default function CompositionPanel({ txs, paintOf, labelOf, hovered, onHover }) {
   const model = useMemo(() => {
     const byKind = new Map();
     txs.forEach((tx, i) => {
@@ -75,7 +75,7 @@ export default function CompositionPanel({ txs, colorOf, labelOf, hovered, onHov
           <span
             key={row.kind}
             className={`${s.compSeg} ${lit ? s.compSegOn : ''}`}
-            style={{ width: `${share * 100}%`, background: colorOf(row.kind) }}
+            style={{ width: `${share * 100}%`, background: paintOf(row.kind) }}
             title={`${labelOf(row.kind)} — ${fmtPct(share, 1)}`}
             onMouseEnter={() => onHover(row.indices[0])}
             onMouseLeave={() => onHover(null)}
@@ -133,7 +133,7 @@ export default function CompositionPanel({ txs, colorOf, labelOf, hovered, onHov
             onMouseEnter={() => onHover(row.indices[0])}
             onMouseLeave={() => onHover(null)}
           >
-            <span className={s.stackSwatch} style={{ background: colorOf(row.kind) }} />
+            <span className={s.stackSwatch} style={{ background: paintOf(row.kind) }} />
             <span className={s.compKind}>{labelOf(row.kind)}</span>
             <span className={s.txNum}>{row.count}</span>
             <span className={s.txNum}>{fmtInt(row.bytes)}</span>

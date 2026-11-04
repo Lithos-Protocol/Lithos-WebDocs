@@ -9,6 +9,8 @@ const SOURCE_LABELS = {
   rent: 'Storage rent',
   lithosdex: 'LithosDex',
   ergodex: 'ErgoDEX',
+  forwards: 'Forwards',
+  arb: 'Arb',
 };
 
 const STRATEGY_LABELS = { highestFee: 'highest fee', random: 'random' };

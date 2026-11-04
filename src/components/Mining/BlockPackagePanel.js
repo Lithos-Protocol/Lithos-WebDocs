@@ -7,6 +7,7 @@ import TxStackList from './TxStackList';
 import CompositionPanel from './CompositionPanel';
 import PackageSettings from './PackageSettings';
 import { NETWORKS } from './trade';
+import { ARB, stripes } from './paint';
 import { Alert, Spinner } from '../Dex/ui';
 import { big, fmtAge, fmtErgAmount, fmtInt, fmtNum, fmtPct, fullTime, shortId } from './format';
 
@@ -37,16 +38,25 @@ const KIND_COLORS = {
   activate: '#c084fc',
   clear: '#e879f9',
   'lithosdex-batch': '#2dd4bf',
+  // The batch's teal, striped: LithosDex token/token pools, batched apart from the ERG pools.
+  'lithosdex-t2t-batch': '#2dd4bf',
   // The batch's teal, darker, so a pool flush reads as LithosDex work without passing for a batch.
   'lithosdex-flush': '#0d9488',
   'ergodex-batch': '#f472b6',
   'storage-rent': '#fb923c',
+  // Striped, below: rent's orange, since both are this client's takings for the pot.
+  arb: ARB,
   // The Extensions section's indigo, the one hue free between NISP blue and activate violet.
   'difficulty-forward': '#818cf8',
   'mempool-ancestor': '#64748b',
 };
 const FALLBACK = '#475569';
 const colorOf = (kind) => KIND_COLORS[kind] ?? FALLBACK;
+
+/** Kinds drawn striped, told apart from a kind of the same hue by pattern. */
+const STRIPED = new Set(['arb', 'lithosdex-t2t-batch']);
+/** A kind's CSS background: its colour, striped for the kinds above. The cube draws its own stripes. */
+const paintOf = (kind) => (STRIPED.has(kind) ? stripes(colorOf(kind)) : colorOf(kind));
 
 /** Plainer names than the wire kinds, for a legend someone has to read at a glance. */
 const KIND_LABELS = {
@@ -60,9 +70,11 @@ const KIND_LABELS = {
   activate: 'activate',
   clear: 'clear',
   'lithosdex-batch': 'LithosDex batch',
+  'lithosdex-t2t-batch': 'LithosDex token/token batch',
   'lithosdex-flush': 'LithosDex flush',
   'ergodex-batch': 'ErgoDEX batch',
   'storage-rent': 'storage rent',
+  arb: 'arb leg',
   'difficulty-forward': 'difficulty forward',
   'mempool-ancestor': 'mempool ancestor',
 };
@@ -223,6 +235,7 @@ export default function BlockPackagePanel() {
         id: tx.id ?? `tx-${i}`,
         value: valueOf(tx),
         color: colorOf(tx.kind),
+        striped: STRIPED.has(tx.kind),
         ghost: tx.proofLeafMatched === false,
       })),
       // Falls back to the package's own total so the cube still draws something when the node's
@@ -439,7 +452,7 @@ export default function BlockPackagePanel() {
         <div className={s.cubeLayout}>
           <TxStackList
             txs={model?.txs ?? []}
-            colorOf={colorOf}
+            paintOf={paintOf}
             labelOf={labelOf}
             hovered={hovered}
             onHover={setHovered}
@@ -481,7 +494,7 @@ export default function BlockPackagePanel() {
               <div className={s.detailHead}>
                 <span
                   className={s.swatch}
-                  style={{ background: hoveredTx ? colorOf(hoveredTx.kind) : 'rgba(125,211,252,0.18)' }}
+                  style={{ background: hoveredTx ? paintOf(hoveredTx.kind) : 'rgba(125,211,252,0.18)' }}
                 />
                 <span className={`${s.detailKind} ${hoveredTx ? '' : s.detailKindIdle}`}>
                   {hoveredTx ? labelOf(hoveredTx.kind) : 'no slab selected'}
@@ -585,7 +598,7 @@ export default function BlockPackagePanel() {
 
       <CompositionPanel
         txs={model?.txs ?? []}
-        colorOf={colorOf}
+        paintOf={paintOf}
         labelOf={labelOf}
         hovered={hovered}
         onHover={setHovered}

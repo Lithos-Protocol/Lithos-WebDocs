@@ -80,6 +80,8 @@ const TRUST = {
   provision: { label: 'LD-NFT', glyph: '✓', cls: 'trustProvision', hint: 'Owns a provision on a LithosDex pool, checked by this client' },
   fakeNft: { label: 'Not an LD-NFT', glyph: '!', cls: 'trustUnsafe', hint: 'Named like a provision NFT, but owns no open provision' },
   checking: { label: 'Checking', cls: 'trustUnverified', hint: 'Asking the client whether this token owns a provision' },
+  bond: { label: 'ZC-Bond', glyph: '✓', cls: 'trustBond', hint: 'A SigmaFi bond asset, checked against the order or offer that minted it' },
+  fakeBond: { label: 'Not a ZC-Bond', glyph: '!', cls: 'trustUnsafe', hint: 'Named or minted like a bond asset, but not the one its bond was created with' },
 };
 
 /** A token's display name: ERG, a verified ticker, the minter's chosen name, or a short id. */

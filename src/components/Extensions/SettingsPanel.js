@@ -12,7 +12,7 @@ import { fmtInt } from './format';
  * the life of the page, and stored only if the reader turns on remembering it: the market reads without it,
  * while your positions and every transaction need it.
  */
-export default function SettingsPanel({ onClose, onSaved }) {
+export default function SettingsPanel({ onClose, onSaved, getRefresh = api.getAutoRefresh, setRefresh = api.setAutoRefresh }) {
   const [key, setKey] = useState('');
   const [base, setBase] = useState('');
   const [reveal, setReveal] = useState(false);
@@ -24,7 +24,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
   useEffect(() => {
     setKey(api.getApiKey());
     setBase(api.getBaseUrl());
-    const secs = api.getAutoRefresh();
+    const secs = getRefresh();
     setAutoOn(secs > 0);
     if (secs > 0) setAutoSecs(String(secs));
   }, []);
@@ -32,7 +32,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
   const save = () => {
     api.setApiKey(key);
     api.setBaseUrl(base);
-    api.setAutoRefresh(autoOn ? autoSecs : 0);
+    setRefresh(autoOn ? autoSecs : 0);
     setSaved(true);
     setProbe(null);
     onSaved?.();

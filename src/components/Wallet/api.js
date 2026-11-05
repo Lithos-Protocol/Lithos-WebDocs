@@ -59,3 +59,9 @@ export const NFT_LOOKUP_MAX = 100;
 
 /** POST /dex/provisions/nft — which of up to 100 tokens own a LithosDex provision, with its pool and stats. */
 export const lookupNfts = (tokenIds) => request('/dex/provisions/nft', { method: 'POST', body: { tokenIds } });
+
+/** The most token ids one `POST /sigmafi/assets` takes. */
+export const BOND_LOOKUP_MAX = 50;
+
+/** POST /sigmafi/assets — which of up to 50 tokens are SigmaFi bond assets, read from the chain. */
+export const lookupBonds = (tokenIds) => request('/sigmafi/assets', { method: 'POST', body: { tokenIds } });

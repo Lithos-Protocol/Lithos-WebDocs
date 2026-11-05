@@ -41,6 +41,8 @@ const ERGODEX = '#f472b6';
 const FORWARDS = '#a3e635';
 /** Executor fees this client kept outside the pool. Teal like LithosDex, since that is most of it. */
 const BATCHING = '#2dd4bf';
+/** SigmaFi bond liquidations. Red-400, the one hue left on this page; the block package draws them lime. */
+const SIGMAFI = '#f87171';
 
 const LIT_DECIMALS = 9;
 /** Payouts the profile and share figures are computed over, so they hold still while paging. */
@@ -881,6 +883,8 @@ const PROTOCOLS = [
   { id: 'ergodex', label: 'ErgoDEX', color: ERGODEX, ergFees: true },
   // Its builders keep LIT, which goes to each block's finder rather than the pool
   { id: 'forwards', label: 'Forwards', color: FORWARDS, paidIn: 'LIT' },
+  // Batching fees kept from liquidated bonds, in ERG
+  { id: 'sigmafi', label: 'SigmaFi', color: SIGMAFI, ergFees: true },
   // Cycles in this miner's own Lithos blocks, fee-less with their profit to the pot, so never direct
   { id: 'arb', label: 'Arb', color: ARB, paint: stripes(ARB), poolOnly: true },
 ];

@@ -13,13 +13,16 @@ import SettingsPanel from './SettingsPanel';
 import StatsBanner from '../Mining/StatsBanner';
 import { fmtInt } from './format';
 
-const ExtensionsContext = createContext(null);
+export const ExtensionsContext = createContext(null);
 export const useExtensions = () => useContext(ExtensionsContext);
 
 const BAND_LINES = [46, 89, 130, 169, 206, 243, 280];
 
 /** One tab per extension. Each owns everything under its path. */
-const EXTENSIONS = [{ to: '/extensions/forwards', label: 'Difficulty Forwards' }];
+const EXTENSIONS = [
+  { to: '/extensions/forwards', label: 'Difficulty Forwards' },
+  { to: '/extensions/sigmafi', label: 'SigmaFi Bonds' },
+];
 
 /** The views inside Difficulty Forwards. */
 const FORWARDS_NAV = [
@@ -36,7 +39,7 @@ function usePath() {
   return { cur: strip(pathname.replace(new RegExp(`^${base.replace(/\/$/, '')}`), '') || '/'), strip };
 }
 
-function ExtensionTabs() {
+export function ExtensionTabs() {
   const { cur, strip } = usePath();
   return (
     <div className={m.tabs}>

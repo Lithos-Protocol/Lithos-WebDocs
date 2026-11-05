@@ -53,11 +53,21 @@ function useNftChecks(candidates, auto) {
     let i = 0;
     try {
       for (; i < todo.length; i += api.NFT_LOOKUP_MAX) {
-        const { nfts } = await api.lookupNfts(todo.slice(i, i + api.NFT_LOOKUP_MAX));
+        const chunk = todo.slice(i, i + api.NFT_LOOKUP_MAX);
+        const { nfts } = await api.lookupNfts(chunk);
+        // The same single-unit tokens, asked as SigmaFi bond assets. A client that cannot answer leaves them unmarked.
+        const bonds = {};
+        for (let j = 0; j < chunk.length; j += api.BOND_LOOKUP_MAX) {
+          try {
+            for (const b of await api.lookupBonds(chunk.slice(j, j + api.BOND_LOOKUP_MAX))) bonds[b.tokenId] = b;
+          } catch {
+            break;
+          }
+        }
         const at = Date.now();
         setChecks((prev) => {
           const next = { ...prev };
-          for (const n of nfts) next[n.tokenId] = { ...n, at };
+          for (const n of nfts) next[n.tokenId] = { ...n, bond: bonds[n.tokenId], at };
           return next;
         });
       }
@@ -89,6 +99,8 @@ function useNftChecks(candidates, auto) {
 function statusOf(t, check, pending) {
   if (t.verified) return 'verified';
   if (check?.provisionNft) return 'provision';
+  if (check?.bond?.bondAsset && check.bond.verified) return 'bond';
+  if (check?.bond && (check.bond.bondAsset || t.name === 'SigmaFi ZC-Bond')) return 'fakeBond';
   if (pending) return 'checking';
   if (check?.redeemed) return 'redeemed';
   if (check && ldNamed(t)) return 'fakeNft';
@@ -147,6 +159,8 @@ function TokenHover({ t, check, status, candidate }) {
       )}
       {c ? (
         <ProvisionStats c={c} checkedAt={c.at} />
+      ) : check?.bond?.bondAsset ? (
+        <BondStats b={check.bond} />
       ) : check?.redeemed ? (
         <RedeemedStats c={check} />
       ) : (
@@ -171,6 +185,49 @@ function TokenHover({ t, check, status, candidate }) {
       )}
       <span className={s.hoverId}>{t.tokenId}</span>
     </span>
+  );
+}
+
+/**
+ * A SigmaFi bond asset's standing, read from the chain: the bond it claims while live, or what the vault holds
+ * once it is repaid or liquidated. `b` is one answer of `POST /sigmafi/assets`.
+ */
+function BondStats({ b }) {
+  const t = b.bond?.terms;
+  const vaultErg = b.vault.reduce((n, v) => n + big(v.nanoErgs), 0n);
+  return (
+    <>
+      <span className={s.hoverRow}>
+        <span>Bond</span>
+        <span>{b.verified ? 'SigmaFi zero-coupon, checked against its mint' : b.verification ?? 'Not verified'}</span>
+      </span>
+      {t && (
+        <>
+          <span className={s.hoverRow}>
+            <span>Owed</span>
+            <span className={s.mono}>
+              {t.repayToken ? `${fmtInt(t.repayment)} units` : `${fmtErg(t.repayment)} ERG`}
+            </span>
+          </span>
+          <span className={s.hoverRow}>
+            <span>Repay by</span>
+            <span>block {fmtInt(t.maturityHeight)}</span>
+          </span>
+          <span className={s.hoverRow}>
+            <span>Collateral</span>
+            <span className={s.mono}>
+              {fmtErg(t.collateralNanoErgs)} ERG{t.collateralTokens.length ? ` + ${t.collateralTokens.length} token(s)` : ''}
+            </span>
+          </span>
+        </>
+      )}
+      {b.vault.length > 0 && (
+        <span className={s.hoverRow}>
+          <span>Claimable</span>
+          <span className={s.mono}>{fmtErg(vaultErg)} ERG in {fmtInt(b.vault.length)} vault box(es)</span>
+        </span>
+      )}
+    </>
   );
 }
 

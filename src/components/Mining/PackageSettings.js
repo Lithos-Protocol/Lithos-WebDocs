@@ -10,6 +10,7 @@ const SOURCE_LABELS = {
   lithosdex: 'LithosDex',
   ergodex: 'ErgoDEX',
   forwards: 'Forwards',
+  sigmafi: 'SigmaFi',
   arb: 'Arb',
 };
 

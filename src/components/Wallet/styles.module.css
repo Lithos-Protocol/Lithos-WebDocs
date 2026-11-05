@@ -713,3 +713,10 @@
   align-self: flex-end;
   font-size: 12px;
 }
+
+/* A SigmaFi bond asset the client checked against its mint: green, apart from a provision NFT's cyan */
+.trustBond {
+  color: var(--cur-green);
+  border-color: rgba(110, 231, 183, 0.32);
+  background: rgba(110, 231, 183, 0.08);
+}

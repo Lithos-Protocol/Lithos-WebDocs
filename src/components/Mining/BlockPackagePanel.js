@@ -48,6 +48,8 @@ const KIND_COLORS = {
   arb: ARB,
   // The Extensions section's indigo, the one hue free between NISP blue and activate violet.
   'difficulty-forward': '#818cf8',
+  // Lime, free in this palette: SigmaFi bond liquidations, whose fees go to the pot.
+  'sigmafi-liquidation': '#a3e635',
   'mempool-ancestor': '#64748b',
 };
 const FALLBACK = '#475569';
@@ -76,6 +78,7 @@ const KIND_LABELS = {
   'storage-rent': 'storage rent',
   arb: 'arb leg',
   'difficulty-forward': 'difficulty forward',
+  'sigmafi-liquidation': 'SigmaFi liquidation',
   'mempool-ancestor': 'mempool ancestor',
 };
 const labelOf = (kind) => KIND_LABELS[kind] ?? kind;

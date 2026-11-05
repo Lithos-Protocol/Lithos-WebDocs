@@ -1,0 +1,33 @@
+---
+id: sfofferrequest
+title: "SFOfferRequest"
+description: "Exactly one of `principalNanoErgs` and `principalToken`."
+sidebar_label: "SFOfferRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"principalNanoErgs":"string","principalToken":{"tokenId":"string","amount":"string"},"repayment":"string","maturityHeight":0,"collateralNanoErgs":"string","collateralTokens":[{"tokenId":"string","amount":"string"}],"batchingFee":"string","liquidation":"MaturityLiquidation"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SFOfferRequest"}
+>
+</Heading>
+
+
+
+Exactly one of `principalNanoErgs` and `principalToken`.
+
+<Schema
+  schema={{"type":"object","x-tags":"sigmafi","description":"Exactly one of `principalNanoErgs` and `principalToken`.","required":["repayment","maturityHeight","collateralNanoErgs"],"properties":{"principalNanoErgs":{"type":"string"},"principalToken":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"},"repayment":{"type":"string"},"maturityHeight":{"type":"integer"},"collateralNanoErgs":{"type":"string"},"collateralTokens":{"type":"array","items":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"}},"batchingFee":{"type":"string"},"liquidation":{"type":"string","default":"MaturityLiquidation"}},"title":"SFOfferRequest"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

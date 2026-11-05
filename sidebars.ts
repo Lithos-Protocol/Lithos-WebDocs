@@ -52,7 +52,10 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Extensions",
-      items: [{ type: "doc", id: "extensions/difficulty-forwards" }],
+      items: [
+        { type: "doc", id: "extensions/difficulty-forwards" },
+        { type: "doc", id: "extensions/sigmafi-bonds" },
+      ],
     },
   ],
   openApiSidebar: [

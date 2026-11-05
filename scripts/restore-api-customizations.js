@@ -43,6 +43,7 @@ const CATEGORY_DESCRIPTIONS = {
   Wallet: "Balances and lending status for the client's own wallet",
   'Lithos Dex': 'Swap, provide liquidity, and collect permanent fees on the LithosDex pool',
   'Difficulty Forwards': "Offer, fill and settle peer-to-peer bets on Ergo's average difficulty, margined in LIT",
+  'SigmaFi Bonds': 'Borrow, lend, repay, liquidate and claim peer-to-peer zero-coupon bonds backed by collateral',
 };
 
 const DOC_CARD_LIST_BLOCK =

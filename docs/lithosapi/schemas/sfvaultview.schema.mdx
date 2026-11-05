@@ -1,0 +1,33 @@
+---
+id: sfvaultview
+title: "SFVaultView"
+description: ""
+sidebar_label: "SFVaultView"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"string","bondId":"string","assetId":"string","nanoErgs":"string","tokens":[{"tokenId":"string","amount":"string"}]}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SFVaultView"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"sigmafi","required":["boxId","assetId","nanoErgs","tokens"],"properties":{"boxId":{"type":"string"},"bondId":{"type":"string","description":"The bond this box settles."},"assetId":{"type":"string"},"nanoErgs":{"type":"string"},"tokens":{"type":"array","items":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"}}},"title":"SFVaultView"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -179,7 +179,7 @@ Every source takes the same four keys under `stratum.candidate.sources.<name>`:
 | `maxBytes` | 0 to 8388608 | Serialized bytes it may claim, counting unconfirmed ancestors it carries |
 | `maxCost` | 0 to 100000000 | Execution cost it may claim |
 
-The seven sources and what they ship as:
+The eight sources and what they ship as:
 
 | Source | Ships | `maxTxs` | What it inserts |
 |---|---|---|---|
@@ -188,10 +188,11 @@ The seven sources and what they ship as:
 | `lithosdex` | on | 40 | LithosDex order executions on pools of either kind, their placements and the closing flush |
 | `ergodex` | on | 40 | ErgoDEX swaps, deposits and redemptions on ERG/token and token/token pools, and Machina Finance fills, including ancestors |
 | `forwards` | on | 10 | Difficulty forward recordings and settlements |
+| `sigmafi` | on | 2 | [SigmaFi bond liquidations](./batching.mdx#sigmafi-bond-liquidations), every due bond in one transaction |
 | `arb` | on, asked only while `batching.arb.enabled` is on, which ships on | 80 | [Arbitrage cycles](./batching.mdx#arbitrage-in-your-own-blocks), one transaction per swap |
 | `rent` | on | 8 | Storage rent collection |
 
-`maxBytes` ships at 262144 for all seven. `maxCost` ships at 1000000 for all but `rent` and `arb`, which
+`maxBytes` ships at 262144 for all eight. `maxCost` ships at 1000000 for all but `rent` and `arb`, which
 ship at 2000000. The `arb` source has the most slots because each swap of a cycle takes one, and most
 blocks leave much of their space unused.
 

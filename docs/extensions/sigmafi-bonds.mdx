@@ -1,0 +1,114 @@
+---
+sidebar_position: 2
+sidebar_label: SigmaFi bonds
+tags:
+  - extensions
+description: How a SigmaFi zero-coupon bond is offered, filled, repaid, liquidated and claimed, and how to borrow or lend from the web panel.
+---
+
+# SigmaFi bonds
+
+<span className="badge badge--info">Advanced</span>
+
+*Assumes you know Ergo's UTXO model and what a token is. Start with [Mining on Lithos](../tutorial-basics/mining-on-lithos.mdx) if not.*
+
+SigmaFi bonds are peer-to-peer loans on Ergo, backed by collateral. A borrower locks collateral, a lender
+lends ERG or a token against it, and the borrower repays a fixed amount by a fixed block. If they do not,
+the collateral goes to the lender. This page explains how a bond runs, how to borrow and lend from the
+web panel, and what your client does with bonds on its own.
+
+It does not cover the API endpoints behind the panel, which are in the [API reference](/api) under
+**SigmaFi Bonds**, or the settings for liquidating bonds, which are in
+[Batching and orders](../configuration/batching.mdx#sigmafi-bond-liquidations).
+
+## What a bond is
+
+Every SigmaFi bond today is a zero-coupon bond. It pays no interest along the way: the borrower repays
+one amount, larger than the loan, at the end. A bond has these terms:
+
+| Term | Meaning |
+|---|---|
+| Loan | ERG, or an amount of one token |
+| Repayment | What the borrower pays back, in the same asset as the loan |
+| Maturity | The block by which the borrower must repay. Repayment closes at this block |
+| Collateral | ERG and any tokens the bond holds until it is repaid or liquidated |
+| Batching fee | The most of the collateral's ERG whoever liquidates the bond may keep |
+| Liquidation | The rule for when the bond can be liquidated. Today, anyone from maturity on |
+
+The difference between the repayment and the loan is the lender's return.
+
+## How a bond is made
+
+Either side can start:
+
+| You want to | You create | The other side |
+|---|---|---|
+| Borrow | An **order**, holding your collateral and the terms you ask for | A lender fills it. The loan comes to you and your collateral moves into the bond |
+| Lend | An **offer**, holding the loan and the terms you ask for | A borrower closes it by posting the collateral you asked for, and takes the loan |
+
+An order can fix its maturity to a block, or ask for a term counted from the block a lender fills it.
+A term counted from the fill does not shrink while the order waits. It must be at least 30 blocks.
+
+Until it is filled or closed, the person who created an order or offer can cancel it and take back what
+it holds.
+
+## The bond asset
+
+Filling an order or closing an offer mints one token to the lender: the **bond asset**. Whoever holds it
+is owed the bond. You can send or sell it like any token.
+
+Its name, `SigmaFi ZC-Bond`, and its description are set by whoever minted it, so they prove nothing.
+Anyone can mint a token with the same name. The web panel and **Wallet** check each bond asset against
+the chain and mark it ZC-Bond only when it is the asset its bond was created with. A token named like a
+bond asset that fails the check is marked Not a ZC-Bond.
+
+## How a bond ends
+
+A bond ends in one of two ways, and either way the lender's side goes to a vault for the bond asset's
+holder:
+
+1. **Repaid.** Any block before maturity, the borrower pays the repayment into the vault, and the
+   collateral returns to them.
+2. **Liquidated.** From maturity on, anyone can liquidate the bond. The collateral goes to the vault,
+   less the batching fee, which the liquidator keeps.
+
+The holder of the bond asset then **claims** everything the vault holds for it. The claim burns the bond
+asset, so every vault box for it is claimed in one transaction.
+
+You do not need to liquidate bonds yourself. Lithos miners liquidate every matured bond that pays a
+batching fee of at least 0.05 ERG, in their own blocks first and by broadcast two blocks later.
+
+## Borrow or lend from the web panel
+
+Open **Extensions > SigmaFi Bonds** in the web panel. It has four views:
+
+| View | What it does | Needs your API key |
+|---|---|---|
+| Book | Lists orders you can lend into, offers you can borrow from, and live bonds | Only to send |
+| Create | Makes an order to borrow or an offer to lend | Only to send |
+| Portfolio | Shows your orders, offers, loans and bond assets, with cancel, repay, liquidate and claim | Yes |
+| How it works | A short summary of this page | No |
+
+Every action is checked by your client first and shows what you pay, what you receive and any warning
+before anything is signed. A check never signs or sends anything. The send uses your client's wallet and
+pays the 0.001 ERG network fee.
+
+**Read the batching fee before you lend.** If the borrower does not repay, you receive the collateral
+less up to the batching fee. Orders and offers made from your client carry at least 0.05 ERG, so Lithos
+miners liquidate them. A bond paying less is left to you to liquidate from **Portfolio**.
+
+## What can go wrong
+
+| Situation | What happens | What to do |
+|---|---|---|
+| The borrower misses maturity | The bond can be liquidated. The collateral goes to the vault | Claim it from **Portfolio** once it is liquidated |
+| The collateral is worth less than the loan at maturity | The borrower may let the bond be liquidated | Choose collateral and terms that cover your loan |
+| An order you lent into had a fee under 0.05 ERG | No Lithos miner liquidates it | Liquidate it yourself from **Portfolio** |
+| You send the bond asset away | Whoever holds it is paid instead of you | Keep the bond asset until you claim |
+| You claim while a liquidation is still pending | Your client refuses the claim | Claim after the liquidation confirms |
+
+## Next steps
+
+- [Batching and orders](../configuration/batching.mdx#sigmafi-bond-liquidations): how your client liquidates bonds.
+- [Block packages](../configuration/candidate.mdx): the `sigmafi` source that puts liquidations in your blocks.
+- [Difficulty forwards](./difficulty-forwards.mdx): the other extension.

@@ -1,0 +1,33 @@
+---
+id: sfresult
+title: "SFResult"
+description: ""
+sidebar_label: "SFResult"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"txId":"string","outcome":"accepted","boxId":"string","assetId":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SFResult"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"sigmafi","required":["txId","outcome"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"boxId":{"type":"string","description":"The output that matters, the new order, offer or bond."},"assetId":{"type":"string","description":"The bond asset a fill or a close minted."}},"title":"SFResult"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

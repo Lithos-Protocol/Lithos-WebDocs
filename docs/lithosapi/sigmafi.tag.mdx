@@ -1,0 +1,22 @@
+---
+id: sigmafi
+title: "SigmaFi Bonds"
+description: "SigmaFi Bonds"
+custom_edit_url: null
+---
+
+
+
+SigmaFi bonds: peer-to-peer zero-coupon loans. A borrower posts an order with collateral, or a lender posts an offer with the principal; the other side fills or closes it, which creates a bond and mints one bond asset to the lender. The borrower repays before maturity and takes the collateral back; otherwise anyone may liquidate the bond, sending the collateral less its batching fee to the vault. Whoever holds the bond asset claims what the vault holds for it.
+
+Lists, the asset lookup and every `check` are open and sign nothing; the portfolio and everything that signs need an `api_key`. **All amounts are decimal strings, not JSON numbers.** A 409 means a box you named is already being spent: re-read and resend.
+
+
+
+
+```mdx-code-block
+import ApiCategoryPage from '@site/src/components/ApiCategoryPage';
+
+<ApiCategoryPage />
+```
+      

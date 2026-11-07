@@ -12,7 +12,7 @@ import { fmtInt } from './format';
  * the life of the page, and stored only if the reader turns on remembering it: the market reads without it,
  * while your positions and every transaction need it.
  */
-export default function SettingsPanel({ onClose, onSaved, getRefresh = api.getAutoRefresh, setRefresh = api.setAutoRefresh }) {
+export default function SettingsPanel({ onClose, onSaved, getRefresh = api.getAutoRefresh, setRefresh = api.setAutoRefresh, probeConnection = api.getAccumulator, apiPath = 'forwards' }) {
   const [key, setKey] = useState('');
   const [base, setBase] = useState('');
   const [reveal, setReveal] = useState(false);
@@ -48,12 +48,10 @@ export default function SettingsPanel({ onClose, onSaved, getRefresh = api.getAu
     api.setBaseUrl(base);
     setProbe({ state: 'running' });
     try {
-      const acc = await api.getAccumulator();
+      const acc = await probeConnection();
       setProbe({
         state: 'ok',
-        msg: `Connected at height ${fmtInt(acc.height)}. ${
-          acc.deployed ? 'The difficulty accumulator is deployed.' : 'No difficulty accumulator is deployed on this network yet.'
-        }`,
+        msg: `Connected at block ${fmtInt(acc.height)}.`,
       });
       onSaved?.();
     } catch (e) {
@@ -91,7 +89,7 @@ export default function SettingsPanel({ onClose, onSaved, getRefresh = api.getAu
           />
           <span className={f.settingHint}>
             Shared with every other panel. Leave blank to use the origin serving this page. Requests go to{' '}
-            <code>{effective || '(same origin)'}/forwards/…</code>{' '}
+            <code>{effective || '(same origin)'}/{apiPath}/…</code>{' '}
             <button className={f.linkBtn} onClick={useDefault} type="button">
               reset to default
             </button>
@@ -118,8 +116,8 @@ export default function SettingsPanel({ onClose, onSaved, getRefresh = api.getAu
             </button>
           </div>
           <span className={f.settingHint}>
-            The market, the order book and every quote read without it. Your positions, your history, and every offer,
-            fill, cancel or settlement send it. Re-entered after a refresh unless remembered below.
+            Market data and previews are public. Your portfolio and transaction submissions require the key.
+            Enable remembering below to keep it across page reloads.
           </span>
         </div>
 

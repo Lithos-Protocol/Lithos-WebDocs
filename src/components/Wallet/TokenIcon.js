@@ -62,10 +62,10 @@ export function PairIcons({ x, y, size = 22 }) {
  * Whether the client's verified list names a token or pool. `unsafe` is for a pool whose genesis breaks a fact
  * its contracts rely on, which can be drained.
  */
-export function TrustBadge({ status, title }) {
+export function TrustBadge({ status, title, bondState }) {
   const meta = TRUST[status] ?? TRUST.unverified;
   return (
-    <span className={`${s.trust} ${s[meta.cls]}`} title={title ?? meta.hint}>
+    <span className={`${s.trust} ${s[meta.cls]} ${status === 'bond' ? s.bondTone : ''}`} data-state={status === 'bond' ? bondState : undefined} title={title ?? meta.hint}>
       {meta.glyph && <span aria-hidden="true">{meta.glyph}</span>}
       {meta.label}
     </span>
@@ -80,7 +80,7 @@ const TRUST = {
   provision: { label: 'LD-NFT', glyph: '✓', cls: 'trustProvision', hint: 'Owns a provision on a LithosDex pool, checked by this client' },
   fakeNft: { label: 'Not an LD-NFT', glyph: '!', cls: 'trustUnsafe', hint: 'Named like a provision NFT, but owns no open provision' },
   checking: { label: 'Checking', cls: 'trustUnverified', hint: 'Asking the client whether this token owns a provision' },
-  bond: { label: 'ZC-Bond', glyph: '✓', cls: 'trustBond', hint: 'A SigmaFi bond asset, checked against the order or offer that minted it' },
+  bond: { label: 'ZC-Bond', glyph: '✓', cls: 'trustBond', hint: 'A SigmaFi bond asset, checked against the order that minted it' },
   fakeBond: { label: 'Not a ZC-Bond', glyph: '!', cls: 'trustUnsafe', hint: 'Named or minted like a bond asset, but not the one its bond was created with' },
 };
 

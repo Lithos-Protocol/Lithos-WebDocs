@@ -1532,12 +1532,6 @@ const sidebar: SidebarsConfig = {
         },
         {
           type: "doc",
-          id: "lithosapi/schemas/sfofferview",
-          label: "SFOfferView",
-          className: "schema",
-        },
-        {
-          type: "doc",
           id: "lithosapi/schemas/sfbondview",
           label: "SFBondView",
           className: "schema",
@@ -1546,12 +1540,6 @@ const sidebar: SidebarsConfig = {
           type: "doc",
           id: "lithosapi/schemas/sforderbook",
           label: "SFOrderBook",
-          className: "schema",
-        },
-        {
-          type: "doc",
-          id: "lithosapi/schemas/sfofferbook",
-          label: "SFOfferBook",
           className: "schema",
         },
         {
@@ -1594,12 +1582,6 @@ const sidebar: SidebarsConfig = {
           type: "doc",
           id: "lithosapi/schemas/sforderrequest",
           label: "SFOrderRequest",
-          className: "schema",
-        },
-        {
-          type: "doc",
-          id: "lithosapi/schemas/sfofferrequest",
-          label: "SFOfferRequest",
           className: "schema",
         },
         {
@@ -1654,48 +1636,6 @@ const sidebar: SidebarsConfig = {
           type: "doc",
           id: "lithosapi/fill-sf-order",
           label: "Fill an order",
-          className: "api-method post",
-        },
-        {
-          type: "doc",
-          id: "lithosapi/list-sf-offers",
-          label: "List open offers",
-          className: "api-method get",
-        },
-        {
-          type: "doc",
-          id: "lithosapi/create-sf-offer",
-          label: "Create an offer",
-          className: "api-method post",
-        },
-        {
-          type: "doc",
-          id: "lithosapi/check-sf-offer",
-          label: "Quote an offer",
-          className: "api-method post",
-        },
-        {
-          type: "doc",
-          id: "lithosapi/check-cancel-sf-offer",
-          label: "Quote cancelling an offer",
-          className: "api-method post",
-        },
-        {
-          type: "doc",
-          id: "lithosapi/cancel-sf-offer",
-          label: "Cancel an offer",
-          className: "api-method post",
-        },
-        {
-          type: "doc",
-          id: "lithosapi/check-close-sf-offer",
-          label: "Quote closing an offer",
-          className: "api-method post",
-        },
-        {
-          type: "doc",
-          id: "lithosapi/close-sf-offer",
-          label: "Close an offer",
           className: "api-method post",
         },
         {

@@ -13,7 +13,10 @@ import { Pager, PageSize, usePaged } from '../Extensions/ui';
 import SettingsPanel from './SettingsPanel';
 import TokenIcon, { PairIcons, TrustBadge, tokenLabel } from './TokenIcon';
 import { CopyButton, KeyGate, FilterChips } from './ui';
-import { ProvisionStats, RedeemedStats } from './ProvisionStats';
+import TokenHover from './AssetDetails';
+import AssetHover from './AssetHover';
+import BondIcon from './BondIcon';
+import { bondState } from '../SigmaFi/bond';
 
 const BAND_LINES = [46, 89, 130, 169, 206, 243, 280];
 
@@ -86,7 +89,7 @@ function useNftChecks(candidates, auto) {
     const due = candidates
       .filter((t) => {
         const c = checksRef.current[t.tokenId];
-        return !c || (c.provisionNft && now - c.at > RECHECK_MS);
+        return !c || ((c.provisionNft || c.bond?.bondAsset) && now - c.at > RECHECK_MS);
       })
       .map((t) => t.tokenId);
     if (due.length) check(due);
@@ -120,114 +123,6 @@ function Balance({ t }) {
     <span className={s.amount} title={fmtToken(t.amount, t.decimals, t.decimals)}>
       {fmtTokenAmount(t.amount, t.decimals, 4)}
     </span>
-  );
-}
-
-const PROVISION_TEXT = {
-  checking: 'Checking',
-  redeemed: 'Closed: this NFT owned a provision since redeemed',
-  fakeNft: 'None: the name copies an LD-NFT',
-  unverified: 'None',
-};
-
-/**
- * What the wallet read already says about a token, shown on hover or focus. Built from the row's own data and any
- * provision check already made, so it costs no request: a page of 300 tokens adds nothing to what the client is
- * asked.
- */
-function TokenHover({ t, check, status, candidate }) {
-  const c = check?.provisionNft ? check : null;
-  return (
-    <span className={s.hoverCard} role="tooltip">
-      <span className={s.hoverTitle}>
-        {c ? (
-          <PairIcons x={c.pool.tokenX} y={c.pool.tokenY} size={18} />
-        ) : (
-          <TokenIcon tokenId={t.tokenId} label={t.ticker ?? t.name} size={20} />
-        )}
-        {t.ticker ?? t.name ?? 'Unnamed token'}
-      </span>
-      <span className={s.hoverRow}>
-        <span>List</span>
-        <span>{t.verified ? 'Verified' : c ? 'Not listed: checked as a provision NFT' : 'Not on the verified list'}</span>
-      </span>
-      {t.name && !c && (
-        <span className={s.hoverRow}>
-          <span>Name</span>
-          <span>{t.verified ? t.name : `${t.name}, set by its minter`}</span>
-        </span>
-      )}
-      {c ? (
-        <ProvisionStats c={c} checkedAt={c.at} />
-      ) : check?.bond?.bondAsset ? (
-        <BondStats b={check.bond} />
-      ) : check?.redeemed ? (
-        <RedeemedStats c={check} />
-      ) : (
-        <>
-          <span className={s.hoverRow}>
-            <span>Balance</span>
-            <span className={s.mono}>
-              {t.decimals == null ? `${fmtInt(t.amount)} units` : fmtToken(t.amount, t.decimals, t.decimals)}
-            </span>
-          </span>
-          <span className={s.hoverRow}>
-            <span>Decimals</span>
-            <span>{t.decimals ?? 'unknown: the node has no token index'}</span>
-          </span>
-          {candidate && (
-            <span className={s.hoverRow}>
-              <span>Provision</span>
-              <span>{check || status === 'checking' ? PROVISION_TEXT[status] : 'Not checked'}</span>
-            </span>
-          )}
-        </>
-      )}
-      <span className={s.hoverId}>{t.tokenId}</span>
-    </span>
-  );
-}
-
-/**
- * A SigmaFi bond asset's standing, read from the chain: the bond it claims while live, or what the vault holds
- * once it is repaid or liquidated. `b` is one answer of `POST /sigmafi/assets`.
- */
-function BondStats({ b }) {
-  const t = b.bond?.terms;
-  const vaultErg = b.vault.reduce((n, v) => n + big(v.nanoErgs), 0n);
-  return (
-    <>
-      <span className={s.hoverRow}>
-        <span>Bond</span>
-        <span>{b.verified ? 'SigmaFi zero-coupon, checked against its mint' : b.verification ?? 'Not verified'}</span>
-      </span>
-      {t && (
-        <>
-          <span className={s.hoverRow}>
-            <span>Owed</span>
-            <span className={s.mono}>
-              {t.repayToken ? `${fmtInt(t.repayment)} units` : `${fmtErg(t.repayment)} ERG`}
-            </span>
-          </span>
-          <span className={s.hoverRow}>
-            <span>Repay by</span>
-            <span>block {fmtInt(t.maturityHeight)}</span>
-          </span>
-          <span className={s.hoverRow}>
-            <span>Collateral</span>
-            <span className={s.mono}>
-              {fmtErg(t.collateralNanoErgs)} ERG{t.collateralTokens.length ? ` + ${t.collateralTokens.length} token(s)` : ''}
-            </span>
-          </span>
-        </>
-      )}
-      {b.vault.length > 0 && (
-        <span className={s.hoverRow}>
-          <span>Claimable</span>
-          <span className={s.mono}>{fmtErg(vaultErg)} ERG in {fmtInt(b.vault.length)} vault box(es)</span>
-        </span>
-      )}
-    </>
   );
 }
 
@@ -317,6 +212,7 @@ function TokensCard({ tokens }) {
   const [autoChoice, setAutoChoice] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
 
+  const metadata = useMemo(() => Object.fromEntries(tokens.map((t) => [t.tokenId, t])), [tokens]);
   const candidates = useMemo(() => tokens.filter(isNftCandidate), [tokens]);
   const auto = autoChoice ?? tokens.length <= AUTO_CHECK_MAX_TOKENS;
   const nft = useNftChecks(candidates, auto);
@@ -399,7 +295,7 @@ function TokensCard({ tokens }) {
             const check = nft.checks[t.tokenId];
             const status = statusOf(t, check, nft.pending.has(t.tokenId));
             const pool = check?.provisionNft ? check.pool : null;
-            const label = t.ticker ?? t.name ?? 'Unnamed token';
+            const label = status === 'bond' ? 'SigmaFi Bond' : t.ticker ?? t.name ?? 'Unnamed token';
             return (
               <div key={t.tokenId} className={`${s.tRow} ${s.tokenRow}`} role="row">
                 <span className={s.tokenCol}>
@@ -412,20 +308,23 @@ function TokensCard({ tokens }) {
                       aria-label={`Select ${label} to check as a provision NFT`}
                     />
                   )}
-                  <span className={`${s.tokenCell} ${s.hoverHost}`} tabIndex={0}>
-                    <TokenHover t={t} check={check} status={status} candidate={isNftCandidate(t)} />
+                  <AssetHover className={s.tokenCell} details={<TokenHover t={t} check={check} status={status} candidate={isNftCandidate(t)} metadata={metadata} />}>
                     {pool ? (
                       <PairIcons x={pool.tokenX} y={pool.tokenY} size={20} />
+                    ) : check?.bond?.verified ? (
+                      <BondIcon bond={check.bond.bond} state={bondState(check.bond)} size={30} />
                     ) : (
                       <TokenIcon tokenId={t.tokenId} label={t.ticker ?? t.name} size={26} />
                     )}
                     <span className={s.tokenText}>
-                      <span className={t.verified || pool ? s.tokenName : s.tokenNameUnverified}>{label}</span>
+                      <span className={t.verified || pool || status === 'bond' ? s.tokenName : s.tokenNameUnverified}>{label}</span>
                       {t.verified && t.name && t.name !== t.ticker && <span className={s.tokenSub}>{t.name}</span>}
                       {pool ? (
                         <Link className={s.tokenSubLink} to={`/dex/liquidity?pool=${pool.poolNFT}`}>
                           {pairLabel(pool)} provision
                         </Link>
+                      ) : status === 'bond' ? (
+                        <Link className={s.tokenSubLink} to="/extensions/sigmafi/portfolio">{check.bond.bond ? 'Fixed-term loan' : 'Settled bond'}</Link>
                       ) : status === 'fakeNft' ? (
                         <span className={s.tokenSubWarn}>owns no provision</span>
                       ) : (
@@ -437,10 +336,10 @@ function TokensCard({ tokens }) {
                         )
                       )}
                     </span>
-                  </span>
+                  </AssetHover>
                 </span>
                 <span>
-                  <TrustBadge status={status} />
+                  <TrustBadge status={status} bondState={check?.bond ? bondState(check.bond) : undefined} />
                 </span>
                 <span className={s.right}>
                   <Balance t={t} />

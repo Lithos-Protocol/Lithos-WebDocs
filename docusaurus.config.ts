@@ -98,7 +98,10 @@ const config: Config = {
           {
             label: "Extensions",
             position: "left",
-            to: "/extensions/forwards",
+            items: [
+              { label: "Diff Forwards", to: "/extensions/forwards" },
+              { label: "SigmaFi", to: "/extensions/sigmafi" },
+            ],
           },
           {
             href: "https://github.com/Lithos-Protocol",

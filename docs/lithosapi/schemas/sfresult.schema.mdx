@@ -25,7 +25,7 @@ import Heading from "@theme/Heading";
 
 
 <Schema
-  schema={{"type":"object","x-tags":"sigmafi","required":["txId","outcome"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"boxId":{"type":"string","description":"The output that matters, the new order, offer or bond."},"assetId":{"type":"string","description":"The bond asset a fill or a close minted."}},"title":"SFResult"}}
+  schema={{"type":"object","x-tags":"sigmafi","required":["txId","outcome"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"boxId":{"type":"string","description":"The output that matters, the new order or bond."},"assetId":{"type":"string","description":"The bond asset a fill or a close minted."}},"title":"SFResult"}}
   schemaType={"response"}
 >
   

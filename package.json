@@ -19,6 +19,8 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
+    "check:sigmafi": "node scripts/check-sigmafi.js",
+    "preview:sigmafi": "node scripts/preview-sigmafi.js",
     "build": "docusaurus build",
     "postbuild": "node scripts/postbuild.js",
     "swizzle": "docusaurus swizzle",

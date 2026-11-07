@@ -403,7 +403,7 @@ export default function OfferBook() {
 
       <p className={m.cardNote} style={{ marginTop: 0, marginBottom: 10 }}>
         Each row is someone's open bet on Ergo's average difficulty over a window of time. Filling one puts you on the
-        other side. Long wins if the window's average ends above the strike, short wins if it ends below. Read <Link to="/assets/extensions/forwards/guide">how it works</Link> for more info.
+        other side. Long wins if the window's average ends above the strike, short wins if it ends below. Read <Link to="/extensions/forwards/guide">how it works</Link> for more info.
       </p>
       <StrikeLadder bins={bins} show={show} selected={bin} onSelect={setBin} width={1120} />
       <p className={m.cardNote} style={{ marginTop: 6 }}>

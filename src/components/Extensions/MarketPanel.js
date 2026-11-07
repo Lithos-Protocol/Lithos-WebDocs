@@ -205,13 +205,13 @@ export default function MarketPanel() {
 
         <div className={m.card}>
           <div className={m.cardHead}>
-            <h3 className={m.cardTitle}>The market</h3>
+            <h3 className={m.cardTitle}>Market overview</h3>
             {market?.truncated && <span className={m.label}>partial count</span>}
           </div>
           <div className={s.oiRow}>
             <div>
               <div className={m.label} title="Each open position's margin: the most that can change hands across all of them">
-                At stake
+                Margin locked
               </div>
               <div className={s.oiValue}>
                 {market ? fmtLit(marginOf(market.openInterest), 0) : '—'}
@@ -229,7 +229,7 @@ export default function MarketPanel() {
             </div>
           </div>
           <div className={m.label} style={{ marginTop: 14 }}>
-            Waiting for a taker
+            Open offers
           </div>
           <BookBar longs={market?.longs} shorts={market?.shorts} />
         </div>

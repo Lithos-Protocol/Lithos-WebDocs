@@ -153,10 +153,9 @@ export function KeyGate({ what }) {
         ⚿
       </div>
       <div className={s.keyGateBody}>
-        <div className={m.cardTitle}>Your API key unlocks {what}</div>
+        <div className={m.cardTitle}>Client wallet</div>
         <p className={m.cardNote}>
-          It stays in this page's memory, so it is asked for again after a refresh, unless you turn on
-          remembering it under Settings.
+          Enter your API key for {what}. The key stays in memory unless you enable remembering in Settings.
         </p>
         <form
           className={s.keyForm}

@@ -30,7 +30,7 @@ export const principalOf = (t) => (t.principalToken ? big(t.principalToken.amoun
  * neither is known.
  */
 export function termBlocks(t, tip) {
-  if (t.maturityHeight != null) return Math.max(0, t.maturityHeight - tip);
+  if (t.maturityHeight != null) return tip == null ? null : Math.max(0, t.maturityHeight - tip);
   if (t.durationBlocks != null) return t.durationBlocks;
   return null;
 }

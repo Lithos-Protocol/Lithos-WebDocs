@@ -5,313 +5,140 @@ import x from '../Extensions/styles.module.css';
 import s from './styles.module.css';
 import * as api from './api';
 import { useExtensions } from '../Extensions/ExtensionsLayout';
-import { Kpi, PageSize, Pager, usePaged } from '../Extensions/ui';
+import { Pager, usePaged } from '../Extensions/ui';
 import { Alert, Spinner } from '../Dex/ui';
-import { assetName, Contents, IdTag, useTokens } from './tokens';
-import { ActionDrawer, AprCell, FeeCell, LoanCell, Principal, Repayment, TermCell, termOf } from './Shared';
-import { aprOf, big, fmtErg, fmtInt, pct } from './format';
+import { assetName, Contents, TokenAmount, useTokens } from './tokens';
+import { ActionDrawer, InterestCell, Collateral, Principal, Repayment, TermCell, termOf } from './Shared';
+import { aprOf, interestOf, big, fmtInt, pct } from './format';
+import BondIcon from '../Wallet/BondIcon';
+import { collateralOf } from './bond';
+import TokenIcon from '../Wallet/TokenIcon';
 
-/** The three lists: what a lender can fill, what a borrower can close, and the bonds already made. */
-const VIEWS = [
-  { id: 'orders', label: 'Lend', note: 'Borrowers asking for a loan. Lend to one to earn its return.' },
-  { id: 'offers', label: 'Borrow', note: 'Lenders offering a loan. Borrow from one by posting the collateral it asks for.' },
-  { id: 'bonds', label: 'Live bonds', note: 'Loans made and not yet repaid or liquidated.' },
-];
+const SORTS = [{ id: 'newest', label: 'Newest' }, { id: 'interest', label: 'Highest interest' }, { id: 'term', label: 'Shortest term' }];
+const loanAsset = (t) => t.principalToken?.tokenId ?? t.repayToken ?? 'ERG';
+const collateralAssets = (t) => [...(collateralOf(t).collateral > 0n ? ['ERG'] : []), ...t.collateralTokens.map((c) => c.tokenId)];
 
-const SORTS = [
-  { id: 'apr', label: 'Highest APR' },
-  { id: 'term', label: 'Shortest term' },
-  { id: 'newest', label: 'Newest' },
-];
-
-/** The loan's asset: ERG, or the token lent. */
-const loanAsset = (t) => t.principalToken?.tokenId ?? 'ERG';
-/** Every asset the collateral holds. */
-const collateralAssets = (t) => [...(big(t.collateralNanoErgs) > 0n ? ['ERG'] : []), ...t.collateralTokens.map((c) => c.tokenId)];
-
-/** A menu of the assets present, ERG first, then by name. */
 function AssetMenu({ label, value, onChange, assets }) {
-  const { verified } = useTokens() ?? {};
-  const sorted = [...assets].sort((a, b) => (a === 'ERG' ? -1 : b === 'ERG' ? 1 : assetName(verified, a).localeCompare(assetName(verified, b))));
-  return (
-    <select className={s.select} value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
-      <option value="">{label}: any</option>
-      {sorted.map((a) => (
-        <option key={a} value={a}>
-          {label}: {assetName(verified, a)}
-        </option>
-      ))}
-    </select>
-  );
+  const { metadata } = useTokens();
+  return <select className={s.select} value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
+    <option value="">All assets</option>
+    {[...assets].sort((a, b) => assetName(metadata, a).localeCompare(assetName(metadata, b))).map((a) => <option key={a} value={a}>{assetName(metadata, a)}</option>)}
+  </select>;
+}
+
+function Metric({ label, children, note }) {
+  return <div className={s.metric}><span className={s.fieldLabel}>{label}</span><strong>{children}</strong><span className={s.hint}>{note}</span></div>;
+}
+
+export function RequestCards({ rows, tip, open, setOpen }) {
+  return <div className={s.loanGrid}>{rows.map((r) => {
+    const expanded = open === r.boxId;
+    const action = r.mine ? 'cancelOrder' : 'fillOrder';
+    return <article key={r.boxId} className={`${s.loanCard} ${expanded ? s.expanded : ''}`}>
+      <div className={s.loanCardBody}>
+        <div className={s.loanTop}><span className={s.loanType}>{r.mine ? 'Your request' : 'Loan request'}</span><span className={s.liveBadge}>{r.refusal && !r.mine ? 'Unavailable' : 'Open'}</span></div>
+        <div className={s.loanHeading}><Principal t={r.terms} /><InterestCell t={r.terms} tip={tip} /></div>
+        <div className={s.collateralWell}><span className={s.fieldLabel}>Collateral</span><Collateral t={r.terms} breakdown /></div>
+        <div className={s.loanDetails}>
+          <div><span className={s.fieldLabel}>Term</span><TermCell t={r.terms} tip={tip} /></div>
+          <div><span className={s.fieldLabel}>Repayment</span><Repayment t={r.terms} /></div>
+        </div>
+        {r.refusal && !r.mine && <p className={s.refusal}>{r.refusal}</p>}
+        <button type="button" className={`${s.cardButton} ${r.mine ? s.secondaryBtn : ''}`} aria-expanded={expanded} onClick={() => setOpen(expanded ? null : r.boxId)}>
+          {expanded ? 'Close preview' : r.mine ? 'Cancel request' : r.refusal ? 'View details' : 'Lend'} <span aria-hidden="true">{expanded ? '−' : '↗'}</span>
+        </button>
+      </div>
+      {expanded && <ActionDrawer action={action} id={r.boxId} tip={tip} terms={r.terms} onDone={() => setOpen(null)} />}
+    </article>;
+  })}</div>;
 }
 
 export default function Book() {
-  const { tick, version, height } = useExtensions();
+  const { tick, version, height, changed, error: clientError } = useExtensions();
   const [view, setView] = useState('orders');
   const [loan, setLoan] = useState('');
   const [collateral, setCollateral] = useState('');
   const [all, setAll] = useState(false);
   const [hideMine, setHideMine] = useState(false);
-  const [sort, setSort] = useState('apr');
+  const [sort, setSort] = useState('newest');
   const [book, setBook] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(null);
-
-  // All three lists at once: the strip summarises them, and switching lists costs no read
   useEffect(() => {
     let live = true;
     setBusy(true);
-    Promise.all([
-      api.allPages(api.getOrders, 'orders'),
-      api.allPages(api.getOffers, 'offers'),
-      api.allPages((p) => api.getBonds({ ...p, all: true }), 'bonds'),
-    ])
-      .then(([o, f, b]) => {
+    Promise.all([api.allPages(api.getOrders, 'orders'), api.allPages((p) => api.getBonds({ ...p, all: true }), 'bonds')])
+      .then(([o, b]) => {
         if (!live) return;
-        setBook({ height: o.height, orders: o.orders, offers: f.offers, bonds: b.bonds, truncated: o.truncated || f.truncated || b.truncated });
+        setBook({ height: o.height, orders: o.orders, bonds: b.bonds, truncated: o.truncated || b.truncated });
         setError(null);
-      })
-      .catch((e) => live && setError(e.message))
-      .finally(() => live && setBusy(false));
-    return () => {
-      live = false;
-    };
+      }).catch((e) => live && setError(e.message)).finally(() => live && setBusy(false));
+    return () => { live = false; };
   }, [tick, version]);
-
-  const tip = book?.height ?? height ?? 0;
-  const source = useMemo(() => {
-    if (!book) return [];
-    return view === 'bonds' ? book.bonds.filter((b) => all || b.verified) : book[view];
-  }, [book, view, all]);
-
-  const assets = useMemo(() => {
-    const loans = new Set();
-    const coll = new Set();
-    source.forEach((r) => {
-      loans.add(loanAsset(r.terms));
-      collateralAssets(r.terms).forEach((a) => coll.add(a));
-    });
-    return { loans: [...loans], coll: [...coll] };
-  }, [source]);
-
-  const rows = useMemo(() => {
-    const list = source.filter(
-      (r) =>
-        !(hideMine && (r.mine || r.borrowerIsMe)) &&
-        (!loan || loanAsset(r.terms) === loan) &&
-        (!collateral || collateralAssets(r.terms).includes(collateral)),
-    );
-    const key = {
-      apr: (r) => -(aprOf(r.terms, tip) ?? -Infinity),
-      term: (r) => termOf(r.terms, tip),
-      newest: (r) => -r.creationHeight,
-    }[sort];
-    return [...list].sort((a, b) => key(a) - key(b));
-  }, [source, hideMine, loan, collateral, sort, tip]);
-  const paged = usePaged(rows);
-
-  const strip = useMemo(() => {
-    if (!book) return null;
-    const ergSum = (list) => list.filter((r) => !r.terms.principalToken).reduce((n, r) => n + big(r.terms.principalNanoErgs), 0n);
-    const best = book.orders
-      .filter((o) => !o.mine && !o.refusal)
-      .map((o) => aprOf(o.terms, tip))
-      .filter((v) => v != null);
-    const live = book.bonds.filter((b) => b.verified);
-    return {
-      orders: book.orders.length,
-      asked: ergSum(book.orders),
-      offers: book.offers.length,
-      offered: ergSum(book.offers),
-      bonds: live.length,
-      matured: live.filter((b) => b.status === 'matured').length,
-      best: best.length ? Math.max(...best) : null,
-    };
-  }, [book, tip]);
-
-  const pick = (id) => {
-    setView(id);
-    setOpen(null);
-    setLoan('');
-    setCollateral('');
-  };
-
-  return (
-    <>
-      <div className={s.kpis}>
-        <Kpi label="Open orders" value={strip ? fmtInt(strip.orders) : '—'} sub={strip ? `${fmtErg(strip.asked, 2)} ERG asked` : 'Loading'} />
-        <Kpi label="Open offers" value={strip ? fmtInt(strip.offers) : '—'} sub={strip ? `${fmtErg(strip.offered, 2)} ERG offered` : 'Loading'} />
-        <Kpi label="Live bonds" value={strip ? fmtInt(strip.bonds) : '—'} sub={strip ? `${fmtInt(strip.matured)} matured, awaiting liquidation` : 'Loading'} />
-        <Kpi
-          label="Best lending APR"
-          value={strip?.best != null ? pct(strip.best, 1) : '—'}
-          tone={strip?.best != null ? 'var(--cur-green)' : undefined}
-          sub="Across open orders"
-        />
-      </div>
-
-      <div className={m.card}>
-        <div className={m.cardHead}>
-          <h3 className={m.cardTitle}>Market {busy && <Spinner />}</h3>
-          <div className={m.seg}>
-            {VIEWS.map((v) => (
-              <button key={v.id} type="button" className={`${m.segBtn} ${view === v.id ? m.segBtnOn : ''}`} onClick={() => pick(v.id)}>
-                {v.label}
-              </button>
-            ))}
-          </div>
+  const tip = book?.height ?? height;
+  const source = useMemo(() => !book ? [] : view === 'bonds' ? book.bonds.filter((b) => all || b.verified) : book.orders, [book, view, all]);
+  const assets = useMemo(() => ({ loans: [...new Set(source.map((r) => loanAsset(r.terms)))], collateral: [...new Set(source.flatMap((r) => collateralAssets(r.terms)))] }), [source]);
+  const rows = useMemo(() => source.filter((r) => !(hideMine && (r.mine || r.borrowerIsMe)) && (!loan || loanAsset(r.terms) === loan) && (!collateral || collateralAssets(r.terms).includes(collateral)))
+    .sort((a, b) => sort === 'interest' ? (interestOf(b.terms) ?? -Infinity) - (interestOf(a.terms) ?? -Infinity) : sort === 'term' ? termOf(a.terms, tip) - termOf(b.terms, tip) : b.creationHeight - a.creationHeight), [source, hideMine, loan, collateral, sort, tip]);
+  const paged = usePaged(rows, 12);
+  const liveBonds = book?.bonds.filter((b) => b.verified) ?? [];
+  const best = book?.orders.filter((o) => !o.mine && !o.refusal && interestOf(o.terms) != null).sort((a, b) => interestOf(b.terms) - interestOf(a.terms))[0];
+  const ergRequested = book?.orders.filter((o) => !o.terms.principalToken).reduce((n, o) => n + big(o.terms.principalNanoErgs), 0n);
+  return <>
+    <div className={`${s.marketHead} ${s.bookHeading}`}>
+      <div><h2 className={s.sectionHeading}>Lending market {busy && <Spinner />}</h2><p className={s.intro}>Explore collateral and terms. Fund a request to start lending.</p></div>
+      <Link className={s.createLink} to="/extensions/sigmafi/create">+ Borrow</Link>
+    </div>
+    <div className={s.kpis}>
+      <Metric label="Loan requests" note="Open in the market">{book ? fmtInt(book.orders.length) : '—'}</Metric>
+      <Metric label="ERG requested" note="ERG loans only">{book ? <TokenAmount tokenId="ERG" amount={ergRequested} /> : '—'}</Metric>
+      <Metric label="Active bonds" note={book ? `${liveBonds.filter((b) => b.status === 'matured').length} matured` : 'Verified bonds'}>{book ? fmtInt(liveBonds.length) : '—'}</Metric>
+      <Metric label="Highest interest" note={best ? `${pct(aprOf(best.terms, tip), 1)} APR · available requests` : 'Available requests'}>{best ? <span className={s.interest}>{pct(interestOf(best.terms))}</span> : '—'}</Metric>
+    </div>
+    <section className={s.marketControls} aria-label="Market controls">
+      <div className={s.marketControlTop}>
+        <div className={s.marketTabs}>
+          {[['orders', 'Loan requests'], ['bonds', 'Active bonds']].map(([id, label]) => <button type="button" key={id} className={`${s.marketTab} ${view === id ? s.marketTabActive : ''}`} aria-pressed={view === id} onClick={() => { setView(id); setOpen(null); setLoan(''); setCollateral(''); paged.setPage(0); }}>{label}<span>{book ? id === 'orders' ? book.orders.length : liveBonds.length : '—'}</span></button>)}
         </div>
-        <p className={m.cardNote} style={{ marginTop: 0 }}>
-          {VIEWS.find((v) => v.id === view).note} <Link to="/extensions/sigmafi/guide">How bonds work</Link>
-        </p>
-
-        <div className={s.toolbar}>
-          <div className={s.toolGroup}>
-            <AssetMenu label="Loan" value={loan} onChange={setLoan} assets={assets.loans} />
-            <AssetMenu label="Collateral" value={collateral} onChange={setCollateral} assets={assets.coll} />
-            <label className={s.check}>
-              <input type="checkbox" checked={hideMine} onChange={(e) => setHideMine(e.target.checked)} /> Hide mine
-            </label>
-            {view === 'bonds' && (
-              <label className={s.check} title="A bond is verified when it is the one its bond asset's order or offer created">
-                <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Include unverified
-              </label>
-            )}
-          </div>
-          <div className={s.toolGroup}>
-            <select className={s.select} value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort by">
-              {SORTS.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <PageSize value={paged.size} onChange={paged.setSize} />
-          </div>
-        </div>
-
-        {error && <Alert kind="error" title="Could not read the market">{error}</Alert>}
-        {book?.truncated && <p className={m.cardNote}>A scan stopped at its cap, so older boxes may be missing.</p>}
-
-        {!book && !error ? (
-          <div className={m.empty}>
-            <Spinner /> Reading the market
-          </div>
-        ) : rows.length === 0 ? (
-          <div className={m.empty}>
-            {source.length > 0 ? 'Nothing matches these filters.' : view === 'bonds' ? 'No live bonds.' : 'Nothing open yet. '}
-            {source.length === 0 && view !== 'bonds' && <Link to="/extensions/sigmafi/create">Create the first</Link>}
-          </div>
-        ) : view === 'bonds' ? (
-          <BondTable rows={paged.rows} tip={tip} open={open} setOpen={setOpen} />
-        ) : (
-          <div className={x.table}>
-            <div className={`${x.tr} ${s.bookTr} ${x.th}`}>
-              <span>Loan</span>
-              <span>APR</span>
-              <span>Term</span>
-              <span>Collateral</span>
-              <span>Batching fee</span>
-              <span />
-            </div>
-            {paged.rows.map((r) => {
-              const action = r.mine ? (view === 'orders' ? 'cancelOrder' : 'cancelOffer') : view === 'orders' ? 'fillOrder' : 'closeOffer';
-              const usable = r.mine || !r.refusal;
-              const toggle = () => setOpen(open === r.boxId ? null : r.boxId);
-              return (
-                <React.Fragment key={r.boxId}>
-                  <div
-                    className={`${x.tr} ${s.bookTr} ${x.rowHover} ${open === r.boxId ? x.rowOpen : ''} ${usable ? '' : x.rowDim}`}
-                    onClick={toggle}
-                    role="button"
-                    tabIndex={0}
-                    title={r.refusal ?? undefined}
-                    onKeyDown={(e) => e.key === 'Enter' && toggle()}
-                  >
-                    <LoanCell t={r.terms} mine={r.mine} />
-                    <AprCell t={r.terms} tip={tip} />
-                    <TermCell t={r.terms} tip={tip} />
-                    <span className={s.cell}>
-                      <Contents nanoErgs={r.terms.collateralNanoErgs} tokens={r.terms.collateralTokens} />
-                    </span>
-                    <FeeCell t={r.terms} />
-                    <span className={s.actionCell}>
-                      <span className={`${s.actionBtn} ${usable && !r.mine ? '' : s.actionQuiet}`}>
-                        {r.mine ? 'Cancel' : usable ? api.ACTIONS[action].label : 'Details'}
-                      </span>
-                    </span>
-                  </div>
-                  {open === r.boxId && <ActionDrawer action={action} id={r.boxId} tip={tip} onDone={() => setOpen(null)} />}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        )}
-        <div className={x.tableFoot}>
-          <span className={m.cardNote}>
-            {rows.length > 0 && `${fmtInt(paged.first + 1)} to ${fmtInt(paged.first + paged.rows.length)} of ${fmtInt(rows.length)}`}
-          </span>
-          {paged.pages > 1 && <Pager page={paged.page} pages={paged.pages} onPage={paged.setPage} />}
+        <div className={s.marketSort}>
+          <label className={s.sortField}><span>Sort by</span><select className={s.select} value={sort} onChange={(e) => { setSort(e.target.value); paged.setPage(0); }} aria-label="Sort loans">{SORTS.map((v) => <option value={v.id} key={v.id}>{v.label}</option>)}</select></label>
+          <button type="button" className={s.refreshBtn} aria-label="Refresh market" disabled={busy} onClick={changed}>↻</button>
         </div>
       </div>
-    </>
-  );
+      <div className={s.marketFilters}>
+        <label className={s.filterField}><span>Loan asset</span><AssetMenu label="Loan assets" value={loan} assets={assets.loans} onChange={(v) => { setLoan(v); paged.setPage(0); }} /></label>
+        <label className={s.filterField}><span>Collateral</span><AssetMenu label="Collateral assets" value={collateral} assets={assets.collateral} onChange={(v) => { setCollateral(v); paged.setPage(0); }} /></label>
+        <div className={s.filterFlags}>
+          <label className={s.check}><input type="checkbox" checked={hideMine} onChange={(e) => { setHideMine(e.target.checked); paged.setPage(0); }} />Hide mine</label>
+          {view === 'bonds' && <label className={s.check}><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />Include unverified</label>}
+        </div>
+      </div>
+    </section>
+    {error && error !== clientError && <Alert kind="error" title="Market unavailable">{error}</Alert>}
+    {book?.truncated && <Alert kind="warn">The scan reached its limit. Totals cover the loaded requests and bonds.</Alert>}
+    {!book && !error ? <div className={s.empty}><Spinner /> Loading market</div> : error && !book ? null : rows.length === 0 ? <div className={s.empty}><span className={s.emptyIcon} aria-hidden="true">◇</span><h3>{source.length ? 'No matching loans' : view === 'bonds' ? 'No active bonds' : 'No loan requests'}</h3><p>{source.length ? 'Try another asset or clear your filters.' : 'New requests and funded loans appear here.'}</p>{view === 'orders' && <Link to="/extensions/sigmafi/create">Create a loan request ↗</Link>}</div> : view === 'bonds' ? <BondTable rows={paged.rows} tip={tip} open={open} setOpen={setOpen} /> : <RequestCards rows={paged.rows} tip={tip} open={open} setOpen={setOpen} />}
+    {rows.length > 0 && <div className={x.tableFoot}><span className={s.hint}>{paged.first + 1}–{paged.first + paged.rows.length} of {rows.length}</span><div className={s.toolGroup}><select className={s.select} value={paged.size} onChange={(e) => paged.setSize(Number(e.target.value))} aria-label="Loans per page">{[12,24,48].map((n) => <option key={n} value={n}>{n} per page</option>)}</select>{paged.pages > 1 && <Pager page={paged.page} pages={paged.pages} onPage={paged.setPage} />}</div></div>}
+    <p className={s.marketNote}>APR is annualized using the remaining term and estimated block time. Review the collateral and batching / liquidation fee before lending.</p>
+  </>;
 }
 
-/** Live bonds: what each is owed, by when, and whether it is the bond its asset was minted for. */
 export function BondTable({ rows, tip, open, setOpen, actionFor }) {
-  return (
-    <div className={x.table}>
-      <div className={`${x.tr} ${s.bondTr} ${x.th}`}>
-        <span>Owed</span>
-        <span>APR</span>
-        <span>Term</span>
-        <span>Collateral</span>
-        <span>Bond asset</span>
-        <span />
+  return <div className={s.loanGrid}>{rows.map((b) => {
+    const action = actionFor ? actionFor(b) : b.status === 'matured' && b.verified ? 'liquidate' : null;
+    const expanded = open === b.boxId;
+    return <article key={b.boxId} className={`${s.loanCard} ${expanded ? s.expanded : ''}`}>
+      <div className={s.loanCardBody}>
+        <div className={s.loanTop}><span className={s.bondHeading}><>{b.verified ? <BondIcon bond={b} size={28} /> : <TokenIcon tokenId={b.assetId} size={28} />}</>SigmaFi Bond</span><span className={b.status === 'matured' ? s.maturedBadge : s.liveBadge}>{b.status === 'matured' ? 'Matured' : 'Active'}</span></div>
+        <div className={s.loanHeading}><Repayment t={b.terms} /><InterestCell t={b.terms} tip={tip} /></div>
+        <span className={s.sub}>Repayment · {b.verified ? 'Verified origin' : 'Unverified origin'}</span>
+        <div className={s.collateralWell}><span className={s.fieldLabel}>Collateral</span><Collateral t={b.terms} breakdown /></div>
+        <div className={s.loanDetails}><div><span className={s.fieldLabel}>Maturity</span><TermCell t={b.terms} tip={tip} /></div></div>
+        <TokenAmount tokenId={b.assetId} amount="1" />
+        {!b.verified && <p className={s.refusal}>{b.verification ?? 'The client could not verify this bond’s origin.'}</p>}
+        {action && <button type="button" className={`${s.cardButton} ${s.bondAction}`} aria-expanded={expanded} onClick={() => setOpen(expanded ? null : b.boxId)}>{expanded ? 'Close preview' : api.ACTIONS[action].label}<span aria-hidden="true">↗</span></button>}
       </div>
-      {rows.map((b) => {
-        const action = actionFor ? actionFor(b) : b.status === 'matured' ? 'liquidate' : null;
-        const toggle = () => action && setOpen(open === b.boxId ? null : b.boxId);
-        return (
-          <React.Fragment key={b.boxId}>
-            <div
-              className={`${x.tr} ${s.bondTr} ${action ? x.rowHover : ''} ${open === b.boxId ? x.rowOpen : ''}`}
-              onClick={toggle}
-              role={action ? 'button' : undefined}
-              tabIndex={action ? 0 : undefined}
-              onKeyDown={(e) => e.key === 'Enter' && toggle()}
-            >
-              <span className={s.cell}>
-                <span>
-                  <Repayment t={b.terms} /> {b.borrowerIsMe && <span className={s.yours}>Yours</span>}
-                </span>
-                <span className={s.sub}>
-                  {b.terms.principalNanoErgs != null || b.terms.principalToken ? (
-                    <>
-                      Lent <Principal t={b.terms} />
-                    </>
-                  ) : (
-                    'Loan not known'
-                  )}
-                </span>
-              </span>
-              <AprCell t={b.terms} tip={tip} />
-              <TermCell t={b.terms} tip={tip} />
-              <span className={s.cell}>
-                <Contents nanoErgs={b.terms.collateralNanoErgs} tokens={b.terms.collateralTokens} />
-              </span>
-              <span className={s.cell} title={b.verification ?? 'The bond its asset was minted for'}>
-                <IdTag tokenId={b.assetId} />
-                <span className={`${s.sub} ${b.verified ? s.verifyOk : s.verifyNo}`}>{b.verified ? 'Verified' : 'Not verified'}</span>
-              </span>
-              <span className={s.actionCell}>{action && <span className={s.actionBtn}>{api.ACTIONS[action].label}</span>}</span>
-            </div>
-            {open === b.boxId && action && <ActionDrawer action={action} id={b.boxId} tip={tip} onDone={() => setOpen(null)} />}
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
+      {expanded && action && <ActionDrawer action={action} id={b.boxId} tip={tip} terms={b.terms} onDone={() => setOpen(null)} />}
+    </article>;
+  })}</div>;
 }

@@ -1,77 +1,26 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import Layout from '@theme/Layout';
-import Link from '@docusaurus/Link';
-import { useLocation } from '@docusaurus/router';
-import useBaseUrl from '@docusaurus/useBaseUrl';
 import m from '../Mining/styles.module.css';
 import s from './styles.module.css';
 import * as api from './api';
 import useAutoRefresh from '../Dex/useAutoRefresh';
-import FlowField, { cubeBetween } from '@site/src/components/FlowField';
+import ExtensionHeader, { ExtensionNav } from './ExtensionHeader';
 import { Alert, GearIcon } from '../Dex/ui';
 import SettingsPanel from './SettingsPanel';
-import StatsBanner from '../Mining/StatsBanner';
 import { fmtInt } from './format';
 
 export const ExtensionsContext = createContext(null);
 export const useExtensions = () => useContext(ExtensionsContext);
 
-const BAND_LINES = [46, 89, 130, 169, 206, 243, 280];
-
-/** One tab per extension. Each owns everything under its path. */
-const EXTENSIONS = [
-  { to: '/extensions/forwards', label: 'Difficulty Forwards' },
-  { to: '/extensions/sigmafi', label: 'SigmaFi Bonds' },
-];
-
-/** The views inside Difficulty Forwards. */
 const FORWARDS_NAV = [
   { to: '/extensions/forwards', label: 'Market', exact: true },
-  { to: '/extensions/forwards/offer', label: 'Make an offer' },
-  { to: '/extensions/forwards/portfolio', label: 'Portfolio', keyed: true },
+  { to: '/extensions/forwards/offer', label: 'Create offer' },
+  { to: '/extensions/forwards/portfolio', label: 'Portfolio' },
   { to: '/extensions/forwards/guide', label: 'How it works' },
 ];
 
-function usePath() {
-  const { pathname } = useLocation();
-  const base = useBaseUrl('/');
-  const strip = (p) => p.replace(/\/+$/, '') || '/';
-  return { cur: strip(pathname.replace(new RegExp(`^${base.replace(/\/$/, '')}`), '') || '/'), strip };
-}
-
-export function ExtensionTabs() {
-  const { cur, strip } = usePath();
-  return (
-    <div className={m.tabs}>
-      {EXTENSIONS.map((n) => (
-        <Link key={n.to} to={n.to} className={`${m.tab} ${cur.startsWith(strip(n.to)) ? m.tabActive : ''}`}>
-          {n.label}
-        </Link>
-      ))}
-      <span className={s.tabSoon} title="More extensions are planned">
-        more soon
-      </span>
-    </div>
-  );
-}
-
-/** The views of the current extension, under the header. */
 export function ForwardsNav() {
-  const { cur, strip } = usePath();
-  const { keyed } = useExtensions();
-  return (
-    <nav className={m.subTabs} aria-label="Difficulty forwards">
-      {FORWARDS_NAV.map((n) => {
-        const active = n.exact ? cur === strip(n.to) : cur.startsWith(strip(n.to));
-        return (
-          <Link key={n.to} to={n.to} className={`${m.subTab} ${active ? m.subTabActive : ''}`}>
-            {n.label}
-            {n.keyed && !keyed && <span className={s.keyGlyph} title="Needs your API key">key</span>}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  return <ExtensionNav items={FORWARDS_NAV} label="Diff Forwards" />;
 }
 
 /**
@@ -121,7 +70,6 @@ export default function ExtensionsLayout({ title, description, children }) {
   const [autoSecs, setAutoSecs] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [heights, setHeightsState] = useState(false);
-  const [statsMining, setStatsMining] = useState(null);
 
   const setHeights = useCallback((on) => {
     api.setShowHeights(on);
@@ -131,11 +79,10 @@ export default function ExtensionsLayout({ title, description, children }) {
   /** Settles once the reads land. All are open, so a failure means the client did not answer. */
   const refresh = useCallback(
     () =>
-      Promise.all([api.getAccumulator(), api.getMarket().catch(() => null), api.getStats().catch(() => null)])
-        .then(([a, mk, st]) => {
+      Promise.all([api.getAccumulator(), api.getMarket().catch(() => null)])
+        .then(([a, mk]) => {
           setAcc(a);
           setMarket(mk);
-          setStatsMining(st?.mining ?? null);
           setError(null);
         })
         .catch((e) => setError(e.message))
@@ -168,6 +115,7 @@ export default function ExtensionsLayout({ title, description, children }) {
     setKeyed(api.hasApiKey());
     refresh();
     setTick((n) => n + 1);
+    setVersion((n) => n + 1);
   }, [refresh]);
 
   /** After a transaction: the book, the market and anything keyed have all moved. */
@@ -178,40 +126,16 @@ export default function ExtensionsLayout({ title, description, children }) {
   }, [refresh]);
 
   return (
-    <Layout title={`Lithos Extensions · ${title}`} description={description}>
-      <div className={m.page}>
-        <FlowField
-          height={320}
-          lines={BAND_LINES}
-          cubes={[
-            cubeBetween({ cx: 1040, size: 34, lineA: 46, lineB: 89 }),
-            cubeBetween({ cx: 720, size: 22, lineA: 130, lineB: 169 }),
-            cubeBetween({ cx: 300, size: 28, lineA: 89, lineB: 130 }),
-          ]}
-        />
-        <div className={m.pageGlow1} aria-hidden="true" />
-        <div className={m.pageGlow2} aria-hidden="true" />
-
-        <div className={m.shell}>
-          <div className={m.header}>
-            <div className="curScrimHost curScrimHostTight">
-              <h1 className={m.title}>
-                Lithos<span className="curFlowWord">Extensions</span>
-              </h1>
-              <p className={m.subtitle}>{description}</p>
-            </div>
-            <div className={m.headerSide}>
-              <ExtensionTabs />
-              <div className={m.headerRow}>
-                <Pulse acc={acc} error={error} heights={heights} />
-                <HeightsToggle on={heights} onChange={setHeights} />
-                <button className={m.gearBtn} onClick={() => setShowSettings((v) => !v)} type="button">
-                  <GearIcon />
-                  {showSettings ? 'Close' : 'Settings'}
-                </button>
-              </div>
-            </div>
-          </div>
+    <Layout title={title === 'Difficulty Forwards' ? 'Diff Forwards' : `Diff Forwards · ${title}`} description={description}>
+      <div className={s.extensionPage}>
+        <div className={s.extensionShell}>
+          <ExtensionHeader name="Diff Forwards" description="Trade Ergo difficulty. Hedge your hashrate." docs="/docs/extensions/difficulty-forwards">
+            <Pulse acc={acc} error={error} heights={heights} />
+            <HeightsToggle on={heights} onChange={setHeights} />
+            <button className={m.gearBtn} onClick={() => setShowSettings((v) => !v)} type="button" aria-expanded={showSettings}>
+              <GearIcon /> Settings
+            </button>
+          </ExtensionHeader>
 
           {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} onSaved={onSettingsSaved} />}
 
@@ -223,8 +147,6 @@ export default function ExtensionsLayout({ title, description, children }) {
               </div>
             </Alert>
           )}
-
-          {!error && <StatsBanner mining={statsMining} />}
 
           {acc && !acc.deployed && (
             <div className={s.previewBanner}>

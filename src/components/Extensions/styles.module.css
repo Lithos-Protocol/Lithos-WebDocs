@@ -1047,3 +1047,131 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Shared extension frame. Flat surfaces keep the focus on market data. */
+
+.extensionPage {
+  min-height: 80vh;
+  padding: 30px 32px 64px;
+  background: var(--cur-bg-base);
+  font-family: var(--cur-font-body);
+  --cur-bg-card: var(--lithos-bg-1, #0a0f1e);
+}
+
+.extensionShell {
+  max-width: 1192px;
+  margin: 0 auto;
+}
+
+.extensionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  color: var(--cur-dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.extensionTitle {
+  color: var(--cur-text);
+  font: 700 34px/1.15 var(--cur-font-display);
+  letter-spacing: -.04em;
+  margin: 0;
+}
+
+.extensionDescription {
+  color: var(--cur-muted);
+  font-size: 14px;
+  margin: 10px 0 0;
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+}
+
+.docsLink {
+  color: var(--cur-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.docsLink:hover {
+  color: var(--cur-cyan-light);
+  text-decoration: none;
+}
+
+.extensionNav {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid rgba(125,211,252,.12);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.navLink {
+  position: relative;
+  color: var(--cur-muted);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 12px 2px 15px;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+
+.navLink:hover {
+  color: var(--cur-text);
+  text-decoration: none;
+}
+
+.navLink.navActive {
+  color: var(--cur-cyan-light);
+  border-bottom-color: var(--cur-cyan);
+}
+
+.extensionPage button:focus-visible, .extensionPage a:focus-visible, .extensionPage input:focus-visible, .extensionPage select:focus-visible {
+  outline: 2px solid var(--cur-cyan);
+  outline-offset: 3px;
+}
+
+@media (max-width: 996px) {
+  .extensionPage {
+    padding: 28px 20px 48px;
+  }
+  .extensionHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .headerActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .extensionPage {
+    padding: 24px 16px 40px;
+  }
+  .extensionTitle {
+    font-size: 30px;
+  }
+  .extensionNav {
+    gap: 22px;
+    margin-bottom: 22px;
+  }
+  .headerActions {
+    gap: 12px;
+  }
+}

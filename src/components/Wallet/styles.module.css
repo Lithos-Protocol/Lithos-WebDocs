@@ -630,6 +630,18 @@
   outline: none;
 }
 
+.floatingAsset { position: fixed; z-index: 10000; }
+.floatingAsset > .hoverCard {
+  display: flex;
+  position: static;
+  width: min(340px, calc(100vw - 24px));
+  max-width: none;
+  max-height: var(--asset-hover-height, calc(100vh - 24px));
+  overflow-y: auto;
+  box-sizing: border-box;
+  white-space: normal;
+}
+
 .hoverCard {
   display: none;
   position: absolute;
@@ -669,6 +681,12 @@
   font-size: 13.5px;
   color: var(--cur-text);
 }
+
+.hoverTitle > :last-child { margin-left: auto; }
+.hoverAsset { display: inline-flex; align-items: center; gap: 5px; }
+.hoverAssets { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.bondIcon { position: relative; display: inline-flex; flex: 0 0 auto; width: calc(var(--bond-size) + 9px); height: calc(var(--bond-size) + 6px); align-items: flex-start; }
+.bondCollateral { position: absolute; bottom: 0; right: 0; display: flex; align-items: center; gap: 2px; padding: 3px; min-width: 18px; justify-content: center; border: 1px solid rgba(110,231,183,.45); border-radius: 5px; background: var(--cur-bg-panel); box-shadow: 0 2px 5px #0006; color: var(--cur-green); font: 8px var(--cur-font-mono); }
 
 .hoverRow {
   display: flex;
@@ -720,3 +738,13 @@
   border-color: rgba(110, 231, 183, 0.32);
   background: rgba(110, 231, 183, 0.08);
 }
+/* Lifecycle color is shared by the bond badge, its collateral tray, and status text. */
+.bondTone[data-state='active'] { --bond-accent: var(--cur-green); --bond-tint: rgba(110,231,183,.08); }
+.bondTone[data-state='matured'] { --bond-accent: var(--cur-amber-light); --bond-tint: rgba(251,191,36,.1); }
+.bondTone[data-state='settled'] { --bond-accent: var(--cur-purple-light); --bond-tint: rgba(168,85,247,.1); }
+.bondTone[data-state='unknown'] { --bond-accent: var(--cur-muted); --bond-tint: rgba(148,163,184,.1); }
+.bondTone[data-state='unverified'] { --bond-accent: #fca5a5; --bond-tint: rgba(248,113,113,.1); }
+.bondCollateral { border-color: var(--bond-accent, var(--cur-green)); color: var(--bond-accent, var(--cur-green)); }
+.trustBond { color: var(--bond-accent, var(--cur-green)); border-color: var(--bond-accent, var(--cur-green)); background: var(--bond-tint, rgba(110,231,183,.08)); }
+.bondStatus { color: var(--bond-accent, var(--cur-body)); font-weight: 600; }
+.settlementNote { color: var(--cur-muted); font-size: 11px; line-height: 1.5; white-space: normal; }

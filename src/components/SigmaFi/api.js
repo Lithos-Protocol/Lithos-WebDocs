@@ -22,7 +22,8 @@ export function getAutoRefresh() {
   if (typeof window === 'undefined') return 0;
   try {
     const n = Number.parseInt(window.localStorage.getItem(REFRESH_KEY) ?? '', 10);
-    if (!Number.isFinite(n) || n <= 0) return DEFAULT_REFRESH_SECONDS;
+    if (!Number.isFinite(n) || n < 0) return DEFAULT_REFRESH_SECONDS;
+    if (n === 0) return 0;
     return Math.min(MAX_REFRESH_SECONDS, Math.max(MIN_REFRESH_SECONDS, n));
   } catch {
     return DEFAULT_REFRESH_SECONDS;
@@ -36,7 +37,7 @@ export function setAutoRefresh(seconds) {
     if (Number.isFinite(n) && n > 0) {
       window.localStorage.setItem(REFRESH_KEY, String(Math.min(MAX_REFRESH_SECONDS, Math.max(MIN_REFRESH_SECONDS, n))));
     } else {
-      window.localStorage.removeItem(REFRESH_KEY);
+      window.localStorage.setItem(REFRESH_KEY, '0');
     }
   } catch {
     // Storage blocked: the setting lasts for this page only
@@ -108,8 +109,6 @@ export const MAX_PAGE = 100;
 
 export const getOrders = ({ offset = 0, limit = MAX_PAGE, collateral, loan } = {}) =>
   req('/sigmafi/orders', { query: { offset, limit, collateral, loan } });
-export const getOffers = ({ offset = 0, limit = MAX_PAGE, collateral, loan } = {}) =>
-  req('/sigmafi/offers', { query: { offset, limit, collateral, loan } });
 export const getBonds = ({ offset = 0, limit = MAX_PAGE, all = false } = {}) =>
   req('/sigmafi/bonds', { query: { offset, limit, all } });
 
@@ -130,17 +129,14 @@ export async function allPages(read, key, max = 1000) {
     rows.push(...page[key]);
     if (rows.length >= page.total || page[key].length === 0) break;
   }
-  return { ...first, [key]: rows };
+  return { ...first, [key]: rows, truncated: !!first?.truncated || rows.length < (first?.total ?? 0) };
 }
 
 /* ---- Checks, open: they sign nothing ---- */
 
 export const checkCreateOrder = (request) => req('/sigmafi/orders/check', { method: 'POST', body: request });
-export const checkCreateOffer = (request) => req('/sigmafi/offers/check', { method: 'POST', body: request });
 export const checkCancelOrder = (id) => req(`/sigmafi/orders/${id}/cancel/check`, { method: 'POST' });
-export const checkCancelOffer = (id) => req(`/sigmafi/offers/${id}/cancel/check`, { method: 'POST' });
 export const checkFillOrder = (id) => req(`/sigmafi/orders/${id}/fill/check`, { method: 'POST' });
-export const checkCloseOffer = (id) => req(`/sigmafi/offers/${id}/close/check`, { method: 'POST' });
 export const checkRepay = (id) => req(`/sigmafi/bonds/${id}/repay/check`, { method: 'POST' });
 export const checkLiquidate = (id) => req(`/sigmafi/bonds/${id}/liquidate/check`, { method: 'POST' });
 export const checkClaim = (tokenId) => req(`/sigmafi/claims/${tokenId}/check`, { method: 'POST' });
@@ -150,11 +146,8 @@ export const checkClaim = (tokenId) => req(`/sigmafi/claims/${tokenId}/check`, {
 export const getPortfolio = () => req('/sigmafi/portfolio', { keyed: true });
 
 export const createOrder = (request) => req('/sigmafi/orders', { method: 'POST', body: request, keyed: true });
-export const createOffer = (request) => req('/sigmafi/offers', { method: 'POST', body: request, keyed: true });
 export const cancelOrder = (id) => req(`/sigmafi/orders/${id}/cancel`, { method: 'POST', keyed: true });
-export const cancelOffer = (id) => req(`/sigmafi/offers/${id}/cancel`, { method: 'POST', keyed: true });
 export const fillOrder = (id) => req(`/sigmafi/orders/${id}/fill`, { method: 'POST', keyed: true });
-export const closeOffer = (id) => req(`/sigmafi/offers/${id}/close`, { method: 'POST', keyed: true });
 export const repay = (id) => req(`/sigmafi/bonds/${id}/repay`, { method: 'POST', keyed: true });
 export const liquidate = (id) => req(`/sigmafi/bonds/${id}/liquidate`, { method: 'POST', keyed: true });
 export const claim = (tokenId) => req(`/sigmafi/claims/${tokenId}`, { method: 'POST', keyed: true });
@@ -162,9 +155,7 @@ export const claim = (tokenId) => req(`/sigmafi/claims/${tokenId}`, { method: 'P
 /** Each action's check and send, by the name the API quotes it under. */
 export const ACTIONS = {
   fillOrder: { check: checkFillOrder, send: fillOrder, label: 'Lend' },
-  closeOffer: { check: checkCloseOffer, send: closeOffer, label: 'Borrow' },
   cancelOrder: { check: checkCancelOrder, send: cancelOrder, label: 'Cancel order' },
-  cancelOffer: { check: checkCancelOffer, send: cancelOffer, label: 'Cancel offer' },
   repay: { check: checkRepay, send: repay, label: 'Repay' },
   liquidate: { check: checkLiquidate, send: liquidate, label: 'Liquidate' },
   claim: { check: checkClaim, send: claim, label: 'Claim' },

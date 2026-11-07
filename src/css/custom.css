@@ -302,6 +302,14 @@ body {
   transition: color 0.15s, background 0.15s;
 }
 
+.navbar__item.dropdown {
+  padding: 0;
+}
+
+.navbar__item.dropdown > .navbar__link {
+  display: block;
+}
+
 .navbar__link:hover {
   color: var(--cur-cyan-light) !important;
   background: rgba(56, 189, 248, 0.08);

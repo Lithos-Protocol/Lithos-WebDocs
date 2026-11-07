@@ -7,7 +7,7 @@ export default function ForwardsMarketPage() {
   return (
     <ExtensionsLayout
       title="Difficulty Forwards"
-      description="Bet on Ergo's average difficulty over a window of epochs, or hedge your mining income against it. Peer to peer, settled on chain in LIT."
+      description="Trade Ergo difficulty with peer-to-peer forwards settled in LIT."
     >
       <ForwardsNav />
       <MarketPanel />

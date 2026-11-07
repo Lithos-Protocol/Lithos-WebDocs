@@ -39,23 +39,23 @@ The difference between the repayment and the loan is the lender's return.
 
 ## How a bond is made
 
-Either side can start:
-
-| You want to | You create | The other side |
-|---|---|---|
-| Borrow | An **order**, holding your collateral and the terms you ask for | A lender fills it. The loan comes to you and your collateral moves into the bond |
-| Lend | An **offer**, holding the loan and the terms you ask for | A borrower closes it by posting the collateral you asked for, and takes the loan |
+Borrowers create an **order**, locking their collateral with the requested loan amount, repayment,
+and maturity. A lender fills the order: the principal goes to the borrower and the collateral moves
+into the bond. SigmaFi V2 does not support lender-created offers.
 
 An order can fix its maturity to a block, or ask for a term counted from the block a lender fills it.
 A term counted from the fill does not shrink while the order waits. It must be at least 30 blocks.
 
-Until it is filled or closed, the person who created an order or offer can cancel it and take back what
-it holds.
+Before an order is filled, its borrower can cancel it to recover the collateral.
 
 ## The bond asset
 
-Filling an order or closing an offer mints one token to the lender: the **bond asset**. Whoever holds it
+Filling an order mints one token to the lender: the **bond asset**. Whoever holds it
 is owed the bond. You can send or sell it like any token.
+
+A verified bond asset has a composite icon: the principal token above a small tray of collateral
+tokens. Hover or focus it to inspect repayment, maturity, collateral and any vault proceeds. LD-NFTs
+use the same detail cards as the Wallet. The **Documentation** link opens this page.
 
 Its name, `SigmaFi ZC-Bond`, and its description are set by whoever minted it, so they prove nothing.
 Anyone can mint a token with the same name. The web panel and **Wallet** check each bond asset against
@@ -80,21 +80,31 @@ batching fee of at least 0.05 ERG, in their own blocks first and by broadcast tw
 
 ## Borrow or lend from the web panel
 
-Open **Extensions > SigmaFi Bonds** in the web panel. It has four views:
+Open **Extensions > SigmaFi** in the navbar. It has three views:
 
 | View | What it does | Needs your API key |
 |---|---|---|
-| Book | Lists orders you can lend into, offers you can borrow from, and live bonds | Only to send |
-| Create | Makes an order to borrow or an offer to lend | Only to send |
-| Portfolio | Shows your orders, offers, loans and bond assets, with cancel, repay, liquidate and claim | Yes |
-| How it works | A short summary of this page | No |
+| Market | Loan requests and active bonds, with collateral, repayment, term, total interest and secondary APR | Only to send |
+| Borrow | Creates a loan request; collateral tokens come from the client wallet dropdown | For wallet tokens and publishing |
+| Portfolio | Lending, borrowing and open requests, with cancel, repay, liquidate and claim | Yes |
+
+The Borrow form treats your ERG collateral amount separately from the batching / liquidation fee and
+0.001 ERG box minimum. For example, 10 ERG collateral with a 0.05 ERG fee locks 10.051 ERG;
+the creation network fee is paid in addition. Requests and bonds use this same breakdown. On repayment,
+the full locked collateral box returns to the borrower. NFT collateral is fixed at one unit, and NFT
+assets are excluded from the principal selector.
+
+Hovering a bond asset shows **Active**, **Matured**, or **Settled**, with matching icon-tray and badge
+colors. The current API returns vault proceeds after settlement but does not identify whether they came
+from repayment or liquidation.
 
 Every action is checked by your client first and shows what you pay, what you receive and any warning
 before anything is signed. A check never signs or sends anything. The send uses your client's wallet and
-pays the 0.001 ERG network fee.
+pays the quoted network fee (currently 0.001 ERG).
 
-**Read the batching fee before you lend.** If the borrower does not repay, you receive the collateral
-less up to the batching fee. Orders and offers made from your client carry at least 0.05 ERG, so Lithos
+**Read the batching fee before you lend.** If the borrower does not repay, the vault receives the locked
+ERG total less the batching fee, along with all collateral tokens. The displayed collateral amount
+already excludes that fee and the box minimum. Requests made from your client carry at least 0.05 ERG, so Lithos
 miners liquidate them. A bond paying less is left to you to liquidate from **Portfolio**.
 
 ## What can go wrong

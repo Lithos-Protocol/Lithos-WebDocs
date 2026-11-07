@@ -1505,6 +1505,53 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "Oracle Feeds",
+      description: "Confirmed oracle prices, freshness and history read from the Ergo node",
+      link: {
+        type: "doc",
+        id: "lithosapi/oracles",
+      },
+      items: [
+        {
+          type: "doc",
+          id: "lithosapi/schemas/oraclefeed",
+          label: "OracleFeed",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/oraclefeeds",
+          label: "OracleFeeds",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/oraclepoint",
+          label: "OraclePoint",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/oraclestate",
+          label: "OracleState",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/list-oracle-feeds",
+          label: "List configured oracle feeds",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-oracle-feed",
+          label: "Current oracle state and recent confirmed history",
+          className: "api-method get",
+        },
+      ],
+    },
+    {
+      type: "category",
       label: "SigmaFi Bonds",
       description: "Borrow, lend, repay, liquidate and claim peer-to-peer zero-coupon bonds backed by collateral",
       link: {
@@ -1576,6 +1623,12 @@ const sidebar: SidebarsConfig = {
           type: "doc",
           id: "lithosapi/schemas/sfassetlookup",
           label: "SFAssetLookup",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/sfsettlement",
+          label: "SFSettlement",
           className: "schema",
         },
         {

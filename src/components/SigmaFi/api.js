@@ -118,6 +118,8 @@ export const lookupAssets = (tokenIds) => req('/sigmafi/assets', { method: 'POST
 
 /** GET /wallet/tokens/verified: the client's verified token list, for names and decimals. */
 export const getVerifiedTokens = () => req('/wallet/tokens/verified');
+export const getOracleFeed = () => req('/oracles/erg-usd', { query: { limit: 0 } });
+export const getPricingPools = () => req('/dex/pools');
 
 /** Every page of a list, up to `max` rows. */
 export async function allPages(read, key, max = 1000) {

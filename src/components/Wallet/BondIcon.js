@@ -1,23 +1,19 @@
 import React from 'react';
-import TokenIcon from './TokenIcon';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import s from './styles.module.css';
-import { bondState, collateralOf } from '../SigmaFi/bond';
+import { bondState } from '../SigmaFi/bond';
 
-/** A verified bond's loan asset, with its collateral tucked into a small tray. */
-export default function BondIcon({ bond, size = 34, state }) {
-  const t = bond?.terms;
-  const loan = t ? t.principalToken?.tokenId ?? t.repayToken ?? 'ERG' : 'BOND';
-  const collateral = t ? [
-    ...(collateralOf(t).collateral > 0n ? ['ERG'] : []),
-    ...(t.collateralTokens ?? []).map((a) => a.tokenId),
-  ] : [];
+/** SigmaFi artwork with an optional zero-coupon badge; settled bonds use the lighter mark. */
+export default function BondIcon({ bond, size = 34, state, badge = true, badgePlacement = 'corner' }) {
+  const lifecycle = state ?? bondState({ bond, verified: bond?.verified });
+  const settled = lifecycle === 'repaid' || lifecycle === 'liquidated' || lifecycle === 'settled';
+  const src = useBaseUrl(`/img/sigmafi/bond-${settled ? 'light' : 'dark'}.svg`);
+  const beside = badge && badgePlacement === 'right';
+  const markSize = badge && !beside ? size + 2 : size;
   return (
-    <span className={`${s.bondIcon} ${s.bondTone}`} data-state={state ?? bondState({ bond, verified: bond?.verified })} style={{ '--bond-size': `${size}px` }} aria-hidden="true">
-      <TokenIcon tokenId={loan} label={t ? undefined : 'SF'} size={size} />
-      <span className={s.bondCollateral}>
-        {collateral.slice(0, 2).map((id) => <TokenIcon key={id} tokenId={id} size={Math.max(10, Math.round(size * .34))} />)}
-        {collateral.length > 2 ? <span>+{collateral.length - 2}</span> : !collateral.length ? <span>SF</span> : null}
-      </span>
+    <span className={`${s.bondIcon} ${s.bondTone} ${!badge ? s.bondIconPlain : ''} ${beside ? s.bondIconBeside : ''}`} data-state={lifecycle} style={{ '--bond-size': `${size}px`, '--bond-badge-font': beside ? `${Math.max(8, Math.round(size * .42))}px` : size < 26 ? '6px' : '7px' }} aria-hidden="true">
+      <img src={src} width={markSize} height={markSize} alt="" />
+      {badge && <span className={s.bondBadge}>ZC</span>}
     </span>
   );
 }

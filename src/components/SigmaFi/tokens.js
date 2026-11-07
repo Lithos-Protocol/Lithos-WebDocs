@@ -2,7 +2,8 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import * as api from './api';
 import { getBalances, lookupNfts, NFT_LOOKUP_MAX } from '../Wallet/api';
 import { big, fmtErgAmount, fmtTokenAmount, fmtInt } from '../Dex/format';
-import TokenIcon, { PairIcons, TrustBadge } from '../Wallet/TokenIcon';
+import TokenIcon, { PairIcons, TrustBadge, tokenLabel } from '../Wallet/TokenIcon';
+import { protocolAssetName } from '../Wallet/assetNames';
 import BondIcon from '../Wallet/BondIcon';
 import TokenHover from '../Wallet/AssetDetails';
 import AssetHover from '../Wallet/AssetHover';
@@ -44,7 +45,7 @@ export function TokenProvider({ children }) {
     return () => { live = false; };
   }, [keyed, tick, version]);
 
-  const check = useCallback(async (ids, force = false) => {
+  const check = useCallback(async (ids, force = false, depth = 0) => {
     const todo = [...new Set(ids)].filter((id) => id && id !== 'ERG' && (force || !asked.current.has(id)));
     if (!todo.length) return;
     const at = generation.current;
@@ -66,6 +67,15 @@ export function TokenProvider({ children }) {
     ]);
     if (at !== generation.current) return;
     setChecks((prev) => ({ ...prev, ...found }));
+    if (depth < 2) {
+      const nested = Object.values(found).flatMap(c => [
+        ...(c.bond?.bond?.terms?.collateralTokens ?? []),
+        ...(c.bond?.settlement?.returnedCollateral?.tokens ?? []),
+        ...(c.bond?.settlement?.vault?.tokens ?? []),
+        ...(c.bond?.vault ?? []).flatMap(v => v.tokens ?? []),
+      ]).filter(a => big(a.amount) === 1n).map(a => a.tokenId);
+      if (nested.length) check(nested, false, depth + 1);
+    }
   }, []);
 
   useEffect(() => {
@@ -104,19 +114,19 @@ export function TokenAmount({ tokenId, amount, icon = true }) {
   useEffect(() => {
     if (ctx && tokenId !== 'ERG' && big(amount) === 1n) ctx.check([tokenId]);
   }, [ctx?.check, ctx?.checks, tokenId, amount]);
-  const label = tokenId === 'ERG' ? 'ERG' : verified?.ticker ?? (status === 'provision' ? 'LD-NFT' : status === 'bond' ? 'SigmaFi Bond' : null);
+  const label = tokenId === 'ERG' ? 'ERG' : protocolAssetName(metadata, check) ?? verified?.ticker;
   const decimals = tokenId === 'ERG' ? 9 : metadata?.decimals;
   return (
-    <AssetHover className={s.tokenAmount} enabled={tokenId !== 'ERG'} details={<TokenHover t={{ ...metadata, tokenId, amount, verified: !!verified, decimals }} check={{ ...check?.nft, bond: check?.bond }} status={status} candidate={big(amount) === 1n} metadata={ctx?.metadata} />}>
-      {icon && <AssetIcon tokenId={tokenId} size={special ? 25 : 20} />}
+    <AssetHover className={s.tokenAmount} enabled={tokenId !== 'ERG'} details={<TokenHover t={{ ...metadata, tokenId, amount, verified: !!verified, decimals }} check={{ ...check?.nft, bond: check?.bond }} status={status} candidate={big(amount) === 1n} metadata={ctx?.metadata} assetChecks={ctx?.checks} />}>
+      {icon && <AssetIcon tokenId={tokenId} size={special ? 22 : 20} />}
       <span className={s.amount}>{tokenId === 'ERG' ? fmtErgAmount(amount) : decimals != null ? fmtTokenAmount(amount, decimals, 4) : fmtInt(amount)}</span>
-      {!special && (label ? <span className={s.ticker}>{label}</span> : <IdTag tokenId={tokenId} />)}
+      {label ? <span className={s.ticker}>{label}</span> : !special && <IdTag tokenId={tokenId} />}
       {special && <TrustBadge status={status} bondState={check?.bond ? bondState(check.bond) : undefined} />}
     </AssetHover>
   );
 }
 
-export const assetName = (metadata, tokenId) => tokenId === 'ERG' ? 'ERG' : metadata?.[tokenId]?.ticker ?? metadata?.[tokenId]?.name ?? tokenId.slice(0, 6);
+export const assetName = (metadata, tokenId, checks) => tokenLabel({ ...metadata?.[tokenId], tokenId }, checks?.[tokenId]);
 export const decimalsOf = (metadata, tokenId) => tokenId === 'ERG' ? 9 : metadata?.[tokenId]?.decimals ?? 0;
 
 export function Contents({ nanoErgs, tokens = [] }) {

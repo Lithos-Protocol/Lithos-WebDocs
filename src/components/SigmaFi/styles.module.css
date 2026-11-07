@@ -20,6 +20,9 @@
   overflow-wrap: anywhere;
 }
 
+.assetName { min-width: 0; overflow-wrap: anywhere; font-size: 11px; }
+.stateBadge { display: inline-flex; color: var(--bond-accent,var(--cur-muted)); background: var(--bond-tint,rgba(148,163,184,.1)); border-radius: 5px; padding: 4px 7px; font-size: 10px; font-weight: 500; flex-shrink: 0; max-width: 110px; }
+
 .ticker {
   color: var(--cur-body);
   font-size: .9em;
@@ -313,16 +316,6 @@
   border-color: rgba(125,211,252,.4);
 }
 
-.expanded .loanCardBody {
-  display: grid;
-  grid-template-columns: repeat(2,minmax(0,1fr));
-  column-gap: 28px;
-}
-
-.expanded .loanTop, .expanded .loanHeading, .expanded .cardButton, .expanded .refusal {
-  grid-column: 1 / -1;
-}
-
 .loanTop, .loanHeading {
   display: flex;
   align-items: center;
@@ -367,12 +360,12 @@
   margin-bottom: 20px;
 }
 
-.loanHeading > .tokenAmount {
+.loanHeading > .tokenAmount, .loanHeading > .valuedAmount {
   font-size: 24px;
   letter-spacing: -.03em;
 }
 
-.loanHeading > .tokenAmount > img {
+.loanHeading > .tokenAmount > img, .loanHeading > .valuedAmount > .tokenAmount > img {
   width: 32px;
   height: 32px;
 }
@@ -523,14 +516,15 @@
   border: 1px solid rgba(125,211,252,.2);
   border-radius: 12px;
   margin: 0 20px 20px;
-  padding: 22px;
+  padding: 24px;
   background: var(--lithos-bg-0,#060913);
 }
 
 .drawerGrid {
   display: grid;
-  grid-template-columns: repeat(2,minmax(0,1fr));
+  grid-template-columns: minmax(0,1.6fr) minmax(260px,1fr);
   gap: 28px;
+  align-items: start;
 }
 
 .createGrid {
@@ -573,12 +567,16 @@
   color: var(--cur-text);
 }
 
-.sectionTitle > span {
+.sectionSymbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
   color: var(--cur-cyan-light);
-  border: 1px solid rgba(56,189,248,.2);
-  border-radius: 5px;
-  font: 10px var(--cur-font-mono);
-  padding: 4px 5px;
+  border-radius: 9px;
+  background: rgba(56,189,248,.08);
 }
 
 .fieldGrid {
@@ -601,7 +599,23 @@
 }
 
 .input:focus-within {
-  border-color: var(--cur-cyan);
+  border-color: rgba(56,189,248,.65);
+  box-shadow: 0 0 0 2px rgba(56,189,248,.1);
+}
+
+.page .input input:focus-visible, .page .input select:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.unitSelect {
+  border: 0;
+  border-left: 1px solid rgba(125,211,252,.15);
+  background: transparent;
+  color: var(--cur-body);
+  font: 12px var(--cur-font-body);
+  padding: 7px 4px 7px 10px;
+  cursor: pointer;
 }
 
 .input input {
@@ -943,9 +957,6 @@
   .loanGrid {
     grid-template-columns: minmax(0,1fr);
   }
-  .expanded .loanCardBody {
-    display: block;
-  }
   .loanCardBody {
     padding: 20px;
   }
@@ -1034,5 +1045,83 @@
 .summaryTotal { border-top: 1px solid rgba(125,211,252,.15); padding-top: 12px; font-weight: 600; }
 .previewActions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 .previewActions > button { width: auto; min-width: 110px; padding: 10px 22px; justify-content: center; }
+.valuedAmount { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; max-width: 100%; }
+.usdValue { display: block; color: var(--cur-muted); font: 11px/1.5 var(--cur-font-num); font-variant-numeric: tabular-nums; }
+.collateralHealth { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; font-size: 11px; color: var(--cur-muted); }
+.collateralHealth > span { display: inline-flex; align-items: center; gap: 6px; }
+.collateralHealth strong { color: var(--ratio-color,var(--cur-muted)); font: 600 13px var(--cur-font-num); }
+.summaryHealth { margin-top: 18px; padding: 12px; border: 1px solid rgba(125,211,252,.15); border-radius: 9px; background: rgba(56,189,248,.04); }
+.summaryHealth .collateralHealth { margin: 0; }
+.compactHealth { margin: 0; justify-content: flex-end; }
+.healthHelpHost { display: inline-flex; vertical-align: middle; }
+.healthHelpButton { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; padding: 0; border: 1px solid rgba(148,163,184,.4); border-radius: 50%; color: var(--cur-muted); background: transparent; font: 600 10px var(--cur-font-body); cursor: help; }
+.pricingHelp { font-size: 11px; line-height: 1.6; gap: 12px; }
+.priceSource { display: flex; flex-direction: column; gap: 3px; }
+.priceSource a { font: 10px/1.6 var(--cur-font-mono); overflow-wrap: anywhere; }
+.marketFilters { grid-template-columns: repeat(3,minmax(0,1fr)) minmax(140px,auto); }
+.page .search:focus-visible, .page .fullSelect:focus-visible { outline: none; border-color: rgba(56,189,248,.65); box-shadow: 0 0 0 2px rgba(56,189,248,.1); }
+@media (max-width: 900px) {
+  .marketFilters { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .marketFilters .filterFlags { grid-column: 1 / -1; justify-content: flex-start; min-height: 24px; }
+}
+@media (max-width: 560px) {
+  .marketFilters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .marketFilters > :nth-child(3) { grid-column: 1 / -1; }
+  .marketSort .sortField .select { width: 100%; }
+}
 .settledBadge { display: inline-flex; align-items: center; border-radius: 5px; padding: 4px 7px; color: var(--cur-purple-light); background: rgba(168,85,247,.1); font-size: 10px; font-weight: 500; }
 .interest small, .interestLow small { font-size: 10px; font-weight: 500; }
+
+/* Expanded cards provide one preview instead of repeating the full market card above it. */
+.expanded .loanCardBody { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 22px; }
+.expanded .loanTop { flex: 1; margin: 0; min-width: 0; }
+.expanded > .loanCardBody > .cardButton { width: auto; margin: 0; padding: 8px 12px; background: transparent; border-color: rgba(125,211,252,.2); color: var(--cur-muted); font-size: 11px; flex-shrink: 0; }
+.previewSingle { grid-template-columns: minmax(0,1fr); }
+.previewTitle { color: var(--cur-text); font-size: 15px; font-weight: 600; margin: 0 0 18px; }
+.previewAmounts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.previewAmounts > div { min-width: 0; padding: 16px; border-radius: 10px; background: var(--lithos-bg-1,#0a0f1e); border: 1px solid rgba(125,211,252,.1); }
+.previewAmounts .tokenAmount { font-size: 22px; }
+.previewAmounts .usdValue { margin-top: 2px; font-size: 11px; }
+.previewFacts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; padding: 20px 0; }
+.previewFacts > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.previewFacts .fieldLabel { margin-bottom: 2px; }
+.previewNumber { color: var(--cur-green); font: 600 20px var(--cur-font-num); }
+.previewCollateral { border-top: 1px solid rgba(125,211,252,.12); padding-top: 18px; }
+.previewSectionHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.previewSectionHead h4 { font-size: 13px; color: var(--cur-text); margin: 0; }
+.previewAssetList { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.previewAssetList > .tokenAmount { font-size: 13px; }
+.previewCollateral .collateralHealth { margin: 18px 0; padding: 12px; border: 1px solid rgba(148,163,184,.15); border-radius: 8px; background: rgba(148,163,184,.03); }
+.previewReserves { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid rgba(125,211,252,.1); font-size: 11px; color: var(--cur-muted); }
+.previewReserves > div, .previewRule, .previewNetworkFee { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.previewReserves .tokenAmount { flex-wrap: nowrap; font-size: 11px; }
+.previewReserves > div:last-child { padding-top: 10px; border-top: 1px solid rgba(125,211,252,.08); color: var(--cur-body); }
+.previewRule { margin: 14px 0 0; font-size: 11px; color: var(--cur-muted); }
+.previewRule > :last-child { color: var(--cur-body); }
+.previewWallet { min-width: 0; padding: 20px; border: 1px solid rgba(125,211,252,.13); background: var(--lithos-bg-1,#0a0f1e); border-radius: 12px; }
+.walletMovement { padding: 16px 0; border-bottom: 1px solid rgba(125,211,252,.1); }
+.walletMovement:first-of-type { padding-top: 0; }
+.walletMovement .previewAssetList > .tokenAmount { font-size: 17px; }
+.previewBond { display: flex; align-items: center; gap: 10px; }
+.previewBond > span:last-child { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.previewBond strong { color: var(--cur-text); font-size: 13px; font-weight: 500; }
+.previewNetworkFee { font-size: 11px; color: var(--cur-muted); margin: 16px 0; }
+.previewNetworkFee > :last-child { color: var(--cur-body); white-space: nowrap; }
+.previewNotes { color: var(--cur-muted); font-size: 11px; line-height: 1.6; }
+.previewWallet .previewNotes p { margin: 0 0 10px; font: 11px/1.6 var(--cur-font-body); color: var(--cur-muted); }
+.previewWallet .previewActions { margin-top: 20px; gap: 8px; }
+.previewWallet .previewActions > button { flex: 1; min-width: 0; padding: 10px 12px; }
+.previewLoading { display: flex; align-items: center; gap: 8px; color: var(--cur-muted); font-size: 12px; }
+@media (max-width: 760px) {
+  .drawerGrid { grid-template-columns: minmax(0,1fr); gap: 22px; }
+  .actionDrawer { padding: 18px; }
+}
+@media (max-width: 560px) {
+  .expanded .loanCardBody { padding: 16px; gap: 10px; }
+  .expanded .loanTop { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+  .expanded > .loanCardBody > .cardButton { padding: 8px; }
+  .previewAmounts { gap: 10px; }
+  .previewAmounts > div { padding: 12px; }
+  .previewAmounts .tokenAmount { font-size: 18px; }
+  .previewWallet { padding: 16px; }
+}

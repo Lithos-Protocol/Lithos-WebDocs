@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import { tokenIconPath, tokenIconPlated } from './tokenIcons';
 import s from './styles.module.css';
+import { tokenDisplayName } from './assetNames';
 
 /** Two characters for a token with no icon: from its ticker or name, else from its id. */
 function initials(label, tokenId) {
@@ -85,8 +86,4 @@ const TRUST = {
 };
 
 /** A token's display name: ERG, a verified ticker, the minter's chosen name, or a short id. */
-export function tokenLabel(t) {
-  if (!t) return '—';
-  if (t.tokenId === 'ERG') return 'ERG';
-  return t.ticker ?? t.name ?? `${t.tokenId.slice(0, 6)}…`;
-}
+export const tokenLabel = tokenDisplayName;

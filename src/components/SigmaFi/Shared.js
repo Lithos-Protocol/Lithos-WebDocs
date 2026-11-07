@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import m from '../Mining/styles.module.css';
-import x from '../Extensions/styles.module.css';
 import s from './styles.module.css';
 import * as api from './api';
 import { useExtensions } from '../Extensions/ExtensionsLayout';
 import { KeyGate } from '../Extensions/ui';
 import { Alert, Spinner, TxResult } from '../Dex/ui';
 import { Contents, IdTag, TokenAmount } from './tokens';
-import { collateralOf } from './bond';
+import { collateralOf, bondAssetName } from './bond';
+import { CollateralHealth, UsdValue } from './PriceContext';
+import BondIcon from '../Wallet/BondIcon';
 import {
   aprOf,
   big,
@@ -22,14 +22,14 @@ import {
 } from './format';
 /** What is lent, as an amount. */
 export function Principal({ t }) {
-  if (t.principalToken) return <TokenAmount tokenId={t.principalToken.tokenId} amount={t.principalToken.amount} />;
+  if (t.principalToken) return <span className={s.valuedAmount}><TokenAmount tokenId={t.principalToken.tokenId} amount={t.principalToken.amount} /><UsdValue {...t.principalToken} /></span>;
   if (t.principalNanoErgs == null) return <span className={s.sub}>Not known</span>;
-  return <TokenAmount tokenId="ERG" amount={t.principalNanoErgs} />;
+  return <span className={s.valuedAmount}><TokenAmount tokenId="ERG" amount={t.principalNanoErgs} /><UsdValue tokenId="ERG" amount={t.principalNanoErgs} /></span>;
 }
 
 /** What is repaid, in the loan's own asset. */
 export function Repayment({ t }) {
-  return <TokenAmount tokenId={t.repayToken ?? 'ERG'} amount={t.repayment} />;
+  return <span className={s.valuedAmount}><TokenAmount tokenId={t.repayToken ?? 'ERG'} amount={t.repayment} /><UsdValue tokenId={t.repayToken ?? 'ERG'} amount={t.repayment} /></span>;
 }
 
 /** Loan amount, with what it repays beneath. */
@@ -53,6 +53,8 @@ export function Collateral({ t, breakdown = false }) {
   return <>
     <Contents nanoErgs={c.collateral} tokens={t.collateralTokens} />
     {c.collateral === 0n && !t.collateralTokens.length && <TokenAmount tokenId="ERG" amount="0" />}
+    <UsdValue nanoErgs={c.collateral} tokens={t.collateralTokens} />
+    {breakdown && <CollateralHealth t={t} />}
     {breakdown && <div className={s.reserveBreakdown}>
       <span><span>Batching / liquidation fee</span><TokenAmount tokenId="ERG" amount={c.fee} /></span>
       <span><span>Box minimum</span><TokenAmount tokenId="ERG" amount={c.minimum} /></span>
@@ -87,30 +89,41 @@ export function FeeCell({ t }) {
   );
 }
 
-/** Every term of a bond, as key/value rows. */
+function PreviewAssets({ nanoErgs = '0', tokens = [], empty = 'Nothing now' }) {
+  const erg = big(nanoErgs);
+  return <div className={s.previewAssetList}>
+    {erg > 0n && <TokenAmount tokenId="ERG" amount={erg} />}
+    {tokens.map(t => <TokenAmount key={t.tokenId} {...t} />)}
+    {erg === 0n && !tokens.length && <span className={s.sub}>{empty}</span>}
+  </div>;
+}
+
+/** A loan's headline amounts, timing, collateral, and reserves have distinct visual groups. */
 export function TermRows({ t, tip }) {
   const c = collateralOf(t);
-  const rows = [
-    ['Loan', <Principal t={t} />],
-    ['Repayment', <Repayment t={t} />],
-    ['Total interest', `${pct(interestOf(t))} · ${pct(aprOf(t, tip), 1)} APR`],
-    ['Maturity', <TermCell t={t} tip={tip} />],
-    ['Collateral', <Collateral t={t} />],
-    ['Batching / liquidation fee', <TokenAmount tokenId="ERG" amount={c.fee} />],
-    ['Box minimum', <TokenAmount tokenId="ERG" amount={c.minimum} />],
-    ['ERG locked', <TokenAmount tokenId="ERG" amount={c.total} />],
-    ['Liquidation', liquidationLabel(t.liquidation)],
-  ];
-  return (
-    <div className={x.quoteRows}>
-      {rows.map(([k, v]) => (
-        <div key={k} className={m.kv}>
-          <span className={m.kvKey}>{k}</span>
-          <span className={m.kvVal}>{v}</span>
-        </div>
-      ))}
+  return <section className={s.previewTerms} aria-label="Loan terms">
+    <h3 className={s.previewTitle}>Loan terms</h3>
+    <div className={s.previewAmounts}>
+      <div><span className={s.fieldLabel}>Loan</span><Principal t={t} /></div>
+      <div><span className={s.fieldLabel}>Repayment</span><Repayment t={t} /></div>
     </div>
-  );
+    <div className={s.previewFacts}>
+      <div><span className={s.fieldLabel}>Interest</span><strong className={s.previewNumber}>{pct(interestOf(t))}</strong><span className={s.sub}>{pct(aprOf(t, tip), 1)} APR</span></div>
+      <div><span className={s.fieldLabel}>Maturity</span><TermCell t={t} tip={tip} /></div>
+    </div>
+    <div className={s.previewCollateral}>
+      <div className={s.previewSectionHead}><h4>Collateral</h4><UsdValue nanoErgs={c.collateral} tokens={t.collateralTokens} /></div>
+      <PreviewAssets nanoErgs={c.collateral} tokens={t.collateralTokens} empty="0 ERG" />
+      <CollateralHealth t={t} />
+      <div className={s.previewReserves}>
+        <div><span>Batching / liquidation fee</span><TokenAmount tokenId="ERG" amount={c.fee} icon={false} /></div>
+        <div><span>Box minimum</span><TokenAmount tokenId="ERG" amount={c.minimum} icon={false} /></div>
+        <div><span>ERG locked</span><TokenAmount tokenId="ERG" amount={c.total} icon={false} /></div>
+      </div>
+      <p className={s.previewRule}><span>Liquidation</span><span>{liquidationLabel(t.liquidation)}</span></p>
+      {c.shortfall && <span className={s.refusal}>Insufficient ERG for the fee and box minimum.</span>}
+    </div>
+  </section>;
 }
 
 /**
@@ -172,59 +185,36 @@ export function ActionDrawer({ action, id, tip, onDone, terms }) {
 
   const minted = quote?.receivesTokens.some((t) => t.tokenId === quote.boxId);
   const received = quote?.receivesTokens.filter((t) => t.tokenId !== quote.boxId) ?? [];
+  const loanTerms = quote?.terms ?? terms;
 
   return (
     <div className={s.actionDrawer}>
-      <div className={s.drawerGrid}>
-        <div>
-          <div className={m.label}>Terms</div>
-          {!quote && !error && (
-            <div className={m.empty}>
-              <Spinner /> Checking with your client
-            </div>
-          )}
-          {(quote?.terms ?? terms) && <TermRows t={quote?.terms ?? terms} tip={tip} />}
-        </div>
-        <div>
-          <div className={m.label}>This transaction</div>
+      <div className={`${s.drawerGrid} ${!loanTerms ? s.previewSingle : ''}`}>
+        {loanTerms && <TermRows t={loanTerms} tip={tip} />}
+        <section className={s.previewWallet} aria-label="Wallet impact">
+          <h3 className={s.previewTitle}>Wallet impact</h3>
+          {!quote && !error && <div className={s.previewLoading}><Spinner /> Checking with your client</div>}
           {error && <Alert kind="error" title="Not possible now">{error}</Alert>}
           {quote && (
             <>
-              <div className={x.quoteRows}>
-                <div className={m.kv}>
-                  <span className={m.kvKey}>You pay</span>
-                  <span className={m.kvVal}>
-                    <Contents nanoErgs={quote.paysNanoErgs} tokens={quote.paysTokens} />
-                  </span>
-                </div>
-                <div className={m.kv}>
-                  <span className={m.kvKey}>You receive</span>
-                  <span className={m.kvVal}>
-                    {big(quote.receivesNanoErgs) === 0n && received.length === 0 && !minted ? (
-                      'Nothing now'
-                    ) : (
-                      <Contents nanoErgs={quote.receivesNanoErgs} tokens={received} />
-                    )}
-                  </span>
-                </div>
-                {minted && (
-                  <div className={m.kv}>
-                    <span className={m.kvKey}>Bond asset</span>
-                    <span className={m.kvVal}>
-                      1 new, id <IdTag tokenId={quote.boxId} />
-                    </span>
-                  </div>
-                )}
-                <div className={m.kv}>
-                  <span className={m.kvKey}>Network fee</span>
-                  <span className={m.kvVal}>{fmtErg(quote.feeNanoErgs)} ERG, included</span>
-                </div>
+              <div className={s.walletMovement}>
+                <span className={s.fieldLabel}>You pay</span>
+                <PreviewAssets nanoErgs={quote.paysNanoErgs} tokens={quote.paysTokens} />
               </div>
-              {quote.notes.map((n) => (
-                <p key={n} className={m.cardNote}>
-                  {n}
-                </p>
-              ))}
+              <div className={s.walletMovement}>
+                <span className={s.fieldLabel}>You receive</span>
+                {(big(quote.receivesNanoErgs) > 0n || received.length > 0 || !minted) && <PreviewAssets nanoErgs={quote.receivesNanoErgs} tokens={received} />}
+                {minted && <div className={s.previewBond}>
+                  <BondIcon bond={loanTerms ? {terms:loanTerms} : undefined} state="active" size={24} />
+                  <span><strong>1 {bondAssetName()}</strong><span className={s.sub}>New asset · <IdTag tokenId={quote.boxId} /></span></span>
+                </div>}
+              </div>
+              <div className={s.previewNetworkFee}>
+                <span>Network fee, included</span><span>{fmtErg(quote.feeNanoErgs)} ERG</span>
+              </div>
+              <div className={s.previewNotes}>
+                {quote.notes.map((n) => <p key={n}>{n}</p>)}
+              </div>
               {quote.warnings.map((w) => (
                 <Alert key={w} kind="warn">
                   {w}
@@ -244,7 +234,7 @@ export function ActionDrawer({ action, id, tip, onDone, terms }) {
               )}
             </>
           )}
-        </div>
+        </section>
       </div>
     </div>
   );

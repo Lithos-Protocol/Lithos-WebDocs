@@ -1,0 +1,32 @@
+---
+id: oraclefeeds
+title: "OracleFeeds"
+description: ""
+sidebar_label: "OracleFeeds"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"network":"string","feeds":[{"id":"erg-usd","name":"USD v2","network":"MAINNET","protocol":"oracle-pool-v2","poolNft":"string","ergoTreeHash":"string","baseAsset":"ERG","quoteAsset":"USD","rawUnit":"nanoERG/USD","priceUnit":"USD/ERG","baseDecimals":9,"maxAgeBlocks":30}]}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"OracleFeeds"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"oracles","required":["network","feeds"],"properties":{"network":{"type":"string"},"feeds":{"type":"array","items":{"type":"object","x-tags":"oracles","required":["id","name","network","protocol","poolNft","ergoTreeHash","baseAsset","quoteAsset","rawUnit","priceUnit","baseDecimals","maxAgeBlocks"],"properties":{"id":{"type":"string","example":"erg-usd"},"name":{"type":"string","example":"USD v2"},"network":{"type":"string","enum":["MAINNET","TESTNET"]},"protocol":{"type":"string","example":"oracle-pool-v2"},"poolNft":{"type":"string"},"ergoTreeHash":{"type":"string","description":"Configured full ErgoTree blake2b256. Governance changes require review of this pin."},"baseAsset":{"type":"string","example":"ERG"},"quoteAsset":{"type":"string","example":"USD"},"rawUnit":{"type":"string","example":"nanoERG/USD"},"priceUnit":{"type":"string","example":"USD/ERG"},"baseDecimals":{"type":"integer","example":9},"maxAgeBlocks":{"type":"integer","example":30}},"title":"OracleFeed"}}},"title":"OracleFeeds"}}
+  schemaType={"response"}
+>
+
+</Schema>

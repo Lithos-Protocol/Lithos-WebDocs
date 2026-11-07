@@ -5,23 +5,32 @@ import * as api from './api';
 import { useExtensions } from '../Extensions/ExtensionsLayout';
 import { KeyGate, Pager, usePaged } from '../Extensions/ui';
 import { Alert, Spinner } from '../Dex/ui';
-import { AssetIcon, Contents, TokenAmount } from './tokens';
+import { AssetIcon, Contents, TokenAmount, useTokens } from './tokens';
+import { bondState, BOND_STATE_LABEL, bondAssetName } from './bond';
+import w from '../Wallet/styles.module.css';
 import { ActionDrawer, Collateral, Repayment, TermCell } from './Shared';
 import { BondTable, RequestCards } from './Book';
 
 function Holdings({ rows, tip, open, setOpen }) {
+  const { checks, metadata, check } = useTokens();
+  useEffect(() => { check(rows.map(h => h.assetId)); }, [rows, check]);
   return <div className={s.loanGrid}>{rows.map((h) => {
-    const action = h.claimable ? 'claim' : h.bond?.status === 'matured' && h.bond.verified ? 'liquidate' : null;
+    const found = checks[h.assetId]?.bond;
+    const state = bondState(found ?? { bond: h.bond, verified: h.bond?.verified, vault: h.vault });
+    const action = h.claimable ? 'claim' : state === 'matured' && h.bond?.verified ? 'liquidate' : null;
     const id = action === 'claim' ? h.assetId : h.bond?.boxId;
     const expanded = open === h.assetId;
     return <article key={h.assetId} className={`${s.loanCard} ${expanded ? s.expanded : ''}`}>
       <div className={`${s.loanCardBody} ${s.holdingCard}`}>
-        <div className={s.loanTop}><span className={s.bondHeading}><AssetIcon tokenId={h.assetId} size={30} />SigmaFi Bond</span><span className={h.claimable ? s.settledBadge : h.bond?.status === 'matured' ? s.maturedBadge : s.liveBadge}>{h.claimable ? 'Claimable' : h.bond?.status === 'matured' ? 'Matured' : 'Active'}</span></div>
+        <div className={s.loanTop}><span className={s.bondHeading}><AssetIcon tokenId={h.assetId} size={30} /><span className={s.assetName}>{bondAssetName(h.assetId, metadata[h.assetId])}</span></span><span className={`${s.stateBadge} ${w.bondTone}`} data-state={state}>{BOND_STATE_LABEL[state]}{h.claimable ? ' · Claimable' : ''}</span></div>
+        {!expanded && <>
         <div><span className={s.fieldLabel}>{h.claimable ? 'Vault proceeds' : 'Repayment'}</span>{h.claimable ? h.vault.map((v) => <Contents key={v.boxId} nanoErgs={v.nanoErgs} tokens={v.tokens} />) : h.bond ? <Repayment t={h.bond.terms} /> : <span className={s.sub}>No active bond</span>}</div>
         {h.bond && <><div className={s.collateralWell}><span className={s.fieldLabel}>Collateral</span><Collateral t={h.bond.terms} breakdown /></div><TermCell t={h.bond.terms} tip={tip} /></>}
         <TokenAmount tokenId={h.assetId} amount="1" />
+        {found?.settlement && <span className={s.sub}>Settled at block {found.settlement.height.toLocaleString()} · <span title={found.settlement.txId}>{found.settlement.txId.slice(0,8)}…</span>{!h.vault.length ? ' · Proceeds claimed' : ''}</span>}
         {h.bond && !h.bond.verified && <p className={s.refusal}>{h.bond.verification ?? 'Unverified bond origin'}</p>}
-        {action ? <button type="button" className={s.cardButton} aria-expanded={expanded} onClick={() => setOpen(expanded ? null : h.assetId)}>{expanded ? 'Close preview' : api.ACTIONS[action].label}<span aria-hidden="true">↗</span></button> : <span className={s.hint}>Awaiting repayment or settlement</span>}
+        </>}
+        {action || expanded ? <button type="button" className={s.cardButton} aria-expanded={expanded} onClick={() => setOpen(expanded ? null : h.assetId)}>{expanded ? 'Close preview' : api.ACTIONS[action].label}<span aria-hidden="true">↗</span></button> : <span className={s.hint}>{found?.settlement ? 'Settlement confirmed' : found?.statusReason ?? 'Awaiting repayment or settlement'}</span>}
       </div>
       {expanded && action && <ActionDrawer action={action} id={id} tip={tip} onDone={() => setOpen(null)} />}
     </article>;

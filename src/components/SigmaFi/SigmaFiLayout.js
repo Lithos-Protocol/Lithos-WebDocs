@@ -10,6 +10,7 @@ import { Alert, GearIcon } from '../Dex/ui';
 import { ExtensionsContext } from '../Extensions/ExtensionsLayout';
 import SettingsPanel from '../Extensions/SettingsPanel';
 import { TokenProvider } from './tokens';
+import { PricingProvider } from './PriceContext';
 import { fmtInt } from './format';
 
 const NAV = [
@@ -119,8 +120,10 @@ export default function SigmaFiLayout({ title, description, children }) {
 
           <ExtensionsContext.Provider value={{ height, error, refresh, tick, version, keyed, unlock, changed }}>
             <TokenProvider>
+              <PricingProvider>
               <ExtensionNav items={NAV} label="SigmaFi" />
               {children}
+              </PricingProvider>
             </TokenProvider>
           </ExtensionsContext.Provider>
         </div>

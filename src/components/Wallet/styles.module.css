@@ -683,10 +683,20 @@
 }
 
 .hoverTitle > :last-child { margin-left: auto; }
-.hoverAsset { display: inline-flex; align-items: center; gap: 5px; }
+.hoverAsset { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; max-width: 100%; }
+.hoverAsset > :first-child { flex-shrink: 0; }
+.hoverAssetName { min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+.compactAsset { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 3px; border: 1px solid var(--bond-accent, #c084fc); background: var(--bond-tint, rgba(168,85,247,.12)); color: var(--bond-accent, #c084fc); font: 600 var(--compact-font-size,8px)/1 var(--cur-font-mono); letter-spacing: -.04em; }
+.compactAsset[data-kind='LD'] { color: #7dd3fc; border-color: #38bdf8; background: rgba(56,189,248,.1); }
 .hoverAssets { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
-.bondIcon { position: relative; display: inline-flex; flex: 0 0 auto; width: calc(var(--bond-size) + 9px); height: calc(var(--bond-size) + 6px); align-items: flex-start; }
-.bondCollateral { position: absolute; bottom: 0; right: 0; display: flex; align-items: center; gap: 2px; padding: 3px; min-width: 18px; justify-content: center; border: 1px solid rgba(110,231,183,.45); border-radius: 5px; background: var(--cur-bg-panel); box-shadow: 0 2px 5px #0006; color: var(--cur-green); font: 8px var(--cur-font-mono); }
+.bondIcon { position: relative; display: inline-block; flex: 0 0 auto; width: calc(var(--bond-size) + 6px); height: calc(var(--bond-size) + 6px); vertical-align: middle; }
+.bondIcon img { display: block; width: calc(var(--bond-size) + 2px); height: calc(var(--bond-size) + 2px); max-width: none; border-radius: 50%; }
+.bondBadge { position: absolute; bottom: 0; right: 0; padding: 2px 3px; border: 1px solid var(--bond-accent, var(--cur-green)); border-radius: 4px; background: linear-gradient(var(--bond-tint, rgba(110,231,183,.08)), var(--bond-tint, rgba(110,231,183,.08))), var(--cur-bg-panel); color: var(--bond-accent, var(--cur-green)); font: 600 var(--bond-badge-font,7px)/1 var(--cur-font-mono); letter-spacing: -.02em; box-shadow: 0 1px 3px #0004; }
+.bondIconPlain { width: var(--bond-size); height: var(--bond-size); }
+.bondIconPlain img { width: 100%; height: 100%; }
+.bondIconBeside { display: inline-flex; align-items: center; gap: 3px; width: auto; height: var(--bond-size); }
+.bondIconBeside img { width: var(--bond-size); height: var(--bond-size); }
+.bondIconBeside .bondBadge { position: static; display: inline-flex; align-items: center; justify-content: center; width: var(--bond-size); height: var(--bond-size); padding: 0; box-sizing: border-box; box-shadow: none; }
 
 .hoverRow {
   display: flex;
@@ -738,13 +748,14 @@
   border-color: rgba(110, 231, 183, 0.32);
   background: rgba(110, 231, 183, 0.08);
 }
-/* Lifecycle color is shared by the bond badge, its collateral tray, and status text. */
+/* Lifecycle color is shared by the bond icon, badge, and status text. */
 .bondTone[data-state='active'] { --bond-accent: var(--cur-green); --bond-tint: rgba(110,231,183,.08); }
 .bondTone[data-state='matured'] { --bond-accent: var(--cur-amber-light); --bond-tint: rgba(251,191,36,.1); }
 .bondTone[data-state='settled'] { --bond-accent: var(--cur-purple-light); --bond-tint: rgba(168,85,247,.1); }
+.bondTone[data-state='repaid'] { --bond-accent: #7dd3fc; --bond-tint: rgba(125,211,252,.1); }
+.bondTone[data-state='liquidated'] { --bond-accent: #fda4af; --bond-tint: rgba(253,164,175,.1); }
 .bondTone[data-state='unknown'] { --bond-accent: var(--cur-muted); --bond-tint: rgba(148,163,184,.1); }
 .bondTone[data-state='unverified'] { --bond-accent: #fca5a5; --bond-tint: rgba(248,113,113,.1); }
-.bondCollateral { border-color: var(--bond-accent, var(--cur-green)); color: var(--bond-accent, var(--cur-green)); }
 .trustBond { color: var(--bond-accent, var(--cur-green)); border-color: var(--bond-accent, var(--cur-green)); background: var(--bond-tint, rgba(110,231,183,.08)); }
 .bondStatus { color: var(--bond-accent, var(--cur-body)); font-weight: 600; }
 .settlementNote { color: var(--cur-muted); font-size: 11px; line-height: 1.5; white-space: normal; }

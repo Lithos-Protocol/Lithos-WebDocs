@@ -41,6 +41,7 @@ const CATEGORY_DESCRIPTIONS = {
   // /wallet/balances replaced the split /wallet/balance and /collateral/wallet,
   // so wallet data is its own tag rather than living under either consumer.
   Wallet: "Balances and lending status for the client's own wallet",
+  'Oracle Feeds': 'Confirmed oracle prices, freshness and history read from the Ergo node',
   'Lithos Dex': 'Swap, provide liquidity, and collect permanent fees on the LithosDex pool',
   'Difficulty Forwards': "Offer, fill and settle peer-to-peer bets on Ergo's average difficulty, margined in LIT",
   'SigmaFi Bonds': 'Borrow, lend, repay, liquidate and claim peer-to-peer zero-coupon bonds backed by collateral',

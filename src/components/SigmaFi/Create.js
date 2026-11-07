@@ -8,18 +8,24 @@ import { KeyGate } from '../Extensions/ui';
 import { Alert, Spinner, TxResult } from '../Dex/ui';
 import { assetName, AssetIcon, Contents, decimalsOf, TokenAmount, useTokens } from './tokens';
 import { BLOCKS_PER_YEAR, fmtInt, fmtTerm, pct } from './format';
-import { BLOCKS_PER_DAY, buildOrder, decimalText, units } from './order';
+import { BLOCKS_PER_DAY, buildOrder, decimalText, units, termToBlocks } from './order';
 import AssetPicker from './AssetPicker';
 import { BOX_MINIMUM, NETWORK_FEE, isNftAsset } from './bond';
+import { CollateralHealth, UsdValue } from './PriceContext';
 
 function Field({ label, hint, children, full = false }) {
   return <div className={full ? s.fieldFull : undefined}><span className={s.fieldLabel}>{label}</span>{children}{hint && <p className={s.hint}>{hint}</p>}</div>;
 }
-function Amount({ label, value, onChange, asset = 'ERG', suffix }) {
-  const { metadata } = useTokens();
-  return <div className={s.input}><input aria-label={label} inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder="0.00" />
-    <span className={s.inputUnit}>{suffix ?? <><AssetIcon tokenId={asset} size={20} />{assetName(metadata, asset)}</>}</span>
+function Amount({ label, value, onChange, asset = 'ERG', suffix, integer = false }) {
+  const { metadata, checks } = useTokens();
+  return <div className={s.input}><input aria-label={label} inputMode={integer ? 'numeric' : 'decimal'} pattern={integer ? '[0-9]*' : undefined} value={value} onChange={(e) => { if (!integer || /^\d*$/.test(e.target.value)) onChange(e.target.value); }} placeholder={integer ? '0' : '0.00'} />
+    <span className={s.inputUnit}>{suffix ?? <><AssetIcon tokenId={asset} size={20} />{assetName(metadata, asset, checks)}</>}</span>
   </div>;
+}
+
+function SectionIcon({ kind }) {
+  const paths = { loan: 'M4 8h16M7 5 4 8l3 3m10 2 3 3-3 3M4 16h16', time: 'M12 8v4l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0', collateral: 'M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3m-4 9 3 3 5-6', fee: 'M4 7c0-2 16-2 16 0s-16 2-16 0m0 0v10c0 3 16 3 16 0V7M4 12c0 3 16 3 16 0' };
+  return <span className={s.sectionSymbol} aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d={paths[kind]} /></svg></span>;
 }
 
 export default function Create() {
@@ -28,7 +34,8 @@ export default function Create() {
   const [asset, setAsset] = useState('ERG');
   const [loanAmount, setLoanAmount] = useState('');
   const [repayAmount, setRepayAmount] = useState('');
-  const [days, setDays] = useState('30');
+  const [term, setTerm] = useState('30');
+  const [termUnit, setTermUnit] = useState('days');
   const [schedule, setSchedule] = useState('onClose');
   const [collateralErg, setCollateralErg] = useState('');
   const [collateralTokens, setCollateralTokens] = useState([]);
@@ -41,7 +48,7 @@ export default function Create() {
     ...Object.keys(checks).filter((id) => isNftAsset(metadata[id], checks[id])),
     ...(wallet?.tokens ?? []).filter((t) => isNftAsset({ ...t, verified: t.verified || !!verified[t.tokenId] }, checks[t.tokenId])).map((t) => t.tokenId),
   ]);
-  const request = buildOrder({ asset, loanAmount, repayAmount, days, schedule, collateralErg, collateralTokens, fee, height, metadata, wallet, nftIds });
+  const request = buildOrder({ asset, loanAmount, repayAmount, term, termUnit, schedule, collateralErg, collateralTokens, fee, height, metadata, wallet, nftIds });
   const requestKey = request.body ? JSON.stringify([version, api.getBaseUrl(), request.body]) : '';
   const current = useRef(requestKey);
   current.current = requestKey;
@@ -49,7 +56,7 @@ export default function Create() {
   const edit = (set) => (value) => { set(value); setReviewed(null); setError(null); };
   const principal = units(loanAmount, decimalsOf(metadata, asset));
   const repayment = units(repayAmount, decimalsOf(metadata, asset));
-  const duration = Math.round(Number(days) * BLOCKS_PER_DAY);
+  const duration = termToBlocks(term, termUnit);
   const interest = principal && repayment ? Number(repayment - principal) / Number(principal) : null;
   const apr = interest != null && duration > 0 ? interest * BLOCKS_PER_YEAR / duration : null;
   const loanOptions = [{ tokenId: 'ERG', verified: true }, ...Object.values(metadata).filter((t) => !nftIds.has(t.tokenId))];
@@ -63,6 +70,12 @@ export default function Create() {
     return t.tokenId && amount ? [{ tokenId: t.tokenId, amount: amount.toString() }] : [];
   });
   const updateToken = (i, patch) => edit(setCollateralTokens)(collateralTokens.map((t, j) => j === i ? { ...t, ...patch } : t));
+  const valuationTerms = {
+    principalNanoErgs: asset === 'ERG' && principal != null ? principal.toString() : null,
+    principalToken: asset !== 'ERG' && principal != null ? {tokenId:asset,amount:principal.toString()} : null,
+    collateralNanoErgs: ((ergCollateral ?? 0n)+(feeAmount ?? 0n)+BOX_MINIMUM).toString(),
+    batchingFee: (feeAmount ?? 0n).toString(), collateralTokens:selectedTokens,
+  };
   const preview = async () => {
     if (!request.body) return;
     const body = request.body;
@@ -84,12 +97,16 @@ export default function Create() {
   const presetReturn = (percent) => {
     if (principal) edit(setRepayAmount)(decimalText(principal + principal * BigInt(percent) / 100n, decimalsOf(metadata, asset)));
   };
+  const changeTermUnit = (unit) => {
+    edit(setTerm)(duration == null ? '' : unit === 'blocks' ? String(duration) : String(Number((duration / BLOCKS_PER_DAY).toFixed(9))));
+    setTermUnit(unit);
+  };
   return <>
     <div className={s.marketHead}><div><h2 className={s.sectionHeading}>Borrow</h2><p className={s.intro}>Set your terms and secure a loan with assets from your wallet.</p></div><span className={s.liveBadge}>Fixed-term lending</span></div>
     <div className={s.createGrid}>
       <fieldset className={s.formCard} disabled={busy || !!sent}>
         <section className={s.section}>
-          <h3 className={s.sectionTitle}><span>01</span> Loan terms</h3>
+          <h3 className={s.sectionTitle}><SectionIcon kind="loan" />Loan terms</h3>
           <div className={s.fieldGrid}>
             <Field label="Loan asset" full><AssetPicker tokens={loanOptions} value={asset} label="Loan asset" allowCustom excludeNfts onChange={(id) => { edit(setAsset)(id); setLoanAmount(''); setRepayAmount(''); }} /></Field>
             <Field label="Loan amount"><Amount label="Loan amount" value={loanAmount} onChange={edit(setLoanAmount)} asset={asset} /></Field>
@@ -98,14 +115,14 @@ export default function Create() {
           </div>
         </section>
         <section className={s.section}>
-          <h3 className={s.sectionTitle}><span>02</span> Duration</h3>
+          <h3 className={s.sectionTitle}><SectionIcon kind="time" />Duration</h3>
           <div className={s.fieldGrid}>
-            <Field label="Loan term" hint={duration > 0 ? `Approximately ${fmtInt(duration)} blocks` : null}><Amount label="Loan term in days" value={days} onChange={edit(setDays)} suffix="days" /><div className={s.chips}>{[7, 30, 90].map((d) => <button key={d} type="button" className={`${s.chip} ${Number(days) === d ? s.chipActive : ''}`} onClick={() => edit(setDays)(String(d))}>{d} days</button>)}</div></Field>
+            <Field label="Loan term" hint={duration > 0 ? termUnit === 'days' ? `Approximately ${fmtInt(duration)} blocks` : `${fmtTerm(duration)} · exact block duration` : null}><Amount label={`Loan term in ${termUnit}`} value={term} onChange={edit(setTerm)} integer={termUnit === 'blocks'} suffix={<select className={s.unitSelect} aria-label="Term unit" value={termUnit} onChange={(e) => changeTermUnit(e.target.value)}><option value="days">days</option><option value="blocks">blocks</option></select>} /><div className={s.chips}>{[7, 30, 90].map((d) => <button key={d} type="button" className={`${s.chip} ${duration === d * BLOCKS_PER_DAY ? s.chipActive : ''}`} onClick={() => edit(setTerm)(String(termUnit === 'blocks' ? d * BLOCKS_PER_DAY : d))}>{d} days</button>)}</div></Field>
             <Field label="Term starts" hint={schedule === 'onClose' ? 'The full term begins when a lender funds your request.' : 'Maturity is fixed when you publish. The available term shortens while waiting.'}><select className={s.fullSelect} value={schedule} onChange={(e) => edit(setSchedule)(e.target.value)} aria-label="Term starts"><option value="onClose">When funded</option><option value="fixed">Fixed maturity</option></select></Field>
           </div>
         </section>
         <section className={s.section}>
-          <h3 className={s.sectionTitle}><span>03</span> Collateral</h3>
+          <h3 className={s.sectionTitle}><SectionIcon kind="collateral" />Collateral</h3>
           {!keyed ? <KeyGate what="wallet collateral" /> : walletError ? <Alert kind="error" title="Wallet unavailable">{walletError}</Alert> : !wallet ? <p className={s.hint}><Spinner /> Loading wallet tokens</p> : <p className={s.walletAvailable}><span>Available</span><TokenAmount tokenId="ERG" amount={wallet.nanoErgs} /></p>}
           <div className={s.fieldGrid}>
             <Field label="ERG collateral" full hint="Your collateral amount. The batching / liquidation fee and 0.001 ERG box minimum are added separately."><Amount label="ERG collateral" value={collateralErg} onChange={edit(setCollateralErg)} /></Field>
@@ -121,7 +138,7 @@ export default function Create() {
           </div>
         </section>
         <section className={s.section}>
-          <h3 className={s.sectionTitle}><span>04</span> Batching / liquidation fee</h3>
+          <h3 className={s.sectionTitle}><SectionIcon kind="fee" />Batching / liquidation fee</h3>
           <Amount label="Batching / liquidation fee" value={fee} onChange={edit(setFee)} />
           <p className={s.hint}>Added to your collateral and paid to the liquidator only if the loan matures unpaid. Minimum 0.05 ERG. This reserve and the box minimum return with your collateral on repayment.</p>
         </section>
@@ -131,12 +148,13 @@ export default function Create() {
           <span className={s.eyebrow}>Loan summary</span>
           <div className={s.summaryRate}>{pct(interest)}<span>total interest</span></div>
           <p className={s.hint}>{interest != null ? `${pct(apr, 1)} APR · ${fmtTerm(duration)} · ${fmtInt(duration)} blocks` : 'Enter a loan amount and repayment.'}</p>
+          <div className={s.summaryHealth}><CollateralHealth t={valuationTerms} /></div>
           <div className={s.summaryRows}>
-            <div className={s.summaryRow}><span>Loan</span><span>{principal ? <TokenAmount tokenId={asset} amount={principal} /> : '—'}</span></div>
-            <div className={s.summaryRow}><span>Repayment</span><span>{repayment ? <TokenAmount tokenId={asset} amount={repayment} /> : '—'}</span></div>
+            <div className={s.summaryRow}><span>Loan</span><span>{principal ? <><TokenAmount tokenId={asset} amount={principal} /><UsdValue tokenId={asset} amount={principal} /></> : '—'}</span></div>
+            <div className={s.summaryRow}><span>Repayment</span><span>{repayment ? <><TokenAmount tokenId={asset} amount={repayment} /><UsdValue tokenId={asset} amount={repayment} /></> : '—'}</span></div>
             <div className={s.summaryRow}><span>Duration</span><span className={s.cell}>{duration > 0 ? <><span>{fmtTerm(duration)}</span><span className={s.sub}>{fmtInt(duration)} blocks</span></> : '—'}</span></div>
             <div className={s.summaryRow}><span>Maturity</span><span>{schedule === 'onClose' ? 'From funding' : height && duration > 0 ? `Block ${fmtInt(height + duration)}` : '—'}</span></div>
-            <div className={s.summaryRow}><span>Collateral</span><span>{ergCollateral != null ? <Contents nanoErgs={ergCollateral} tokens={selectedTokens} /> : '—'}{ergCollateral === 0n && !selectedTokens.length && <TokenAmount tokenId="ERG" amount="0" />}</span></div>
+            <div className={s.summaryRow}><span>Collateral</span><span>{ergCollateral != null ? <Contents nanoErgs={ergCollateral} tokens={selectedTokens} /> : '—'}{ergCollateral === 0n && !selectedTokens.length && <TokenAmount tokenId="ERG" amount="0" />}<UsdValue nanoErgs={ergCollateral ?? '0'} tokens={selectedTokens} /></span></div>
             <div className={s.summaryRow}><span>Batching / liquidation fee</span><span>{feeAmount ? <TokenAmount tokenId="ERG" amount={feeAmount} /> : '—'}</span></div>
             <div className={s.summaryRow}><span>Box minimum</span><TokenAmount tokenId="ERG" amount={BOX_MINIMUM} /></div>
             <div className={`${s.summaryRow} ${s.summaryTotal}`}><span>Total locked</span><span>{locked != null ? <Contents nanoErgs={locked} tokens={selectedTokens} /> : '—'}</span></div>

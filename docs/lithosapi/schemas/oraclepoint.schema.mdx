@@ -1,0 +1,32 @@
+---
+id: oraclepoint
+title: "OraclePoint"
+description: ""
+sidebar_label: "OraclePoint"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"boxId":"string","transactionId":"string","creationHeight":0,"inclusionHeight":0,"epoch":0,"rawValue":"string","price":"string","priceNumerator":"string","priceDenominator":"string","ergoTreeHash":"string","timestamp":0}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"OraclePoint"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  schema={{"type":"object","x-tags":"oracles","required":["boxId","transactionId","creationHeight","inclusionHeight","epoch","rawValue","price","priceNumerator","priceDenominator","ergoTreeHash"],"properties":{"boxId":{"type":"string"},"transactionId":{"type":"string"},"creationHeight":{"type":"integer","description":"Height committed by the pool box; used to compute ageBlocks."},"inclusionHeight":{"type":"integer"},"epoch":{"type":"integer"},"rawValue":{"type":"string","description":"Exact positive R4 Long in the feed's rawUnit."},"price":{"type":"string","description":"Converted quote units per base unit, rounded to 18 decimal places."},"priceNumerator":{"type":"string"},"priceDenominator":{"type":"string"},"ergoTreeHash":{"type":"string"},"timestamp":{"type":"integer","format":"int64","description":"Inclusion block timestamp in milliseconds, omitted if unavailable."}},"title":"OraclePoint"}}
+  schemaType={"response"}
+>
+
+</Schema>

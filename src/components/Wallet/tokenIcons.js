@@ -1,9 +1,11 @@
 /**
- * Token icons bundled with the panel, by token id. The files are in static/img/tokens, taken from the
- * Nautilus wallet (MIT, see LICENCE-nautilus.txt there) at commit c7d5ff45. Matched by id only: a
+ * Token icons bundled with the panel, by token id. Most files in static/img/tokens come from the
+ * Nautilus wallet (MIT, see LICENCE-nautilus.txt there) at commit c7d5ff45; rsFIRO and FAKU were supplied by the project. Matched by id only: a
  * token's name is chosen by whoever minted it, so a copy named like one of these gets no icon.
  */
 const FILES = new Map([
+  ['581d7df25808881b2b8b9b4e03e2f637c46a94f74a69a5da36434125bacb4e08', 'rsfiro.svg'],
+  ['f0cac602d618081f46db086726d3c4da53006b646b50e382989054dcf3c93bd8', 'faku.png'],
   ['003bd19d0187117f130b62e1bcab0939929ff5c7709f843c5c4dd158949285d0', 'sigrsv.svg'],
   ['03faf2cb329f2e90d6d23b58d91bbb6c046aa143261cc21f52fbe2824bfcbf04', 'sigusd.svg'],
   ['36aba4b4a97b65be491cf9f5ca57b5408b0da8d0194f30ec8330d1e8946161c1', 'erdoge.svg'],

@@ -11,18 +11,20 @@ import { assetName, Contents, TokenAmount, useTokens } from './tokens';
 import { ActionDrawer, InterestCell, Collateral, Principal, Repayment, TermCell, termOf } from './Shared';
 import { aprOf, interestOf, big, fmtInt, pct } from './format';
 import BondIcon from '../Wallet/BondIcon';
-import { collateralOf } from './bond';
+import { collateralOf, bondAssetName } from './bond';
 import TokenIcon from '../Wallet/TokenIcon';
+import { usePricing, HealthHelp, UsdValue } from './PriceContext';
+import { collateralization, compareHealth } from './pricing';
 
-const SORTS = [{ id: 'newest', label: 'Newest' }, { id: 'interest', label: 'Highest interest' }, { id: 'term', label: 'Shortest term' }];
+const SORTS = [{ id: 'newest', label: 'Newest' }, { id: 'interest', label: 'Highest interest' }, { id: 'term', label: 'Shortest term' }, {id:'healthHigh',label:'Highest collateral ratio'}, {id:'healthLow',label:'Lowest collateral ratio'}];
 const loanAsset = (t) => t.principalToken?.tokenId ?? t.repayToken ?? 'ERG';
 const collateralAssets = (t) => [...(collateralOf(t).collateral > 0n ? ['ERG'] : []), ...t.collateralTokens.map((c) => c.tokenId)];
 
 function AssetMenu({ label, value, onChange, assets }) {
-  const { metadata } = useTokens();
+  const { metadata, checks } = useTokens();
   return <select className={s.select} value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
     <option value="">All assets</option>
-    {[...assets].sort((a, b) => assetName(metadata, a).localeCompare(assetName(metadata, b))).map((a) => <option key={a} value={a}>{assetName(metadata, a)}</option>)}
+    {[...assets].sort((a, b) => assetName(metadata, a, checks).localeCompare(assetName(metadata, b, checks))).map((a) => <option key={a} value={a}>{assetName(metadata, a, checks)}</option>)}
   </select>;
 }
 
@@ -37,6 +39,7 @@ export function RequestCards({ rows, tip, open, setOpen }) {
     return <article key={r.boxId} className={`${s.loanCard} ${expanded ? s.expanded : ''}`}>
       <div className={s.loanCardBody}>
         <div className={s.loanTop}><span className={s.loanType}>{r.mine ? 'Your request' : 'Loan request'}</span><span className={s.liveBadge}>{r.refusal && !r.mine ? 'Unavailable' : 'Open'}</span></div>
+        {!expanded && <>
         <div className={s.loanHeading}><Principal t={r.terms} /><InterestCell t={r.terms} tip={tip} /></div>
         <div className={s.collateralWell}><span className={s.fieldLabel}>Collateral</span><Collateral t={r.terms} breakdown /></div>
         <div className={s.loanDetails}>
@@ -44,6 +47,7 @@ export function RequestCards({ rows, tip, open, setOpen }) {
           <div><span className={s.fieldLabel}>Repayment</span><Repayment t={r.terms} /></div>
         </div>
         {r.refusal && !r.mine && <p className={s.refusal}>{r.refusal}</p>}
+        </>}
         <button type="button" className={`${s.cardButton} ${r.mine ? s.secondaryBtn : ''}`} aria-expanded={expanded} onClick={() => setOpen(expanded ? null : r.boxId)}>
           {expanded ? 'Close preview' : r.mine ? 'Cancel request' : r.refusal ? 'View details' : 'Lend'} <span aria-hidden="true">{expanded ? '−' : '↗'}</span>
         </button>
@@ -55,6 +59,8 @@ export function RequestCards({ rows, tip, open, setOpen }) {
 
 export default function Book() {
   const { tick, version, height, changed, error: clientError } = useExtensions();
+  const pricing = usePricing();
+  const [healthFilter,setHealthFilter] = useState('');
   const [view, setView] = useState('orders');
   const [loan, setLoan] = useState('');
   const [collateral, setCollateral] = useState('');
@@ -79,8 +85,11 @@ export default function Book() {
   const tip = book?.height ?? height;
   const source = useMemo(() => !book ? [] : view === 'bonds' ? book.bonds.filter((b) => all || b.verified) : book.orders, [book, view, all]);
   const assets = useMemo(() => ({ loans: [...new Set(source.map((r) => loanAsset(r.terms)))], collateral: [...new Set(source.flatMap((r) => collateralAssets(r.terms)))] }), [source]);
-  const rows = useMemo(() => source.filter((r) => !(hideMine && (r.mine || r.borrowerIsMe)) && (!loan || loanAsset(r.terms) === loan) && (!collateral || collateralAssets(r.terms).includes(collateral)))
-    .sort((a, b) => sort === 'interest' ? (interestOf(b.terms) ?? -Infinity) - (interestOf(a.terms) ?? -Infinity) : sort === 'term' ? termOf(a.terms, tip) - termOf(b.terms, tip) : b.creationHeight - a.creationHeight), [source, hideMine, loan, collateral, sort, tip]);
+  const health = useMemo(() => new Map(source.map(r => [r.boxId,collateralization(r.terms,pricing)])),[source,pricing]);
+  const rows = useMemo(() => source.filter((r) => {
+    const rating=health.get(r.boxId);
+    return !(hideMine && (r.mine || r.borrowerIsMe)) && (!loan || loanAsset(r.terms) === loan) && (!collateral || collateralAssets(r.terms).includes(collateral)) && (!healthFilter || (healthFilter === 'unpriced' ? rating.ratio==null || rating.partial : rating.ratio!=null && rating.ratio>=Number(healthFilter)));
+  }).sort((a, b) => sort.startsWith('health') ? compareHealth(health.get(a.boxId),health.get(b.boxId),sort==='healthHigh'?-1:1) : sort === 'interest' ? (interestOf(b.terms) ?? -Infinity) - (interestOf(a.terms) ?? -Infinity) : sort === 'term' ? termOf(a.terms, tip) - termOf(b.terms, tip) : b.creationHeight - a.creationHeight), [source, hideMine, loan, collateral, sort, tip, health, healthFilter]);
   const paged = usePaged(rows, 12);
   const liveBonds = book?.bonds.filter((b) => b.verified) ?? [];
   const best = book?.orders.filter((o) => !o.mine && !o.refusal && interestOf(o.terms) != null).sort((a, b) => interestOf(b.terms) - interestOf(a.terms))[0];
@@ -92,7 +101,7 @@ export default function Book() {
     </div>
     <div className={s.kpis}>
       <Metric label="Loan requests" note="Open in the market">{book ? fmtInt(book.orders.length) : '—'}</Metric>
-      <Metric label="ERG requested" note="ERG loans only">{book ? <TokenAmount tokenId="ERG" amount={ergRequested} /> : '—'}</Metric>
+      <Metric label="ERG requested" note={book ? <><UsdValue tokenId="ERG" amount={ergRequested} />ERG loans only</> : 'ERG loans only'}>{book ? <TokenAmount tokenId="ERG" amount={ergRequested} /> : '—'}</Metric>
       <Metric label="Active bonds" note={book ? `${liveBonds.filter((b) => b.status === 'matured').length} matured` : 'Verified bonds'}>{book ? fmtInt(liveBonds.length) : '—'}</Metric>
       <Metric label="Highest interest" note={best ? `${pct(aprOf(best.terms, tip), 1)} APR · available requests` : 'Available requests'}>{best ? <span className={s.interest}>{pct(interestOf(best.terms))}</span> : '—'}</Metric>
     </div>
@@ -109,6 +118,7 @@ export default function Book() {
       <div className={s.marketFilters}>
         <label className={s.filterField}><span>Loan asset</span><AssetMenu label="Loan assets" value={loan} assets={assets.loans} onChange={(v) => { setLoan(v); paged.setPage(0); }} /></label>
         <label className={s.filterField}><span>Collateral</span><AssetMenu label="Collateral assets" value={collateral} assets={assets.collateral} onChange={(v) => { setCollateral(v); paged.setPage(0); }} /></label>
+        <div className={s.filterField}><span>Collateral Ratio <HealthHelp /></span><select className={s.select} aria-label="Collateral Ratio filter" value={healthFilter} onChange={e=>{setHealthFilter(e.target.value);paged.setPage(0);}}><option value="">All ratios</option>{[80,90,100,125,150,175,200,300].map(n=><option key={n} value={n}>At least {n}%</option>)}<option value="unpriced">Unpriced or partial</option></select></div>
         <div className={s.filterFlags}>
           <label className={s.check}><input type="checkbox" checked={hideMine} onChange={(e) => { setHideMine(e.target.checked); paged.setPage(0); }} />Hide mine</label>
           {view === 'bonds' && <label className={s.check}><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />Include unverified</label>}
@@ -129,13 +139,15 @@ export function BondTable({ rows, tip, open, setOpen, actionFor }) {
     const expanded = open === b.boxId;
     return <article key={b.boxId} className={`${s.loanCard} ${expanded ? s.expanded : ''}`}>
       <div className={s.loanCardBody}>
-        <div className={s.loanTop}><span className={s.bondHeading}><>{b.verified ? <BondIcon bond={b} size={28} /> : <TokenIcon tokenId={b.assetId} size={28} />}</>SigmaFi Bond</span><span className={b.status === 'matured' ? s.maturedBadge : s.liveBadge}>{b.status === 'matured' ? 'Matured' : 'Active'}</span></div>
+        <div className={s.loanTop}><span className={s.bondHeading}><>{b.verified ? <BondIcon bond={b} size={28} /> : <TokenIcon tokenId={b.assetId} size={28} />}</><span className={s.assetName}>{bondAssetName(b.assetId)}</span></span><span className={b.status === 'matured' ? s.maturedBadge : s.liveBadge}>{b.status === 'matured' ? 'Matured' : 'Active'}</span></div>
+        {!expanded && <>
         <div className={s.loanHeading}><Repayment t={b.terms} /><InterestCell t={b.terms} tip={tip} /></div>
         <span className={s.sub}>Repayment · {b.verified ? 'Verified origin' : 'Unverified origin'}</span>
         <div className={s.collateralWell}><span className={s.fieldLabel}>Collateral</span><Collateral t={b.terms} breakdown /></div>
         <div className={s.loanDetails}><div><span className={s.fieldLabel}>Maturity</span><TermCell t={b.terms} tip={tip} /></div></div>
         <TokenAmount tokenId={b.assetId} amount="1" />
         {!b.verified && <p className={s.refusal}>{b.verification ?? 'The client could not verify this bond’s origin.'}</p>}
+        </>}
         {action && <button type="button" className={`${s.cardButton} ${s.bondAction}`} aria-expanded={expanded} onClick={() => setOpen(expanded ? null : b.boxId)}>{expanded ? 'Close preview' : api.ACTIONS[action].label}<span aria-hidden="true">↗</span></button>}
       </div>
       {expanded && action && <ActionDrawer action={action} id={b.boxId} tip={tip} terms={b.terms} onDone={() => setOpen(null)} />}

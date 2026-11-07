@@ -98,9 +98,10 @@ const config: Config = {
           {
             label: "Extensions",
             position: "left",
+            className: "navbar__link--extensions",
             items: [
-              { label: "Diff Forwards", to: "/extensions/forwards" },
-              { label: "SigmaFi", to: "/extensions/sigmafi" },
+              { label: "Diff Forwards", to: "/extensions/forwards", activeBasePath: "/extensions/forwards" },
+              { label: "SigmaFi", to: "/extensions/sigmafi", activeBasePath: "/extensions/sigmafi" },
             ],
           },
           {

@@ -12,12 +12,58 @@ require.extensions['.js'] = (mod, filename) => {
 };
 const storage = new Map();
 global.window = { location: { hostname: 'localhost', port: '3000', origin: 'http://localhost:3000' }, localStorage: { getItem: (k) => storage.get(k) ?? null, setItem: (k,v) => storage.set(k,v), removeItem: (k) => storage.delete(k) } };
-const { buildOrder, units, decimalText } = require('../src/components/SigmaFi/order');
+const { buildOrder, units, decimalText, termToBlocks } = require('../src/components/SigmaFi/order');
 const api = require('../src/components/SigmaFi/api');
 const { collateralOf, bondState, isNftAsset } = require('../src/components/SigmaFi/bond');
+const { buildPrices, valueBasket, collateralization, compareHealth, tokenPriority } = require('../src/components/SigmaFi/pricing');
 const token = 'a'.repeat(64), collateral = 'b'.repeat(64);
 const base = { asset: 'ERG', loanAmount: '5', repayAmount: '5.25', days: '30', schedule: 'onClose', collateralErg: '10', collateralTokens: [], fee: '.05', height: 1500000 };
 async function main() {
+  assert.equal(termToBlocks('1.5','blocks'),null);
+  assert.equal(termToBlocks('30.0','blocks'),null);
+  assert.equal(termToBlocks('1e3','blocks'),null);
+  assert.equal(termToBlocks('21600','blocks'),21600);
+  assert.equal(termToBlocks('30','days'),21600);
+  assert.equal(termToBlocks('0.5','days'),360);
+  assert.ok(buildOrder({...base,term:'30.5',termUnit:'blocks'}).why);
+  assert.equal(buildOrder({...base,term:'21601',termUnit:'blocks'}).body.durationBlocks,21601);
+  const registry={
+    [token]:{tokenId:token,ticker:'LIT',verified:true,decimals:9},
+    [collateral]:{tokenId:collateral,ticker:'SigUSD',verified:true,decimals:2},
+  };
+  const oracle={feed:{baseAsset:'ERG',quoteAsset:'USD',maxAgeBlocks:30},current:{priceNumerator:'2',priceDenominator:'1',creationHeight:1499998},ageBlocks:2,stale:false};
+  const pool=(poolNFT,x,y,reservesX,reservesY)=>({poolNFT,tokenX:{tokenId:x},tokenY:{tokenId:y},reservesX,reservesY,verified:true,problems:[]});
+  const pools=[pool('deep-erg','ERG',token,'1000000000000','10000000000000'),pool('thin-erg','ERG',token,'1000000000','1000000000'),pool('deep-usd',token,collateral,'20000000000000','500000')];
+  const prices=buildPrices({oracle,pools,verified:registry,height:1500000});
+  assert.equal(prices.prices.get(token).route[0].poolNFT,'deep-usd');
+  assert.equal(valueBasket(prices,'0',[{tokenId:token,amount:'1000000000'}]).usd,.25);
+  assert.equal(valueBasket(prices,'5000000000').usd,10);
+  const terms={principalNanoErgs:'5000000000',collateralNanoErgs:'10051000000',batchingFee:'50000000',collateralTokens:[]};
+  assert.equal(collateralization(terms,prices).ratio,200); // fee and box floor do not inflate collateral
+  const partial=collateralization({...terms,collateralTokens:[{tokenId:'c'.repeat(64),amount:'1'}]},prices);
+  assert.equal(partial.ratio,200); assert.equal(partial.partial,true);
+  assert.equal(collateralization({...terms,collateralNanoErgs:'51000000',collateralTokens:[{tokenId:'c'.repeat(64),amount:'1'}]},prices).ratio,null);
+  assert.equal(collateralization({...terms,principalNanoErgs:null},prices).ratio,null);
+  const stale=buildPrices({oracle:{...oracle,stale:true},pools,verified:registry,height:1500000});
+  assert.equal(stale.prices.has('ERG'),false);
+  assert.equal(stale.prices.get(token).anchor,'SigUSD assumed $1');
+  assert.equal(buildPrices({oracle,pools,verified:registry,height:1500100}).fresh,false);
+  assert.equal(buildPrices({oracle,pools:pools.map(p=>({...p,problems:['unsafe']})),verified:registry,height:1500000}).prices.has(token),false);
+  assert.equal(buildPrices({oracle,pools:[pool('empty','ERG',token,'0','1000')],verified:registry,height:1500000}).prices.has(token),false);
+  assert.equal(tokenPriority({tokenId:token,ticker:'SigUSD',verified:false}),Infinity);
+  assert.ok(tokenPriority({tokenId:token,ticker:'rsFIRO',verified:true})<Infinity);
+  assert.equal(tokenPriority({tokenId:token,ticker:'SPF',verified:true}),Infinity);
+  assert.ok(compareHealth({ratio:null},{ratio:100},-1)>0);
+  assert.ok(compareHealth({ratio:200},{ratio:100},-1)<0);
+  assert.equal(valueBasket(prices,'9223372036854775807').exact.n,9223372036854775807n);
+  assert.equal(valueBasket(prices,'9223372036854775807').exact.d,500000000n);
+  const rsn='d'.repeat(64);
+  const multi=buildPrices({oracle,verified:{...registry,[rsn]:{tokenId:rsn,ticker:'RSN',decimals:3,verified:true}},height:1500000,pools:[
+    ...pools,pool('lit-rsn',token,rsn,'10000000000000','100000000'),pool('rsn-usd',rsn,collateral,'100000000','1000000'),
+  ]});
+  assert.deepEqual(multi.prices.get(token).route.map(e=>e.poolNFT),['lit-rsn','rsn-usd']);
+  assert.equal(valueBasket(multi,'0',[{tokenId:token,amount:'1000000000'}]).usd,1);
+  assert.equal(collateralization({...terms,collateralNanoErgs:'51000000'},prices).ratio,0);
   assert.equal(units('0.000000001',9),1n);
   assert.equal(units('1.0000000001',9),null);
   assert.equal(units('1e9',9),null);
@@ -67,6 +113,9 @@ async function main() {
   // A 5.25 ERG vault could be repayment or liquidation of 5.30 ERG less a 0.05 fee.
   assert.equal(bondState({verified:true,bond:null,vault:[{nanoErgs:'5250000000',tokens:[]}]}), 'settled');
   assert.equal(bondState({verified:false,bond:{status:'open'}}),'unverified');
+  assert.equal(bondState({verified:true,status:'Repaid',vault:[]}), 'repaid');
+  assert.equal(bondState({verified:true,status:'Liquidated',vault:[{}]}), 'liquidated');
+  assert.equal(bondState({verified:true,status:'Unknown',bond:{status:'open'}}), 'unknown');
   const calls = [];
   global.fetch = async (url, options) => { calls.push({url, ...options}); return {ok:true,status:200,text:async()=>JSON.stringify({ok:true})}; };
   await api.getOrders({offset:100,collateral,loan:token});
@@ -76,6 +125,12 @@ async function main() {
   assert.equal(new URL(calls.at(-1).url).searchParams.get('all'),'true');
   await api.lookupAssets([token]);
   assert.deepEqual(JSON.parse(calls.at(-1).body),{tokenIds:[token]});
+  await api.getOracleFeed();
+  assert.equal(new URL(calls.at(-1).url).pathname,'/oracles/erg-usd');
+  assert.equal(new URL(calls.at(-1).url).searchParams.get('limit'),'0');
+  assert.equal(calls.at(-1).headers.api_key,undefined);
+  await api.getPricingPools();
+  assert.equal(new URL(calls.at(-1).url).pathname,'/dex/pools');
   await api.checkCreateOrder(huge);
   assert.deepEqual(JSON.parse(calls.at(-1).body),huge);
   for(const action of Object.values(api.ACTIONS)) { await action.check(token); assert.ok(calls.at(-1).url.endsWith('/check')); assert.equal(calls.at(-1).headers.api_key,undefined); }
@@ -96,6 +151,6 @@ async function main() {
   api.setAutoRefresh(30); assert.equal(api.getAutoRefresh(),30);
   const pages=await api.allPages(async({offset,limit})=>({height:1,orders:Array.from({length:limit},(_,i)=>offset+i),total:1100,truncated:false}),'orders');
   assert.equal(pages.orders.length,1000); assert.equal(pages.truncated,true);
-  console.log('SigmaFi V2: exact amounts, request validation, principal/maturity variants, every action route, API-key gates, pagination and refresh checks passed.');
+  console.log('SigmaFi: exact amounts, block/day durations, oracle freshness, deepest liquidity routes, partial collateralization, settlement states, API routes, key gates and refresh checks passed.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

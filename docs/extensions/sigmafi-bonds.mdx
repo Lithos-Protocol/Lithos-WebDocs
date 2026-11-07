@@ -53,11 +53,13 @@ Before an order is filled, its borrower can cancel it to recover the collateral.
 Filling an order mints one token to the lender: the **bond asset**. Whoever holds it
 is owed the bond. You can send or sell it like any token.
 
-A verified bond asset has a composite icon: the principal token above a small tray of collateral
-tokens. Hover or focus it to inspect repayment, maturity, collateral and any vault proceeds. LD-NFTs
+A verified bond asset uses the circular SigmaFi mark with a small status-colored **ZC** badge.
+Repaid and liquidated bonds use the lighter mark. Compact collateral tooltips place the **ZC** badge beside the mark for readability.
+Hover or focus it to inspect repayment, maturity, collateral and any vault proceeds. LithosDex Provisions
 use the same detail cards as the Wallet. The **Documentation** link opens this page.
 
-Its name, `SigmaFi ZC-Bond`, and its description are set by whoever minted it, so they prove nothing.
+Its EIP-4 name is `SigmaFi-ZC-Bond-<first six token ID characters>`. A name and description are set by whoever minted a token, so they prove nothing.
+The panel uses **SigmaFi Bond** and **LithosDex Provision** as display labels for these assets.
 Anyone can mint a token with the same name. The web panel and **Wallet** check each bond asset against
 the chain and mark it ZC-Bond only when it is the asset its bond was created with. A token named like a
 bond asset that fails the check is marked Not a ZC-Bond.
@@ -94,9 +96,31 @@ the creation network fee is paid in addition. Requests and bonds use this same b
 the full locked collateral box returns to the borrower. NFT collateral is fixed at one unit, and NFT
 assets are excluded from the principal selector.
 
-Hovering a bond asset shows **Active**, **Matured**, or **Settled**, with matching icon-tray and badge
-colors. The current API returns vault proceeds after settlement but does not identify whether they came
-from repayment or liquidation.
+Hovering a bond asset shows **Active**, **Matured**, **Repaid**, or **Liquidated**, with matching icon-tray and badge
+colors. The client establishes settlement status from confirmed spend evidence. Its settlement transaction,
+block, payout, and returned collateral remain available after the vault output is claimed. Incomplete evidence
+is shown as **Unknown**, with the reason supplied by the client.
+
+The loan term can be entered in days or whole blocks. Switching units preserves the block duration;
+days use an estimate of 720 blocks per day. Block input does not accept decimals.
+
+## Collateral Ratio and USD estimates
+
+The Collateral Ratio is the estimated USD value of the collateral divided by the loan principal. This is
+an informational health rating, with **no price-based liquidation threshold**. The agreed maturity and
+liquidation script determine when a bond can be liquidated.
+
+ERG uses the client's confirmed `erg-usd` oracle. SigUSD and USE use an assumed $1 peg. Other prioritized,
+verified tokens use the deepest eligible LithosDex route to one of those assets, with up to three pools.
+Routes are ranked by their weakest quote-side USD reserve. Unsafe and unchecked pools are excluded;
+Spectrum pools are not used. The question-mark helper identifies the oracle and pool route used.
+
+Estimates exclude batching fees, the box minimum, and slippage. Unpriced tokens and NFTs remain visible
+but are not valued. A **≥** percentage or dollar amount is a lower bound covering only priced collateral.
+Missing principal prices show an unavailable rating; stale oracle data is excluded from ERG pricing.
+The market can sort by Collateral Ratio or filter by minimum estimates and unpriced or partial collateral.
+The display is red at 80% or below, orange at 90%, yellow at 100%, and greener at 125%, 150%, 175%,
+and 200% or above. These colors do not change any liquidation rule.
 
 Every action is checked by your client first and shows what you pay, what you receive and any warning
 before anything is signed. A check never signs or sends anything. The send uses your client's wallet and

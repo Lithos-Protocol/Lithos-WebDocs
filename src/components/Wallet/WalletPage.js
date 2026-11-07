@@ -46,7 +46,7 @@ function useNftChecks(candidates, auto) {
   checksRef.current = checks;
   const inFlight = useRef(new Set());
 
-  const check = useCallback(async (ids) => {
+  const check = useCallback(async (ids, depth = 0) => {
     const todo = ids.filter((id) => !inFlight.current.has(id));
     if (!todo.length) return;
     todo.forEach((id) => inFlight.current.add(id));
@@ -73,6 +73,15 @@ function useNftChecks(candidates, auto) {
           for (const n of nfts) next[n.tokenId] = { ...n, bond: bonds[n.tokenId], at };
           return next;
         });
+        if (depth < 2) {
+          const nested = Object.values(bonds).flatMap(b => [
+            ...(b.bond?.terms?.collateralTokens ?? []),
+            ...(b.settlement?.returnedCollateral?.tokens ?? []),
+            ...(b.settlement?.vault?.tokens ?? []),
+            ...(b.vault ?? []).flatMap(v => v.tokens ?? []),
+          ]).filter(a => big(a.amount) === 1n && !checksRef.current[a.tokenId]).map(a => a.tokenId);
+          if (nested.length) check(nested, depth + 1);
+        }
       }
     } catch (e) {
       setError(e.message);
@@ -189,7 +198,7 @@ function NftBar({ auto, onAuto, nft, unchecked, selected, setSelected }) {
               type="button"
               onClick={() => setSelected(new Set([...selected, ...named.map((t) => t.tokenId)]))}
             >
-              Select LD-NFT names ({fmtInt(named.length)})
+              Select provision candidates ({fmtInt(named.length)})
             </button>
           )}
           {selected.size > 0 && (
@@ -231,13 +240,13 @@ function TokensCard({ tokens }) {
     const q = query.trim().toLowerCase();
     return tokens
       .filter(FILTERS[filter] ?? FILTERS.all)
-      .filter((t) => !q || [t.name, t.ticker, t.tokenId].some((v) => v && v.toLowerCase().includes(q)))
+      .filter((t) => !q || [tokenLabel(t, nft.checks[t.tokenId]), t.name, t.ticker, t.tokenId].some((v) => v && v.toLowerCase().includes(q)))
       .sort(
         (a, b) =>
           Number(b.verified) - Number(a.verified) ||
-          tokenLabel(a).localeCompare(tokenLabel(b), undefined, { sensitivity: 'base' }),
+          tokenLabel(a, nft.checks[a.tokenId]).localeCompare(tokenLabel(b, nft.checks[b.tokenId]), undefined, { sensitivity: 'base' }),
       );
-  }, [tokens, query, filter]);
+  }, [tokens, query, filter, nft.checks]);
   const paged = usePaged(rows);
 
   return (
@@ -295,7 +304,7 @@ function TokensCard({ tokens }) {
             const check = nft.checks[t.tokenId];
             const status = statusOf(t, check, nft.pending.has(t.tokenId));
             const pool = check?.provisionNft ? check.pool : null;
-            const label = status === 'bond' ? 'SigmaFi Bond' : t.ticker ?? t.name ?? 'Unnamed token';
+            const label = tokenLabel(t, check);
             return (
               <div key={t.tokenId} className={`${s.tRow} ${s.tokenRow}`} role="row">
                 <span className={s.tokenCol}>
@@ -308,7 +317,7 @@ function TokensCard({ tokens }) {
                       aria-label={`Select ${label} to check as a provision NFT`}
                     />
                   )}
-                  <AssetHover className={s.tokenCell} details={<TokenHover t={t} check={check} status={status} candidate={isNftCandidate(t)} metadata={metadata} />}>
+                  <AssetHover className={s.tokenCell} details={<TokenHover t={t} check={check} status={status} candidate={isNftCandidate(t)} metadata={metadata} assetChecks={nft.checks} />}>
                     {pool ? (
                       <PairIcons x={pool.tokenX} y={pool.tokenY} size={20} />
                     ) : check?.bond?.verified ? (

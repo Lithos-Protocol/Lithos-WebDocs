@@ -3,6 +3,7 @@ import { AssetIcon, assetName, TokenAmount, useTokens } from './tokens';
 import s from './styles.module.css';
 import { big } from './format';
 import { isNftAsset } from './bond';
+import { tokenPriority } from './pricing';
 
 export default function AssetPicker({ tokens, value, onChange, label, balances = false, allowCustom = false, excludeNfts = false }) {
   const { metadata, check, checks } = useTokens();
@@ -22,8 +23,8 @@ export default function AssetPicker({ tokens, value, onChange, label, balances =
   const options = useMemo(() => {
     const q = query.toLowerCase().trim();
     return tokens.filter((t) => !excludeNfts || !isNftAsset(t, checks[t.tokenId]))
-      .filter((t) => !q || [t.tokenId, t.ticker, t.name].some((v) => v?.toLowerCase().includes(q)))
-      .sort((a, b) => Number(b.verified) - Number(a.verified) || assetName(metadata, a.tokenId).localeCompare(assetName(metadata, b.tokenId)));
+      .filter((t) => !q || [t.tokenId, t.ticker, t.name, assetName(metadata, t.tokenId, checks)].some((v) => v?.toLowerCase().includes(q)))
+      .sort((a, b) => tokenPriority(a) - tokenPriority(b) || Number(b.verified) - Number(a.verified) || assetName(metadata, a.tokenId, checks).localeCompare(assetName(metadata, b.tokenId, checks)));
   }, [tokens, metadata, query, excludeNfts, checks]);
   const customId = query.trim().toLowerCase();
   const customIsNft = excludeNfts && isNftAsset(metadata[customId], checks[customId]);
@@ -41,14 +42,14 @@ export default function AssetPicker({ tokens, value, onChange, label, balances =
     }
   }}>
     <button ref={trigger} type="button" className={s.pickerTrigger} aria-label={label} aria-expanded={open} aria-haspopup="listbox" onClick={() => setOpen((v) => !v)}>
-      {value ? <><AssetIcon tokenId={value} /><span>{assetName(metadata, value)}</span></> : <span>Select token</span>}
+      {value ? <><AssetIcon tokenId={value} /><span>{assetName(metadata, value, checks)}</span></> : <span>Select token</span>}
       <span className={s.caret} aria-hidden="true">⌄</span>
     </button>
     {open && <div className={s.pickerMenu}>
       <input autoFocus className={s.search} placeholder="Search name or token ID" aria-label={`Search ${label.toLowerCase()}`} value={query} onChange={(e) => setQuery(e.target.value)} />
       <div className={s.pickerList} role="listbox" aria-label={label}>
         {options.map((t) => <button type="button" role="option" aria-selected={t.tokenId === value} className={s.pickerOption} key={t.tokenId} onClick={() => { onChange(t.tokenId); setOpen(false); setQuery(''); trigger.current?.focus(); }}>
-          {balances ? <TokenAmount tokenId={t.tokenId} amount={t.amount} /> : <><AssetIcon tokenId={t.tokenId} /><span>{assetName(metadata, t.tokenId)}</span></>}
+          {balances ? <TokenAmount tokenId={t.tokenId} amount={t.amount} /> : <><AssetIcon tokenId={t.tokenId} /><span>{assetName(metadata, t.tokenId, checks)}</span></>}
           <span className={s.sub}>{t.tokenId === 'ERG' ? 'Ergo' : `${t.tokenId.slice(0, 6)}…${t.tokenId.slice(-4)}`}</span>
         </button>)}
         {options.length === 0 && <p className={s.hint}>No matching tokens.</p>}

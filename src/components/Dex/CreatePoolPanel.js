@@ -49,7 +49,7 @@ function TokenPicker({ tokens, value, exclude, onChange, placeholder }) {
     const q = query.trim().toLowerCase();
     return tokens
       .filter((t) => t.tokenId !== exclude)
-      .filter((t) => !q || [t.name, t.ticker, t.tokenId].some((v) => v && v.toLowerCase().includes(q)))
+      .filter((t) => !q || [tokenLabel(t), t.name, t.ticker, t.tokenId].some((v) => v && v.toLowerCase().includes(q)))
       .sort(
         (a, b) =>
           Number(b.verified) - Number(a.verified) ||

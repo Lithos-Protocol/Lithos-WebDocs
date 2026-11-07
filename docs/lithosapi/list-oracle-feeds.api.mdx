@@ -1,0 +1,60 @@
+---
+id: list-oracle-feeds
+title: "List configured oracle feeds"
+description: "List configured oracle feeds"
+sidebar_label: "List configured oracle feeds"
+hide_title: true
+hide_table_of_contents: true
+api: eJydVU1v4zYQ/SuDufQiW94ULbDqyd24adDdNNg4p6yxoamxxTVFKiTlWDX034uh5K/ETYCeRJEznJk3bx63aCtyIihrrnPMUCsf/nZCavqDKPeYYBBLj9kD2rjrcZagI19Z48ljtsWL0Yg/OXnpVMUXYYbRGaQ1C7WsHeWwsA5CoTwYm9NPHgyFZ+tWv4EwQGUVGuDIYM3uxMOzCoWtAwjIqdK2KcmEISYorQlkAgcVVaWVjNmnPzxH3qKXBZWCV6GpCDO08x8kAya4GXS17EvhSp5q5SjnAvvAmOAilj5LsHKMTlBdpTuDw9U+OGWW2O5cDifCOdFggipQ6f9HMirHBI0oiT/7xCpng5VW89JafbPgm8gt7dQR/Sl8gQnOhaex98RHT7UN+x8nnu+NCvEaJalfs/klSVUKzTmUYjNe0u/aytUZBFT+uvgEaSPKSvMWueWg9jkDEnN/0/j+7hLWF9H2v4BNkExdMh5fxtc3N5MpJjid3E15NWuP8HgzUIfwgBEbdAF34J3r5AmcZ+49JfqnI4rXWsOk94a5Fiu6mF/88usQruyanBFGEshCmCV56HsNjtaKnsEuuumolBlyEocmvlnZ5OsVWx+1+T3E2XxHhDdtjTB28vUq7X0OlHkvQtondUKsg5MygZbkjr0+ti9496b1z6O2TTCoEAMetArb8/ueD/jotHGfWW6OBKojCSx61SspFJYFcRlnpxKhwAzTw7B6cmtyrIxbrJ3GDIsQqixNtZVCF9aH7ONoNHpFmM+sah4+aUUmwPj2GtsZ3yZrp0Jzx+LVzdq4Un9RM65D8Vpex5WCFTUg6lBYp/6JCgi1pxzmDXQhhjAtCArhiz272KWsfYA5QaWFpByUgcbWrkcigdrk5OBRd1eImANPwmN3XU4LUesAa6FrAuXhsSCt7ePwm+Gnote+6LXTr/j/fRU3FCdfkMjJIbdEmYU9U93tNVxaWbPgd5V1rwf1lYGM4A3hi81J+1j3N1OQIxCOgDYVyUA5BMuFSmu88vxigJDOeg/CNGBDQQ4UU2ofxndAvQwTS+Ned9l9GI6G3NYd0143tHuihIyzcuCGz9J0qUJRz4fSlmnnN7jdSVgbdcmHUsRnrMfuHZqeALefmkCbkFZaKMODGDPY9hQ+eceZpby13fKw3jvdtrz9VJNrMHuYJbgWTok51/nAetu3jjnPDc1wLCVVPCCRELHXL15kZvd+mK4mU2zbfwFiW+ay
+sidebar_class_name: "get api-method"
+info_path: docs/lithosapi/lithos-client-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"List configured oracle feeds"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/oracles"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+List configured oracle feeds
+
+<ParamsDetails
+  parameters={undefined}
+>
+
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Feeds configured for this node's network; an empty list on networks without a deployment.","content":{"application/json":{"schema":{"type":"object","x-tags":"oracles","required":["network","feeds"],"properties":{"network":{"type":"string"},"feeds":{"type":"array","items":{"type":"object","x-tags":"oracles","required":["id","name","network","protocol","poolNft","ergoTreeHash","baseAsset","quoteAsset","rawUnit","priceUnit","baseDecimals","maxAgeBlocks"],"properties":{"id":{"type":"string","example":"erg-usd"},"name":{"type":"string","example":"USD v2"},"network":{"type":"string","enum":["MAINNET","TESTNET"]},"protocol":{"type":"string","example":"oracle-pool-v2"},"poolNft":{"type":"string"},"ergoTreeHash":{"type":"string","description":"Configured full ErgoTree blake2b256. Governance changes require review of this pin."},"baseAsset":{"type":"string","example":"ERG"},"quoteAsset":{"type":"string","example":"USD"},"rawUnit":{"type":"string","example":"nanoERG/USD"},"priceUnit":{"type":"string","example":"USD/ERG"},"baseDecimals":{"type":"integer","example":9},"maxAgeBlocks":{"type":"integer","example":30}},"title":"OracleFeed"}}},"title":"OracleFeeds"}}}}}}
+>
+
+</StatusCodes>

@@ -742,6 +742,21 @@
   font-size: 12px;
 }
 
+.assetLink { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; color: inherit; border-radius: 4px; }
+.assetLink:hover { color: var(--lithos-sky, #38bdf8); }
+.assetLink:focus-visible { outline: 2px solid var(--lithos-sky, #38bdf8); outline-offset: 4px; }
+.lookupForm { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; margin: 12px 0; }
+.lookupInput { width: 100%; min-width: 0; padding: 12px 14px; border: 1px solid var(--cur-border-cool-strong, #26374e); border-radius: 8px; background: var(--lithos-bg-0, #060913); color: var(--cur-text, #e2e8f0); font: 12px var(--cur-font-mono, monospace); }
+.lookupInput:focus-visible { outline: 2px solid var(--lithos-sky, #38bdf8); outline-offset: 2px; }
+.lookupButton { padding: 10px 20px; border: 1px solid #38bdf8; border-radius: 8px; background: rgba(56,189,248,.12); color: #7dd3fc; cursor: pointer; font: 600 13px var(--cur-font-body, sans-serif); }
+.lookupButton:disabled { opacity: .5; cursor: default; }
+.lookupId { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid rgba(125,211,252,.12); }
+.lookupId > span { min-width: 0; overflow-wrap: anywhere; font: 11px/1.6 var(--cur-font-mono, monospace); color: var(--cur-muted); }
+@media (max-width: 560px) {
+  .lookupForm { grid-template-columns: minmax(0, 1fr); }
+  .lookupButton { min-height: 42px; }
+}
+
 /* A SigmaFi bond asset the client checked against its mint: green, apart from a provision NFT's cyan */
 .trustBond {
   color: var(--cur-green);

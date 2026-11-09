@@ -12,12 +12,13 @@ require.extensions['.js'] = (mod, filename) => {
 };
 const storage = new Map();
 global.window = { location: { hostname: 'localhost', port: '3000', origin: 'http://localhost:3000' }, localStorage: { getItem: (k) => storage.get(k) ?? null, setItem: (k,v) => storage.set(k,v), removeItem: (k) => storage.delete(k) } };
-const { buildOrder, units, decimalText, termToBlocks } = require('../src/components/SigmaFi/order');
+const { buildOrder, buildFill, units, decimalText, termToBlocks } = require('../src/components/SigmaFi/order');
+const { assetLookupLink, bondLookupLink, nftLookupLink } = require('../src/components/Wallet/assetLinks');
 const api = require('../src/components/SigmaFi/api');
 const { collateralOf, bondState, isNftAsset } = require('../src/components/SigmaFi/bond');
 const { buildPrices, valueBasket, collateralization, compareHealth, tokenPriority } = require('../src/components/SigmaFi/pricing');
 const token = 'a'.repeat(64), collateral = 'b'.repeat(64);
-const base = { asset: 'ERG', loanAmount: '5', repayAmount: '5.25', days: '30', schedule: 'onClose', collateralErg: '10', collateralTokens: [], fee: '.05', height: 1500000 };
+const base = { asset: 'ERG', loanAmount: '5', repayAmount: '5.25', days: '30', schedule: 'onClose', collateralErg: '10', collateralTokens: [], height: 1500000 };
 async function main() {
   assert.equal(termToBlocks('1.5','blocks'),null);
   assert.equal(termToBlocks('30.0','blocks'),null);
@@ -38,11 +39,11 @@ async function main() {
   assert.equal(prices.prices.get(token).route[0].poolNFT,'deep-usd');
   assert.equal(valueBasket(prices,'0',[{tokenId:token,amount:'1000000000'}]).usd,.25);
   assert.equal(valueBasket(prices,'5000000000').usd,10);
-  const terms={principalNanoErgs:'5000000000',collateralNanoErgs:'10051000000',batchingFee:'50000000',collateralTokens:[]};
+  const terms={principalNanoErgs:'5000000000',collateralNanoErgs:'10001000000',batchingFee:'50000000',collateralTokens:[]};
   assert.equal(collateralization(terms,prices).ratio,200); // fee and box floor do not inflate collateral
   const partial=collateralization({...terms,collateralTokens:[{tokenId:'c'.repeat(64),amount:'1'}]},prices);
   assert.equal(partial.ratio,200); assert.equal(partial.partial,true);
-  assert.equal(collateralization({...terms,collateralNanoErgs:'51000000',collateralTokens:[{tokenId:'c'.repeat(64),amount:'1'}]},prices).ratio,null);
+  assert.equal(collateralization({...terms,collateralNanoErgs:'1000000',collateralTokens:[{tokenId:'c'.repeat(64),amount:'1'}]},prices).ratio,null);
   assert.equal(collateralization({...terms,principalNanoErgs:null},prices).ratio,null);
   const stale=buildPrices({oracle:{...oracle,stale:true},pools,verified:registry,height:1500000});
   assert.equal(stale.prices.has('ERG'),false);
@@ -63,7 +64,8 @@ async function main() {
   ]});
   assert.deepEqual(multi.prices.get(token).route.map(e=>e.poolNFT),['lit-rsn','rsn-usd']);
   assert.equal(valueBasket(multi,'0',[{tokenId:token,amount:'1000000000'}]).usd,1);
-  assert.equal(collateralization({...terms,collateralNanoErgs:'51000000'},prices).ratio,0);
+  assert.equal(collateralization({...terms,collateralNanoErgs:'1000000'},prices).ratio,0);
+  assert.equal(collateralization({...terms,batchingFee:'90000000000'},prices).ratio,200);
   assert.equal(units('0.000000001',9),1n);
   assert.equal(units('1.0000000001',9),null);
   assert.equal(units('1e9',9),null);
@@ -83,27 +85,41 @@ async function main() {
   assert.equal(JSON.parse(JSON.stringify(huge)).repayment,'9007199254740994');
   assert.equal(buildOrder({ ...base, asset:token,loanAmount:'.1',repayAmount:'.2',metadata:{[token]:{decimals:2}} }).body.principalToken.amount,'10');
   for (const patch of [
-    {height:null},{fee:'.049'},{loanAmount:'.0009'}, {collateralErg:'-1'}, {days:'.001'},
+    {height:null},{loanAmount:'.0009'}, {collateralErg:'-1'}, {days:'.001'},
     {asset:token,collateralTokens:[{tokenId:token,amount:'1'}]},
     {collateralTokens:[{tokenId:collateral,amount:'1'},{tokenId:collateral,amount:'1'}]},
     {collateralTokens:[{tokenId:collateral,amount:'2'}],wallet:{nanoErgs:'20000000000',tokens:[{tokenId:collateral,amount:'1'}]}},
   ]) assert.ok(buildOrder({ ...base,...patch }).why,JSON.stringify(patch));
   assert.equal(buildOrder({ ...base,days:'0.004',schedule:'onClose' }).body,undefined);
   assert.equal(buildOrder({ ...base,days:'0.004',schedule:'fixed' }).body.maturityHeight,1500003);
-  // The entered collateral excludes reserves; the wire amount includes them exactly once.
-  assert.equal(order.collateralNanoErgs,'10051000000');
+  // Borrower funds only collateral and the box floor. The reserve never enters an order request.
+  assert.equal(order.collateralNanoErgs,'10001000000');
+  assert.equal(Object.hasOwn(order,'batchingFee'),false);
   assert.equal(collateralOf(order).collateral,10000000000n);
-  assert.equal(collateralOf(order).fee,50000000n);
+  assert.equal(collateralOf(order).fee,0n);
   assert.equal(collateralOf(order).minimum,1000000n);
-  assert.equal(collateralOf({collateralNanoErgs:'50000000',batchingFee:'50000000'}).shortfall,true);
+  assert.equal(collateralOf(terms).total,10051000000n);
+  assert.equal(collateralOf(terms).borrower,10001000000n);
+  assert.equal(collateralOf({collateralNanoErgs:'999999',batchingFee:'50000000'}).shortfall,true);
+  assert.equal(collateralOf({collateralNanoErgs:'1000000',batchingFee:'90000000000'}).shortfall,false);
   assert.equal(units('0',9,true),0n);
   assert.equal(units('0',9),null);
   const nftOrder = buildOrder({...base,collateralErg:'0',collateralTokens:[{tokenId:collateral,amount:''}],nftIds:new Set([collateral])}).body;
-  assert.equal(nftOrder.collateralNanoErgs,'51000000');
+  assert.equal(nftOrder.collateralNanoErgs,'1000000');
   assert.deepEqual(nftOrder.collateralTokens,[{tokenId:collateral,amount:'1'}]);
   assert.ok(buildOrder({...base,asset:token,nftIds:new Set([token])}).why);
-  assert.ok(buildOrder({...base,wallet:{nanoErgs:'10051999999',tokens:[]}}).why);
-  assert.ok(buildOrder({...base,wallet:{nanoErgs:'10052000000',tokens:[]}}).body);
+  assert.ok(buildOrder({...base,wallet:{nanoErgs:'10001999999',tokens:[]}}).why);
+  assert.ok(buildOrder({...base,wallet:{nanoErgs:'10002000000',tokens:[]}}).body);
+  const fill = buildFill('0.123456789').body;
+  assert.deepEqual(fill,{batchingFee:'123456789'});
+  assert.deepEqual(buildFill('0').body,{batchingFee:'0'});
+  assert.deepEqual(buildFill('.001').body,{batchingFee:'1000000'});
+  for (const fee of ['', '-1', '1e3', '0.0000000001', '9223372036.854775808']) assert.ok(buildFill(fee).why);
+  assert.equal(assetLookupLink(token,{bond:{bondAsset:true,verified:true}}),bondLookupLink(token));
+  assert.equal(assetLookupLink(token,{provisionNft:true}),nftLookupLink(token));
+  assert.equal(assetLookupLink(token,{nft:{redeemed:true}}),nftLookupLink(token));
+  assert.equal(assetLookupLink(token,{name:'SigmaFi-ZC-Bond'}),null);
+  assert.equal(assetLookupLink('invalid',{bond:{bondAsset:true}}),null);
   assert.ok(buildOrder({...base,collateralErg:'9223372036.854775807'}).why);
   assert.equal(isNftAsset({amount:'1',decimals:0,verified:false}),true);
   assert.equal(isNftAsset({amount:'1',decimals:0,verified:true}),false);
@@ -133,11 +149,17 @@ async function main() {
   assert.equal(new URL(calls.at(-1).url).pathname,'/dex/pools');
   await api.checkCreateOrder(huge);
   assert.deepEqual(JSON.parse(calls.at(-1).body),huge);
+  await api.checkFillOrder(token,fill);
+  assert.deepEqual(JSON.parse(calls.at(-1).body),fill);
+  assert.equal(calls.at(-1).headers.api_key,undefined);
   for(const action of Object.values(api.ACTIONS)) { await action.check(token); assert.ok(calls.at(-1).url.endsWith('/check')); assert.equal(calls.at(-1).headers.api_key,undefined); }
   const before=calls.length;
   await assert.rejects(()=>api.createOrder(order),e=>e.status===401);
   assert.equal(calls.length,before);
   api.setApiKey('fixture-key');
+  await api.fillOrder(token,fill);
+  assert.deepEqual(JSON.parse(calls.at(-1).body),fill);
+  assert.equal(calls.at(-1).headers.api_key,'fixture-key');
   await api.createOrder(order);
   assert.deepEqual(JSON.parse(calls.at(-1).body),order);
   for(const action of Object.values(api.ACTIONS)) { await action.send(token); assert.equal(calls.at(-1).method,'POST'); assert.equal(calls.at(-1).headers.api_key,'fixture-key'); }

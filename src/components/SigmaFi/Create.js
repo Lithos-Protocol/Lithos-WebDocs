@@ -39,7 +39,6 @@ export default function Create() {
   const [schedule, setSchedule] = useState('onClose');
   const [collateralErg, setCollateralErg] = useState('');
   const [collateralTokens, setCollateralTokens] = useState([]);
-  const [fee, setFee] = useState('0.05');
   const [reviewed, setReviewed] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -48,7 +47,7 @@ export default function Create() {
     ...Object.keys(checks).filter((id) => isNftAsset(metadata[id], checks[id])),
     ...(wallet?.tokens ?? []).filter((t) => isNftAsset({ ...t, verified: t.verified || !!verified[t.tokenId] }, checks[t.tokenId])).map((t) => t.tokenId),
   ]);
-  const request = buildOrder({ asset, loanAmount, repayAmount, term, termUnit, schedule, collateralErg, collateralTokens, fee, height, metadata, wallet, nftIds });
+  const request = buildOrder({ asset, loanAmount, repayAmount, term, termUnit, schedule, collateralErg, collateralTokens, height, metadata, wallet, nftIds });
   const requestKey = request.body ? JSON.stringify([version, api.getBaseUrl(), request.body]) : '';
   const current = useRef(requestKey);
   current.current = requestKey;
@@ -62,8 +61,7 @@ export default function Create() {
   const loanOptions = [{ tokenId: 'ERG', verified: true }, ...Object.values(metadata).filter((t) => !nftIds.has(t.tokenId))];
   const heldTokens = (wallet?.tokens ?? []).filter((t) => BigInt(t.amount) > 0n && t.tokenId !== asset);
   const ergCollateral = units(collateralErg.trim() || '0', 9, true);
-  const feeAmount = units(fee, 9);
-  const locked = ergCollateral != null && feeAmount != null ? ergCollateral + feeAmount + BOX_MINIMUM : null;
+  const locked = ergCollateral != null ? ergCollateral + BOX_MINIMUM : null;
   const networkFee = BigInt(reviewed?.quote.feeNanoErgs ?? NETWORK_FEE);
   const selectedTokens = collateralTokens.flatMap((t) => {
     const amount = nftIds.has(t.tokenId) ? 1n : units(t.amount, decimalsOf(metadata, t.tokenId));
@@ -73,8 +71,8 @@ export default function Create() {
   const valuationTerms = {
     principalNanoErgs: asset === 'ERG' && principal != null ? principal.toString() : null,
     principalToken: asset !== 'ERG' && principal != null ? {tokenId:asset,amount:principal.toString()} : null,
-    collateralNanoErgs: ((ergCollateral ?? 0n)+(feeAmount ?? 0n)+BOX_MINIMUM).toString(),
-    batchingFee: (feeAmount ?? 0n).toString(), collateralTokens:selectedTokens,
+    collateralNanoErgs: ((ergCollateral ?? 0n)+BOX_MINIMUM).toString(),
+    batchingFee: '0', collateralTokens:selectedTokens,
   };
   const preview = async () => {
     if (!request.body) return;
@@ -125,22 +123,17 @@ export default function Create() {
           <h3 className={s.sectionTitle}><SectionIcon kind="collateral" />Collateral</h3>
           {!keyed ? <KeyGate what="wallet collateral" /> : walletError ? <Alert kind="error" title="Wallet unavailable">{walletError}</Alert> : !wallet ? <p className={s.hint}><Spinner /> Loading wallet tokens</p> : <p className={s.walletAvailable}><span>Available</span><TokenAmount tokenId="ERG" amount={wallet.nanoErgs} /></p>}
           <div className={s.fieldGrid}>
-            <Field label="ERG collateral" full hint="Your collateral amount. The batching / liquidation fee and 0.001 ERG box minimum are added separately."><Amount label="ERG collateral" value={collateralErg} onChange={edit(setCollateralErg)} /></Field>
+            <Field label="ERG collateral" full hint="A 0.001 ERG box minimum is added. The lender chooses and funds the batching reserve when filling your request."><Amount label="ERG collateral" value={collateralErg} onChange={edit(setCollateralErg)} /></Field>
             <div className={s.fieldFull}>
               {collateralTokens.map((t, i) => <div className={s.tokenRow} key={i}>
                 <AssetPicker label={`Collateral token ${i + 1}`} tokens={heldTokens.filter((a) => !collateralTokens.some((b, j) => j !== i && a.tokenId === b.tokenId))} value={t.tokenId} onChange={(id) => updateToken(i, { tokenId: id, amount: nftIds.has(id) ? '1' : '' })} balances />
-                <>{nftIds.has(t.tokenId) ? <div className={s.fixedAmount} aria-label={`Collateral amount ${i + 1}: fixed at one`}><TokenAmount tokenId={t.tokenId} amount="1" /></div> : <Amount label={`Collateral amount ${i + 1}`} value={t.amount} onChange={(amount) => updateToken(i, { amount })} asset={t.tokenId || 'ERG'} suffix={!t.tokenId ? 'Token' : undefined} />}</>
+                <>{nftIds.has(t.tokenId) ? <div className={s.fixedAmount} aria-label={`Collateral amount ${i + 1}: fixed at one`}><TokenAmount tokenId={t.tokenId} amount="1" link={false} /></div> : <Amount label={`Collateral amount ${i + 1}`} value={t.amount} onChange={(amount) => updateToken(i, { amount })} asset={t.tokenId || 'ERG'} suffix={!t.tokenId ? 'Token' : undefined} />}</>
                 <button type="button" className={s.removeBtn} aria-label={`Remove collateral token ${i + 1}`} onClick={() => edit(setCollateralTokens)(collateralTokens.filter((_, j) => j !== i))}>×</button>
               </div>)}
               <button type="button" className={s.addBtn} disabled={!wallet || heldTokens.length <= collateralTokens.length} onClick={() => edit(setCollateralTokens)([...collateralTokens, { tokenId: '', amount: '' }])}>+ Add wallet token</button>
               {wallet && !heldTokens.length && <p className={s.hint}>No other tokens available in this wallet.</p>}
             </div>
           </div>
-        </section>
-        <section className={s.section}>
-          <h3 className={s.sectionTitle}><SectionIcon kind="fee" />Batching / liquidation fee</h3>
-          <Amount label="Batching / liquidation fee" value={fee} onChange={edit(setFee)} />
-          <p className={s.hint}>Added to your collateral and paid to the liquidator only if the loan matures unpaid. Minimum 0.05 ERG. This reserve and the box minimum return with your collateral on repayment.</p>
         </section>
       </fieldset>
       <aside className={s.formSide}>
@@ -155,7 +148,7 @@ export default function Create() {
             <div className={s.summaryRow}><span>Duration</span><span className={s.cell}>{duration > 0 ? <><span>{fmtTerm(duration)}</span><span className={s.sub}>{fmtInt(duration)} blocks</span></> : '—'}</span></div>
             <div className={s.summaryRow}><span>Maturity</span><span>{schedule === 'onClose' ? 'From funding' : height && duration > 0 ? `Block ${fmtInt(height + duration)}` : '—'}</span></div>
             <div className={s.summaryRow}><span>Collateral</span><span>{ergCollateral != null ? <Contents nanoErgs={ergCollateral} tokens={selectedTokens} /> : '—'}{ergCollateral === 0n && !selectedTokens.length && <TokenAmount tokenId="ERG" amount="0" />}<UsdValue nanoErgs={ergCollateral ?? '0'} tokens={selectedTokens} /></span></div>
-            <div className={s.summaryRow}><span>Batching / liquidation fee</span><span>{feeAmount ? <TokenAmount tokenId="ERG" amount={feeAmount} /> : '—'}</span></div>
+            <div className={s.summaryRow}><span>Batching reserve</span><span>Funded by lender on fill</span></div>
             <div className={s.summaryRow}><span>Box minimum</span><TokenAmount tokenId="ERG" amount={BOX_MINIMUM} /></div>
             <div className={`${s.summaryRow} ${s.summaryTotal}`}><span>Total locked</span><span>{locked != null ? <Contents nanoErgs={locked} tokens={selectedTokens} /> : '—'}</span></div>
             <div className={s.summaryRow}><span>Creation network fee</span><TokenAmount tokenId="ERG" amount={networkFee} /></div>

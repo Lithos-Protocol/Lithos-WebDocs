@@ -1633,6 +1633,12 @@ const sidebar: SidebarsConfig = {
         },
         {
           type: "doc",
+          id: "lithosapi/schemas/sffillrequest",
+          label: "SFFillRequest",
+          className: "schema",
+        },
+        {
+          type: "doc",
           id: "lithosapi/schemas/sforderrequest",
           label: "SFOrderRequest",
           className: "schema",

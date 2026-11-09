@@ -50,7 +50,7 @@ export function aprOf(t, tip) {
   return (r * BLOCKS_PER_YEAR) / blocks;
 }
 
-/** The batching fee as a share of the collateral's ERG: what a lender gives up if they are liquidated to. */
+/** The lender's reserve as a share of the borrower's collateral ERG. */
 export const feeShare = (t) => {
   const c = big(t.collateralNanoErgs);
   return c > 0n ? Number(big(t.batchingFee)) / Number(c) : null;

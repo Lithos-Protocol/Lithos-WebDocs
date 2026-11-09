@@ -98,8 +98,9 @@ tags:
       SigmaFi bonds: peer-to-peer zero-coupon loans. A borrower posts a collateral-backed order. A lender
       fills it, creating a bond and minting two bond-asset units: one singleton locked in the bond and one
       circulating claim for the lender. Repayment and liquidation burn the singleton. The borrower repays before maturity and takes the collateral back; otherwise anyone
-      may liquidate the bond, sending the collateral less its batching fee to the vault. Whoever holds the bond
-      asset claims what the vault holds for it.
+      may liquidate the bond, sending the borrower's collateral to the vault. The lender chooses and funds a
+      separate batching reserve on fill, above all borrower collateral; repayment refunds it to the bond holder,
+      while liquidation may pay it to the liquidator. Whoever holds the bond asset claims what the vault holds for it.
 
 
       Lists, the asset lookup and every `check` are open and sign nothing; the portfolio and everything that
@@ -4703,8 +4704,8 @@ paths:
       summary: Create an order
       description: >
         Lock collateral in an order asking to borrow ERG or one token, repaid by a fixed height or a number of
-        blocks after a lender fills it. Its batching fee is `sigmafi.bonds.batchingFeeNanoErg` unless the request
-        sets a higher one. Cancel it with `POST /sigmafi/orders/{boxId}/cancel` while it is unfilled.
+        blocks after a lender fills it. Do not send `batchingFee` on creation: the lender chooses and funds the
+        reserve when filling. Cancel it with `POST /sigmafi/orders/{boxId}/cancel` while it is unfilled.
       operationId: createSFOrder
       security:
         - ApiKeyAuth: []
@@ -4802,9 +4803,17 @@ paths:
         - sigmafi
       parameters:
         - $ref: '#/components/parameters/SFBoxId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SFFillRequest'
       responses:
         '200':
           $ref: '#/components/responses/SigmaFiQuoted'
+        '400':
+          $ref: '#/components/responses/SigmaFiBadRequest'
         '404':
           $ref: '#/components/responses/SigmaFiNotFound'
         '422':
@@ -4817,7 +4826,8 @@ paths:
       description: >
         Lend the principal to the borrower. The fill mints two units with the order's box id as token id:
         one circulating claim to this wallet and one singleton locked in the bond. Whoever holds the claim
-        receives the repayment, or the collateral less its batching fee after maturity liquidation.
+        receives the repayment plus the unused reserve, or the collateral after maturity liquidation.
+        The lender funds the reserve above the borrower's full collateral value.
       operationId: fillSFOrder
       security:
         - ApiKeyAuth: []
@@ -4825,11 +4835,19 @@ paths:
         - sigmafi
       parameters:
         - $ref: '#/components/parameters/SFBoxId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SFFillRequest'
       responses:
         '200':
           $ref: '#/components/responses/SigmaFiSent'
         '403':
           $ref: '#/components/responses/SigmaFiForbidden'
+        '400':
+          $ref: '#/components/responses/SigmaFiBadRequest'
         '404':
           $ref: '#/components/responses/SigmaFiNotFound'
         '409':
@@ -4891,7 +4909,7 @@ paths:
     post:
       summary: Repay a bond
       description: >
-        Pay the repayment into the vault for the bond asset's holder, and return the collateral to the
+        Pay the repayment plus the unused lender-funded reserve into the vault for the bond asset's holder, and return the collateral to the
         borrower, burning the bond singleton. Open strictly below maturity. Anyone may repay; the collateral
         always goes to the borrower and the circulating claim stays with its holder.
       operationId: repaySFBond
@@ -4936,8 +4954,8 @@ paths:
     post:
       summary: Liquidate a bond
       description: >
-        Send a matured bond's collateral, less its batching fee, to the vault for the bond asset's holder. The
-        fee less the 0.001 ERG network fee comes to this wallet. Only bonds under the maturity liquidation
+        Send a matured bond's full borrower collateral to the vault for the bond asset's holder. The separate
+        lender-funded reserve less the 0.001 ERG network fee comes to this wallet. Only bonds under the maturity liquidation
         script. Burns the bond singleton. Mining clients liquidate bonds paying at least their fee floor on their own.
       operationId: liquidateSFBond
       security:
@@ -12178,8 +12196,7 @@ components:
         principalNanoErgs:
           type: string
           description: >-
-            nanoERG lent; for a token loan, only the principal box's floor. Absent for a bond whose order
-            could not be read.
+            Agreed nanoERG lent; for a token loan, the principal box's floor. Read directly from a bond's R6.
         principalToken:
           $ref: '#/components/schemas/SFTokenAmount'
         repayment:
@@ -12190,19 +12207,22 @@ components:
           description: The token a token loan is repaid in. Absent when repaid in ERG.
         collateralNanoErgs:
           type: string
+          description: Borrower collateral nanoERG, excluding the lender-funded reserve.
         collateralTokens:
           type: array
           items:
             $ref: '#/components/schemas/SFTokenAmount'
         maturityHeight:
           type: integer
+          format: int64
           description: Repayment is open strictly below it. Absent for an on-close order until it is filled.
         durationBlocks:
           type: integer
+          format: int64
           description: An on-close order's term, counted from its fill.
         batchingFee:
           type: string
-          description: The most of the collateral's nanoERG a liquidator keeps if the bond is not repaid.
+          description: Lender-funded reserve selected on fill; zero on unfilled orders. Refunded on repayment.
         liquidation:
           type: string
           description: The liquidation script's name. Absent when this client does not know it.
@@ -12250,6 +12270,7 @@ components:
           enum: [open, matured]
         blocksLeft:
           type: integer
+          format: int64
           description: Blocks before repayment closes. 0 once matured.
         borrowerIsMe:
           type: boolean
@@ -12493,6 +12514,14 @@ components:
           type: integer
           description: Next NFT-box offset, absent at the end or when history is omitted.
         timestampsComplete: {type: boolean}
+    SFFillRequest:
+      type: object
+      x-tags: sigmafi
+      description: Optional lender-funded reserve override. An empty body uses the configured default.
+      properties:
+        batchingFee:
+          type: string
+          description: Nonnegative nanoERG added above collateral. Defaults to sigmafi.bonds.batchingFeeNanoErg (50000000). Values below the automatic batcher floor produce a warning.
     SFOrderRequest:
       type: object
       x-tags: sigmafi
@@ -12515,13 +12544,16 @@ components:
           type: string
         maturityHeight:
           type: integer
+          format: int64
           description: At least 3 blocks above the current height.
         durationBlocks:
           type: integer
+          format: int64
           minimum: 30
         batchingFee:
           type: string
-          description: At least 50000000. Defaults to `sigmafi.bonds.batchingFeeNanoErg`.
+          deprecated: true
+          description: Rejected on order creation. The lender selects this reserve in SFFillRequest instead.
         liquidation:
           type: string
           default: MaturityLiquidation

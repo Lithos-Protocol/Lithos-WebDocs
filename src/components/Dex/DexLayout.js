@@ -25,6 +25,7 @@ const NAV = [
   { to: '/dex/fees', label: 'Fees', pooled: true },
   { to: '/dex/history', label: 'History', pooled: true },
   { to: '/dex/pools', label: 'Pools', also: ['/dex/create'] },
+  { to: '/dex/search', label: 'NFT search' },
 ];
 
 function SubNav({ query }) {

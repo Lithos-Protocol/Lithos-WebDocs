@@ -4,17 +4,17 @@ import { BOND_ASSET_NAME } from '../Wallet/assetNames';
 export const BOX_MINIMUM = 1_000_000n;
 export const NETWORK_FEE = 1_000_000n;
 
-/** The box stores collateral, its liquidation bounty and the minimum vault value together. */
+/** API collateral excludes the lender reserve but includes the borrower's box minimum. */
 export function collateralOf(terms) {
-  const total = big(terms.collateralNanoErgs);
+  const borrower = big(terms.collateralNanoErgs);
   const fee = big(terms.batchingFee);
-  const reserve = fee + BOX_MINIMUM;
   return {
-    collateral: total > reserve ? total - reserve : 0n,
+    collateral: borrower > BOX_MINIMUM ? borrower - BOX_MINIMUM : 0n,
+    borrower,
     fee,
     minimum: BOX_MINIMUM,
-    total,
-    shortfall: total < reserve,
+    total: borrower + fee,
+    shortfall: borrower < BOX_MINIMUM,
   };
 }
 

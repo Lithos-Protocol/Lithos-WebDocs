@@ -49,7 +49,7 @@ export default function AssetPicker({ tokens, value, onChange, label, balances =
       <input autoFocus className={s.search} placeholder="Search name or token ID" aria-label={`Search ${label.toLowerCase()}`} value={query} onChange={(e) => setQuery(e.target.value)} />
       <div className={s.pickerList} role="listbox" aria-label={label}>
         {options.map((t) => <button type="button" role="option" aria-selected={t.tokenId === value} className={s.pickerOption} key={t.tokenId} onClick={() => { onChange(t.tokenId); setOpen(false); setQuery(''); trigger.current?.focus(); }}>
-          {balances ? <TokenAmount tokenId={t.tokenId} amount={t.amount} /> : <><AssetIcon tokenId={t.tokenId} /><span>{assetName(metadata, t.tokenId, checks)}</span></>}
+          {balances ? <TokenAmount tokenId={t.tokenId} amount={t.amount} link={false} /> : <><AssetIcon tokenId={t.tokenId} /><span>{assetName(metadata, t.tokenId, checks)}</span></>}
           <span className={s.sub}>{t.tokenId === 'ERG' ? 'Ergo' : `${t.tokenId.slice(0, 6)}…${t.tokenId.slice(-4)}`}</span>
         </button>)}
         {options.length === 0 && <p className={s.hint}>No matching tokens.</p>}

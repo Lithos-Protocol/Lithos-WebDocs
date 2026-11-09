@@ -15,6 +15,7 @@ import TokenIcon, { PairIcons, TrustBadge, tokenLabel } from './TokenIcon';
 import { CopyButton, KeyGate, FilterChips } from './ui';
 import TokenHover from './AssetDetails';
 import AssetHover from './AssetHover';
+import AssetLink from './AssetLink';
 import BondIcon from './BondIcon';
 import { bondState } from '../SigmaFi/bond';
 
@@ -318,6 +319,7 @@ function TokensCard({ tokens }) {
                     />
                   )}
                   <AssetHover className={s.tokenCell} details={<TokenHover t={t} check={check} status={status} candidate={isNftCandidate(t)} metadata={metadata} assetChecks={nft.checks} />}>
+                    <AssetLink tokenId={t.tokenId} check={check}>
                     {pool ? (
                       <PairIcons x={pool.tokenX} y={pool.tokenY} size={20} />
                     ) : check?.bond?.verified ? (
@@ -329,11 +331,11 @@ function TokensCard({ tokens }) {
                       <span className={t.verified || pool || status === 'bond' ? s.tokenName : s.tokenNameUnverified}>{label}</span>
                       {t.verified && t.name && t.name !== t.ticker && <span className={s.tokenSub}>{t.name}</span>}
                       {pool ? (
-                        <Link className={s.tokenSubLink} to={`/dex/liquidity?pool=${pool.poolNFT}`}>
+                        <span className={s.tokenSubLink}>
                           {pairLabel(pool)} provision
-                        </Link>
+                        </span>
                       ) : status === 'bond' ? (
-                        <Link className={s.tokenSubLink} to="/extensions/sigmafi/portfolio">{check.bond.bond ? 'Fixed-term loan' : 'Settled bond'}</Link>
+                        <span className={s.tokenSubLink}>{check.bond.bond ? 'Fixed-term loan' : 'Settled bond'}</span>
                       ) : status === 'fakeNft' ? (
                         <span className={s.tokenSubWarn}>owns no provision</span>
                       ) : (
@@ -345,6 +347,7 @@ function TokensCard({ tokens }) {
                         )
                       )}
                     </span>
+                    </AssetLink>
                   </AssetHover>
                 </span>
                 <span>

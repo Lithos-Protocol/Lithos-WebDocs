@@ -7,6 +7,7 @@ import { protocolAssetName } from '../Wallet/assetNames';
 import BondIcon from '../Wallet/BondIcon';
 import TokenHover from '../Wallet/AssetDetails';
 import AssetHover from '../Wallet/AssetHover';
+import AssetLink from '../Wallet/AssetLink';
 import { bondState } from './bond';
 import s from './styles.module.css';
 import { useExtensions } from '../Extensions/ExtensionsLayout';
@@ -104,7 +105,7 @@ export function AssetIcon({ tokenId, size = 24 }) {
   return <TokenIcon tokenId={tokenId} label={ctx?.metadata[tokenId]?.ticker ?? ctx?.metadata[tokenId]?.name} size={size} />;
 }
 
-export function TokenAmount({ tokenId, amount, icon = true }) {
+export function TokenAmount({ tokenId, amount, icon = true, link = true }) {
   const ctx = useTokens();
   const check = ctx?.checks[tokenId];
   const metadata = ctx?.metadata[tokenId];
@@ -116,12 +117,15 @@ export function TokenAmount({ tokenId, amount, icon = true }) {
   }, [ctx?.check, ctx?.checks, tokenId, amount]);
   const label = tokenId === 'ERG' ? 'ERG' : protocolAssetName(metadata, check) ?? verified?.ticker;
   const decimals = tokenId === 'ERG' ? 9 : metadata?.decimals;
+  const content = <>
+    {icon && <AssetIcon tokenId={tokenId} size={special ? 22 : 20} />}
+    <span className={s.amount}>{tokenId === 'ERG' ? fmtErgAmount(amount) : decimals != null ? fmtTokenAmount(amount, decimals, 4) : fmtInt(amount)}</span>
+    {label ? <span className={s.ticker}>{label}</span> : !special && <IdTag tokenId={tokenId} />}
+    {special && <TrustBadge status={status} bondState={check?.bond ? bondState(check.bond) : undefined} />}
+  </>;
   return (
     <AssetHover className={s.tokenAmount} enabled={tokenId !== 'ERG'} details={<TokenHover t={{ ...metadata, tokenId, amount, verified: !!verified, decimals }} check={{ ...check?.nft, bond: check?.bond }} status={status} candidate={big(amount) === 1n} metadata={ctx?.metadata} assetChecks={ctx?.checks} />}>
-      {icon && <AssetIcon tokenId={tokenId} size={special ? 22 : 20} />}
-      <span className={s.amount}>{tokenId === 'ERG' ? fmtErgAmount(amount) : decimals != null ? fmtTokenAmount(amount, decimals, 4) : fmtInt(amount)}</span>
-      {label ? <span className={s.ticker}>{label}</span> : !special && <IdTag tokenId={tokenId} />}
-      {special && <TrustBadge status={status} bondState={check?.bond ? bondState(check.bond) : undefined} />}
+      {link ? <AssetLink tokenId={tokenId} check={check}>{content}</AssetLink> : content}
     </AssetHover>
   );
 }

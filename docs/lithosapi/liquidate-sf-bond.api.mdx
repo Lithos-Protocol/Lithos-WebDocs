@@ -1,11 +1,11 @@
 ---
 id: liquidate-sf-bond
 title: "Liquidate a bond"
-description: "Send a matured bond's collateral, less its batching fee, to the vault for the bond asset's holder. The fee less the 0.001 ERG network fee comes to this wallet. Only bonds under the maturity liquidation script. Burns the bond singleton. Mining clients liquidate bonds paying at least their fee floor on their own."
+description: "Send a matured bond's full borrower collateral to the vault for the bond asset's holder. The separate lender-funded reserve less the 0.001 ERG network fee comes to this wallet. Only bonds under the maturity liquidation script. Burns the bond singleton. Mining clients liquidate bonds paying at least their fee floor on their own."
 sidebar_label: "Liquidate a bond"
 hide_title: true
 hide_table_of_contents: true
-api: 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
+api: eJztWG1v3DYS/isDokDuAHl3m6YHRPfJvSat0aYN4rT94LrnWWm0Yk2RCmfk9d5C/70YUvviroPrAfcp8BdbK5Hz+sxDzmxNTVxF24sN3pTmknwNCB3KEKmGZfD1M4ZmcA6WIcawpghVcA6FIjqQANIS3OHgBJoQ0y/dBMhM8oyhDa6mOIP3LQFTjxGFwJGvKZ41g6+phkhM8U7fMicBi9li8Tm8evcNeJJ1iLfQEEEVOuKs0TKs0TmSGfzo3SZpZFBp2YJkvpUNOPthsDWqc5DdnMFXQ/R8MJStXzmS4GfwxnrrV1A5S154v5km+T1u9DMKOEIWFWFjMq1xIUQIfnoV1n72qzeFCT3FpPyiNqXZy7t8/VXwtSkMU5XsNOXV1pz39jvanA/SmvLqerwujOCKTXll2K46bKy5LowGsCOhyGmP1Zz1KK0pjMeOTGmW4f5CZUf6MNhItSklDlQYrlrq0JRbI5teF7JE61dGZYpQVEm/XS3OXuJZc372+nr7jxfjZ2ZUOyJxHzwT6+7ni4X+ewgbza5E9IxVivUaGZi8/BNuwiCauRtg3DCsW5J2ypIPNQFWFfVCNViZmcJUwQt5UQ3Y985WKXzz31nVbE+dCMvfqRJTmPuzHK19sI4jcGUkB2UyJkUyanbEZq/S95PYjIcdj8SN/NCp7J0LSaWakx4HX1EUtN5cj8WUlUeEnMYxDNIPii4UBbLmusjxojWEqBgPMUFypgamQvursg+lCQiNdU5FIVQuMEFnvZAKHQsjVpzKunz9jnhwYsZRX79YfHGa/DeWtYhU1DoGrZDe/vuWNv9TPh+KfBVjiLDDHTQxdHD+9sIUJ3k/TjLprvQOVb4GQNC602znhYeIqeMriichy2ZUoSZN9z12vQbly8Vi3Cv5r2HPMjpixhUB3fcOM81oSrMQCE36tbN/r8lceK1MdJAYMk4rxr1nj2j3g3O41N257h9a83XaR3WWBMcfj9N+3ttXWdWU9henOfohwOC5Jy+wDPfQImfM2roAK2AZfEgkCbfW16D0VBcKkuOPeyZ/xk9w+XTg8vI0R+fQk6+TJ0cHBbpIWG9AcVQzYIJSgoXihWfwjs50BaDPFwVlvSecfCI4ef78NEc/o1MGWQ6SKKIPzHbp9LawLqdb2/0zBqHYMWBUZ5uBlVr2tz6lol5PuVrpRqXoEZ4P0cw2UKHP79V9K0VeuPuqIKzQAw7Shmj/Q3pGoq/IPYHvUwHfl49dZX4INRU7FGg7c0RV5FfWEwwe79AmcxJqsssfBmKBiF6vb8l321HuenZhenD/Rb+RViO2uynP4JeWvJ6NaZ3ki6DiVg/Lwd/6sPYFVC1Vt3Dzzav3MJ9uuvM+RGmCs+EGltSEVBIStVd5QuungdaxMB1JG7SL7ANLbtpaU5o9CFKLOt+mPmOc71vN1GSq4blfHKIzpWlF+nI+d6FC1waW8uVisTgJ2/dW2sDwr9QNp9xrL7hrWS8VNzmXx43ryanfW7ilzZ5JcyuufA3LDWQVuUxa5DanwXLa0g0ssCToHVbaH3rYhEGx4Bu7KqZu/8ZlEZhs+Ba5vcniamrSUOIO3ZBK6KYl58JNbsynlOVdh955alxMkRvrlrCmmNJifRMe8e7tBXwdqqEjL9mz3QxkCl4eJczgTajJcfL7V99SpHRy0X2fukUdaix1wOHZshYrYBUDs7IEhMQXVuG4V8M7vD5Uk1zTXGfrPp8tZprWHaROE5rZAavEDgdscDmfr6y0w3JWhW6e9529jUFCFVyKh6Kww1R8U+y+309LMLWZf8bT9sBET1Om/+uUaQKz0L3ME7cpPaVsbieauDqaiiQtpjDlblB04Irrwigd6PrtdolMP0U3jvr6w0BRp1TXhbnDaDO7XW1NbVmfa1M26PjPXHec8r+9m46Jv8PHTN4VpdcCTHVrSmMKoxW5m2uNOkyZ6lINyN/O0wTmaNfJSafUtafQtz9evjeFwYmxDmSQa396UPGPmnRgiaxd/47FRxZvt5lkxnG/Pn/66I7Ju91qjc31OI5/ALdAjuU=
 sidebar_class_name: "post api-method"
 info_path: docs/lithosapi/lithos-client-api
 custom_edit_url: null
@@ -31,12 +31,12 @@ import Heading from "@theme/Heading";
   path={"/sigmafi/bonds/{boxId}/liquidate"}
   context={"endpoint"}
 >
-  
+
 </MethodEndpoint>
 
 
 
-Send a matured bond's collateral, less its batching fee, to the vault for the bond asset's holder. The fee less the 0.001 ERG network fee comes to this wallet. Only bonds under the maturity liquidation script. Burns the bond singleton. Mining clients liquidate bonds paying at least their fee floor on their own.
+Send a matured bond's full borrower collateral to the vault for the bond asset's holder. The separate lender-funded reserve less the 0.001 ERG network fee comes to this wallet. Only bonds under the maturity liquidation script. Burns the bond singleton. Mining clients liquidate bonds paying at least their fee floor on their own.
 
 
 <Heading
@@ -50,14 +50,14 @@ Send a matured bond's collateral, less its batching fee, to the vault for the bo
 <ParamsDetails
   parameters={[{"in":"path","name":"boxId","required":true,"schema":{"type":"string","pattern":"^[0-9a-fA-F]{64}$"}}]}
 >
-  
+
 </ParamsDetails>
 
 <RequestSchema
   title={"Body"}
   body={undefined}
 >
-  
+
 </RequestSchema>
 
 <StatusCodes
@@ -65,8 +65,5 @@ Send a matured bond's collateral, less its batching fee, to the vault for the bo
   label={undefined}
   responses={{"200":{"description":"The transaction was sent; `outcome` says whether the node accepted it.","content":{"application/json":{"schema":{"type":"object","x-tags":"sigmafi","required":["txId","outcome"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"boxId":{"type":"string","description":"The output that matters, the new order or bond."},"assetId":{"type":"string","description":"The bond asset a fill or a close minted."}},"title":"SFResult"}}}},"403":{"description":"Missing or wrong api_key.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"404":{"description":"No unspent box has that id, it is not the kind named, or it is not this wallet's.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"409":{"description":"A pending transaction already spends a box this names. Re-read and resend.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"422":{"description":"Valid, but not possible now: the box's terms are refused, maturity has passed or not come, the wallet cannot cover it, or no wallet box can authorize a cancel.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"503":{"description":"Node, wallet or transaction engine unavailable, or the request ran out of time. The message says whether anything was sent. When it says the outcome is unknown, check `GET /sigmafi/portfolio` before retrying.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}}}}
 >
-  
+
 </StatusCodes>
-
-
-      

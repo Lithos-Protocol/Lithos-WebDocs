@@ -14,11 +14,12 @@ const NFT = id(900), ASSET = id(901);
 const height = 1500000;
 const verified = [{tokenId:USD,ticker:'SigUSD',name:'SigmaUSD',decimals:2,verified:true},{tokenId:RSV,ticker:'SigRSV',name:'SigmaRSV',decimals:0,verified:true},{tokenId:LIT,ticker:'LIT',name:'Lithos',decimals:9,verified:true},{tokenId:FIRO,ticker:'rsFIRO',name:'Rosen Firo',decimals:8,verified:true},{tokenId:FAKU,ticker:'FAKU',name:'FAKU',decimals:2,verified:true}];
 const terms = (n=0) => ({kind:'zero-coupon',principalNanoErgs:n%2?'1000000':'5000000000',principalToken:n%2?{tokenId:USD,amount:String(10000+n*1000)}:null,repayment:n%2?String(10500+n*1050):'5250000000',repayToken:n%2?USD:null,collateralNanoErgs:n%2?'80000000000':'1000000000',collateralTokens:n%2?[{tokenId:RSV,amount:'10000'}]:[{tokenId:n===2?NFT:LIT,amount:n===2?'1':'5000000000000'}],durationBlocks:n%3?null:21600,maturityHeight:n%3?height+720*(7+n):null,batchingFee:'50000000',liquidation:'MaturityLiquidation',liquidationHash:id(55)});
-let orders = Array.from({length:9},(_,n)=>({boxId:id(100+n),terms:terms(n),borrower:'9hPreviewBorrower',mine:n===8,refusal:n===7?'This order uses an unsupported liquidation script.':null,creationHeight:height-n*20}));
+let orders = Array.from({length:9},(_,n)=>({boxId:id(100+n),terms:{...terms(n),batchingFee:'0'},borrower:'9hPreviewBorrower',mine:n===8,refusal:n===7?'This order uses an unsupported liquidation script.':null,creationHeight:height-n*20}));
 const bond = (n) => ({boxId:id(200+n),assetId:n===0?ASSET:id(901+n),terms:{...terms(n+1),durationBlocks:null,maturityHeight:height+(n===1?-30:7200)},verified:n!==2,verification:n===2?'The live bond does not match the asset’s genesis order.':null,status:n===1?'matured':'open',blocksLeft:n===1?0:7200,borrowerIsMe:n===0,creationHeight:height-3000});
 let bonds = [bond(0),bond(1),bond(2)];
 bonds[0].terms.collateralTokens.push({tokenId:NFT,amount:'1'},{tokenId:id(902),amount:'1'});
 let mode='populated';
+const claimedAssets = new Set();
 const calls=[];
 const limits={minWindowStart:Math.floor(height/128)+2,minWindowLength:2,maxWindowLength:128,maxWindowEnd:Math.floor(height/128)+256,minNotional:'1000000000',defaultLastFillHeight:height+120,shortWindowEpochs:8,shortWindowMaxNotionalLit:'1000000000000',maxOffers:200};
 const pool={poolNFT:id(777),kind:'n2t',tokenX:{tokenId:'ERG',ticker:'ERG',decimals:9},tokenY:verified[0],verified:true,unsafe:false};
@@ -27,7 +28,7 @@ const pricedPool=(n,x,y,reservesX,reservesY)=>({poolNFT:id(n),kind:x==='ERG'?'n2
 const pricingPools=[pricedPool(701,'ERG',LIT,'1000000000000','200000000000000'),pricedPool(702,LIT,USD,'2000000000000000','500000'),pricedPool(703,RSV,USD,'1000000','2000000'),pricedPool(704,'ERG',FIRO,'1000000000000','2000000000000'),pricedPool(705,FAKU,LIT,'100000000','1000000000000000')];
 function lookupAsset(tokenId){
  const b=bonds.find(b=>b.assetId===tokenId),paid=tokenId===id(950),liquidated=tokenId===id(951),settled=paid||liquidated;
- const vault=paid?{boxId:id(960),assetId:tokenId,bondId:id(970),nanoErgs:'1000000',tokens:[{tokenId:USD,amount:'10250'}]}:{boxId:id(961),assetId:tokenId,bondId:id(971),nanoErgs:'950000000',tokens:[{tokenId:NFT,amount:'1'}]};
+ const vault=paid?{boxId:id(960),assetId:tokenId,bondId:id(970),nanoErgs:'51000000',tokens:[{tokenId:USD,amount:'10250'}]}:{boxId:id(961),assetId:tokenId,bondId:id(971),nanoErgs:'1000000000',tokens:[{tokenId:NFT,amount:'1'}]};
  return {tokenId,bondAsset:settled||!!b,verified:settled||!!b?.verified,verification:b?.verification??null,bond:b??null,vault:settled?[vault]:[],status:paid?'Repaid':liquidated?'Liquidated':!b?.verified?'Unverified':b.status==='matured'?'Matured':'Open',settlement:settled?{txId:id(paid?980:981),height:height-20,timestamp:1794000000000,bondBoxId:vault.bondId,vault,returnedCollateral:paid?{boxId:id(990),nanoErgs:'1000000000',tokens:[{tokenId:NFT,amount:'1'}]}:null,liquidationHash:liquidated?id(55):null}:null};
 }
 const page=(rows,key,u)=>({height,[key]:rows.slice(Number(u.searchParams.get('offset')||0),Number(u.searchParams.get('offset')||0)+Number(u.searchParams.get('limit')||100)),total:rows.length,truncated:false});
@@ -55,23 +56,28 @@ http.createServer(async(req,res)=>{
   if(p==='/wallet/tokens/verified')return json(res,{tokens:verified});
   if(p==='/wallet/balances')return req.headers.api_key?json(res,{primaryAddress:'9hPreviewWallet',nanoErgs:'250000000000',reservedNanoErgs:'0',reservedBoxes:0,tokens:[...verified.map(t=>({...t,amount:t.tokenId===LIT?'123456789000000':t.tokenId===USD?'50000':'25000'})),{tokenId:NFT,name:`LD-NFT-${NFT.slice(0,6)}`,amount:'1',decimals:0,verified:false},...[ASSET,id(902),id(950),id(951)].map(tokenId=>({tokenId,name:`SigmaFi-ZC-Bond-${tokenId.slice(0,6)}`,amount:'1',decimals:0,verified:false}))]}):json(res,{detail:'Fixture API key required'},403);
   if(p==='/wallet/rewards')return json(res,{boxes:0,unlockedBoxes:0,unlockedNanoErgs:'0',lockedNanoErgs:'0',nanoErgs:'0'});
-  if(p==='/dex/provisions/nft')return json(res,{nfts:body.tokenIds.map(tokenId=>tokenId===NFT?provision:{tokenId,provisionNft:false,redeemed:false})});
+  if(p==='/dex/provisions/nft')return json(res,{nfts:body.tokenIds.map(tokenId=>tokenId===NFT?provision:tokenId===id(952)?{tokenId,provisionNft:false,redeemed:true,pool}:{tokenId,provisionNft:false,redeemed:false})});
   if(p==='/sigmafi/assets')return json(res,body.tokenIds.map(lookupAsset));
   if(p==='/sigmafi/bonds')return json(res,page(mode==='empty'?[]:bonds.filter(b=>u.searchParams.get('all')==='true'||b.verified),'bonds',u));
-  if(p==='/sigmafi/portfolio')return req.headers.api_key?json(res,{height,orders:mode==='empty'?[]:orders.filter(o=>o.mine),borrowing:mode==='empty'?[]:[bonds[0]],lending:mode==='empty'?[]:[{assetId:ASSET,bond:bonds[0],vault:[],claimable:false},{assetId:bonds[1].assetId,bond:bonds[1],vault:[],claimable:false},...[id(950),id(951)].map(assetId=>({assetId,bond:null,vault:lookupAsset(assetId).vault,claimable:true}))],truncated:false}):json(res,{detail:'Fixture API key required'},403);
+  if(p==='/sigmafi/portfolio')return req.headers.api_key?json(res,{height,orders:mode==='empty'?[]:orders.filter(o=>o.mine),borrowing:mode==='empty'?[]:bonds.filter(b=>b.borrowerIsMe),lending:mode==='empty'?[]:[...bonds.filter(b=>b.verified).map(b=>({assetId:b.assetId,bond:b,vault:[],claimable:false})),...[id(950),id(951)].filter(assetId=>!claimedAssets.has(assetId)).map(assetId=>({assetId,bond:null,vault:lookupAsset(assetId).vault,claimable:true}))],truncated:false}):json(res,{detail:'Fixture API key required'},403);
   if(p==='/sigmafi/orders'&&req.method==='GET')return json(res,page(mode==='empty'?[]:orders,'orders',u));
   if(p.startsWith('/sigmafi/')&&req.method==='POST'){
    const check=p.endsWith('/check');
    const creates=p==='/sigmafi/orders'||p==='/sigmafi/orders/check';
+   if(creates&&body?.batchingFee!==undefined)return json(res,{detail:'batchingFee is chosen by the lender on fill, not on order creation'},400);
    const boxId=p.split('/')[3],row=orders.find(o=>o.boxId===boxId),b=bonds.find(b=>b.boxId===boxId);
    if(check){
     if(row?.refusal&&p.includes('/fill'))return json(res,{detail:row.refusal},422);
-    const t=creates?{...body,kind:'zero-coupon',principalNanoErgs:body.principalNanoErgs??'1000000',principalToken:body.principalToken??null,repayToken:body.principalToken?.tokenId??null,maturityHeight:body.maturityHeight??null,durationBlocks:body.durationBlocks??null}:row?.terms??b?.terms??null;
-    return json(res,{action:creates?'createOrder':p.split('/').at(-2),boxId:creates?null:boxId,terms:t,paysNanoErgs:creates?(BigInt(body.collateralNanoErgs)+1000000n).toString():row?.terms.principalNanoErgs??'1000000',paysTokens:creates?body.collateralTokens??[]:row?.terms.principalToken?[row.terms.principalToken]:[],receivesNanoErgs:'0',receivesTokens:p.includes('/fill')?[{tokenId:boxId,amount:'1'}]:[],feeNanoErgs:'1000000',notes:['Local preview only. This fixture never signs or broadcasts.'],warnings:[]});
+    const reserve=body?.batchingFee??'50000000',fill=p.includes('/fill');
+    const t=creates?{...body,batchingFee:'0',kind:'zero-coupon',principalNanoErgs:body.principalNanoErgs??'1000000',principalToken:body.principalToken??null,repayToken:body.principalToken?.tokenId??null,maturityHeight:body.maturityHeight??null,durationBlocks:body.durationBlocks??null}:row?{...row.terms,...(fill?{batchingFee:reserve,maturityHeight:row.terms.maturityHeight??height+row.terms.durationBlocks}:{})}:b?.terms??null;
+    return json(res,{action:creates?'createOrder':p.split('/').at(-2),boxId:creates?null:boxId,terms:t,paysNanoErgs:creates?(BigInt(body.collateralNanoErgs)+1000000n).toString():fill?(BigInt(row.terms.principalNanoErgs)+BigInt(reserve)+2000000n).toString():'1000000',paysTokens:creates?body.collateralTokens??[]:row?.terms.principalToken?[row.terms.principalToken]:[],receivesNanoErgs:fill?'1000000':'0',receivesTokens:fill?[{tokenId:boxId,amount:'1'}]:[],feeNanoErgs:'1000000',notes:['Local preview only. This fixture never signs or broadcasts.'],warnings:fill&&BigInt(reserve)<50000000n?['The reserve is below the automatic liquidation floor.']:[]});
    }
    if(!req.headers.api_key)return json(res,{detail:'Fixture API key required'},403);
-   if(creates)orders.unshift({boxId:id(500+orders.length),terms:{...body,kind:'zero-coupon',repayToken:body.principalToken?.tokenId??null},mine:true,refusal:null,creationHeight:height});
-   return json(res,{txId:id(999),outcome:'accepted',boxId:id(500),assetId:p.includes('/fill')?boxId:null});
+   if(creates)orders.unshift({boxId:id(500+orders.length),terms:{...body,batchingFee:'0',kind:'zero-coupon',repayToken:body.principalToken?.tokenId??null},mine:true,refusal:null,creationHeight:height});
+   if(p.includes('/fill')||p.includes('/cancel'))orders=orders.filter(o=>o.boxId!==boxId);
+   if(p.includes('/repay')||p.includes('/liquidate'))bonds=bonds.filter(b=>b.boxId!==boxId);
+   if(p.startsWith('/sigmafi/claims/'))claimedAssets.add(boxId);
+   return json(res,{txId:id(999),outcome:mode==='uncertain'?'uncertain':'accepted',boxId:id(500),assetId:p.includes('/fill')?boxId:null});
   }
   if(p==='/forwards/accumulator')return json(res,{height,deployed:true,boxId:id(88),currentEpoch:Math.floor(height/128),blocksLeftInEpoch:32,currentDifficulty:'120000000000000',lastEpoch:Math.floor(height/128)-1,limits,recent:[],nextDifficulty:{epoch:Math.floor(height/128)+1,difficulty:'124000000000000',change:.033,exact:false}});
   if(p==='/forwards/market')return json(res,{height,waiting:2,inWindow:3,settleable:1,refundable:0,positions:6,openInterest:'12000000000000',epochsFunded:128,longs:{offers:3,notional:'2500000000000'},shorts:{offers:2,notional:'1800000000000'},truncated:false});

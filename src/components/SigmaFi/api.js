@@ -138,7 +138,7 @@ export async function allPages(read, key, max = 1000) {
 
 export const checkCreateOrder = (request) => req('/sigmafi/orders/check', { method: 'POST', body: request });
 export const checkCancelOrder = (id) => req(`/sigmafi/orders/${id}/cancel/check`, { method: 'POST' });
-export const checkFillOrder = (id) => req(`/sigmafi/orders/${id}/fill/check`, { method: 'POST' });
+export const checkFillOrder = (id, request) => req(`/sigmafi/orders/${id}/fill/check`, { method: 'POST', body: request });
 export const checkRepay = (id) => req(`/sigmafi/bonds/${id}/repay/check`, { method: 'POST' });
 export const checkLiquidate = (id) => req(`/sigmafi/bonds/${id}/liquidate/check`, { method: 'POST' });
 export const checkClaim = (tokenId) => req(`/sigmafi/claims/${tokenId}/check`, { method: 'POST' });
@@ -149,7 +149,7 @@ export const getPortfolio = () => req('/sigmafi/portfolio', { keyed: true });
 
 export const createOrder = (request) => req('/sigmafi/orders', { method: 'POST', body: request, keyed: true });
 export const cancelOrder = (id) => req(`/sigmafi/orders/${id}/cancel`, { method: 'POST', keyed: true });
-export const fillOrder = (id) => req(`/sigmafi/orders/${id}/fill`, { method: 'POST', keyed: true });
+export const fillOrder = (id, request) => req(`/sigmafi/orders/${id}/fill`, { method: 'POST', body: request, keyed: true });
 export const repay = (id) => req(`/sigmafi/bonds/${id}/repay`, { method: 'POST', keyed: true });
 export const liquidate = (id) => req(`/sigmafi/bonds/${id}/liquidate`, { method: 'POST', keyed: true });
 export const claim = (tokenId) => req(`/sigmafi/claims/${tokenId}`, { method: 'POST', keyed: true });

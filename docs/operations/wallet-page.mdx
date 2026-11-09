@@ -57,7 +57,7 @@ the single-unit tokens in your wallet against the LithosDex pools and marks each
 
 | Badge | What it means |
 |---|---|
-| **LD-NFT** | The NFT owns an open provision. Hover to see the pool and the provision's stats, or follow the link to the pool's **Liquidity** tab |
+| **LD-NFT** | The NFT owns an open provision. Hover to see its stats, or click it to open **LithosDex > NFT search** with its token ID and result |
 | **Not an LD-NFT** | The token is named like a provision NFT, but owns no open provision |
 
 The check runs by itself when the wallet holds 100 tokens or fewer. Above that, tick
@@ -65,6 +65,11 @@ The check runs by itself when the wallet holds 100 tokens or fewer. Above that, 
 **Select LD-NFT names** selects every token named like a provision NFT.
 [Providing liquidity](../lithosdex/liquidity.mdx#checking-a-provision-nft) covers checking an NFT you do
 not hold.
+
+SigmaFi Bonds are checked against their originating orders as well. Clicking a bond opens
+**Extensions > SigmaFi > Search** with its token ID, collateral and settlement evidence. Both search
+pages use your client’s API and need no API key. A bond or provision shown as collateral is also a link
+to its own lookup, including inside hover detail cards, so you can follow bonds secured by other bonds.
 
 ## Claiming lending rewards
 

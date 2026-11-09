@@ -4,7 +4,7 @@ import BondIcon from './BondIcon';
 import { bondState } from '../SigmaFi/bond';
 import s from './styles.module.css';
 
-/** Provisions use a compact tile; bonds keep their lifecycle-specific SigmaFi artwork. */
+/** Provisions use a compact tile; bonds keep the SigmaFi mark and a lifecycle badge. */
 export default function CompactAssetIcon({ tokenId, check, label, size = 16 }) {
   const nft = check?.nft ?? check;
   const bond = check?.bond;

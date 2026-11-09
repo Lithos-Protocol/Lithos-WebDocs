@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import s from './styles.module.css';
 import * as api from './api';
 import { useExtensions } from '../Extensions/ExtensionsLayout';
 import { KeyGate } from '../Extensions/ui';
-import { Alert, Spinner, TxResult } from '../Dex/ui';
+import { Alert, Spinner } from '../Dex/ui';
 import { Contents, IdTag, TokenAmount } from './tokens';
 import { collateralOf, bondAssetName } from './bond';
 import { CollateralHealth, UsdValue } from './PriceContext';
 import BondIcon from '../Wallet/BondIcon';
+import { buildFill } from './order';
 import {
   aprOf,
   big,
@@ -48,7 +49,7 @@ export function InterestCell({ t, tip }) {
 }
 
 /** Collateral is shown separately from the bounty and the minimum box value. */
-export function Collateral({ t, breakdown = false }) {
+export function Collateral({ t, breakdown = false, unfilled = false }) {
   const c = collateralOf(t);
   return <>
     <Contents nanoErgs={c.collateral} tokens={t.collateralTokens} />
@@ -56,11 +57,11 @@ export function Collateral({ t, breakdown = false }) {
     <UsdValue nanoErgs={c.collateral} tokens={t.collateralTokens} />
     {breakdown && <CollateralHealth t={t} />}
     {breakdown && <div className={s.reserveBreakdown}>
-      <span><span>Batching / liquidation fee</span><TokenAmount tokenId="ERG" amount={c.fee} /></span>
-      <span><span>Box minimum</span><TokenAmount tokenId="ERG" amount={c.minimum} /></span>
-      <span className={s.reserveTotal}><span>ERG locked</span><TokenAmount tokenId="ERG" amount={c.total} /></span>
+      <span><span>Lender batching reserve</span>{unfilled ? <span title="Standard reserve for automatic liquidation; the lender selects the amount on fill.">≥ {fmtErg(MIN_BATCHING_FEE)} ERG</span> : <TokenAmount tokenId="ERG" amount={c.fee} />}</span>
+      {unfilled ? <span><span>Liquidation</span><span>{liquidationLabel(t.liquidation)}</span></span> : <span><span>Box minimum</span><TokenAmount tokenId="ERG" amount={c.minimum} /></span>}
+      <span className={s.reserveTotal}><span>{unfilled ? 'Borrower ERG locked' : 'ERG locked'}</span><TokenAmount tokenId="ERG" amount={unfilled ? c.borrower : c.total} /></span>
     </div>}
-    {c.shortfall && <span className={s.refusal}>Insufficient ERG for the fee and box minimum.</span>}
+    {c.shortfall && <span className={s.refusal}>Insufficient ERG for the box minimum.</span>}
   </>;
 }
 
@@ -82,7 +83,7 @@ export function TermCell({ t, tip }) {
 export function FeeCell({ t }) {
   const low = big(t.batchingFee) < MIN_BATCHING_FEE;
   return (
-    <span className={s.cell} title="The most a liquidator keeps from the collateral's ERG if the bond is not repaid">
+    <span className={s.cell} title="Lender-funded reserve, refunded to the lender on repayment or available to a liquidator">
       <span className={low ? s.warnText : undefined}><TokenAmount tokenId="ERG" amount={t.batchingFee} /></span>
       <span className={s.sub}>{low ? 'Below fee floor' : liquidationLabel(t.liquidation)}</span>
     </span>
@@ -99,7 +100,7 @@ function PreviewAssets({ nanoErgs = '0', tokens = [], empty = 'Nothing now' }) {
 }
 
 /** A loan's headline amounts, timing, collateral, and reserves have distinct visual groups. */
-export function TermRows({ t, tip }) {
+export function TermRows({ t, tip, unfilled = false }) {
   const c = collateralOf(t);
   return <section className={s.previewTerms} aria-label="Loan terms">
     <h3 className={s.previewTitle}>Loan terms</h3>
@@ -116,12 +117,12 @@ export function TermRows({ t, tip }) {
       <PreviewAssets nanoErgs={c.collateral} tokens={t.collateralTokens} empty="0 ERG" />
       <CollateralHealth t={t} />
       <div className={s.previewReserves}>
-        <div><span>Batching / liquidation fee</span><TokenAmount tokenId="ERG" amount={c.fee} icon={false} /></div>
+        <div><span>Lender batching reserve</span>{unfilled ? <span>Selected on fill</span> : <TokenAmount tokenId="ERG" amount={c.fee} icon={false} />}</div>
         <div><span>Box minimum</span><TokenAmount tokenId="ERG" amount={c.minimum} icon={false} /></div>
         <div><span>ERG locked</span><TokenAmount tokenId="ERG" amount={c.total} icon={false} /></div>
       </div>
       <p className={s.previewRule}><span>Liquidation</span><span>{liquidationLabel(t.liquidation)}</span></p>
-      {c.shortfall && <span className={s.refusal}>Insufficient ERG for the fee and box minimum.</span>}
+      {c.shortfall && <span className={s.refusal}>Insufficient ERG for the box minimum.</span>}
     </div>
   </section>;
 }
@@ -131,57 +132,51 @@ export function TermRows({ t, tip }) {
  * moved, so everything is re-read.
  */
 export function ActionDrawer({ action, id, tip, onDone, terms }) {
-  const { keyed, changed, version } = useExtensions();
-  const [quote, setQuote] = useState(null);
+  const { keyed, changed, version, submitted } = useExtensions();
+  const [reviewed, setReviewed] = useState(null);
+  const [fee, setFee] = useState('0.05');
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(null);
   const a = api.ACTIONS[action];
+  const fill = action === 'fillOrder';
+  const request = fill ? buildFill(fee) : { body: undefined };
+  const requestKey = JSON.stringify([action, id, version, fill ? request.body ?? fee : null]);
+  const current = useRef(requestKey);
+  current.current = requestKey;
+  const quote = reviewed?.key === requestKey ? reviewed.quote : null;
 
   useEffect(() => {
     let live = true;
-    setQuote(null);
+    setReviewed(null);
     setError(null);
-    a.check(id)
-      .then((q) => live && setQuote(q))
-      .catch((e) => live && setError(e.message));
+    if (fill && !request.body) return;
+    const timer = setTimeout(() => {
+      a.check(id, request.body)
+        .then((q) => { if (live && current.current === requestKey) setReviewed({ quote: q, body: request.body, key: requestKey }); })
+        .catch((e) => { if (live && current.current === requestKey) setError(e.message); });
+    }, fill ? 300 : 0);
     return () => {
       live = false;
+      clearTimeout(timer);
     };
-  }, [action, id, version]);
+  }, [requestKey]);
 
   const send = async () => {
+    if (!quote || reviewed.key !== current.current || sending) return;
     setSending(true);
     setError(null);
     try {
-      setSent(await a.send(id));
-      changed();
+      const result = await a.send(id, reviewed.body);
+      submitted(a.label, result);
+      onDone();
     } catch (e) {
       setError(e.status === 409 ? `${e.message}. The book is being re-read.` : e.message);
+      setReviewed(null);
       if (e.status === 409) changed();
     } finally {
       setSending(false);
     }
   };
-
-  if (sent) {
-    return (
-      <div className={s.actionDrawer}>
-        <TxResult
-          title={`${a.label}: sent`}
-          outcome={sent.outcome}
-          txId={sent.txId}
-          rows={[...(sent.boxId ? [['Box', sent.boxId]] : []), ...(sent.assetId ? [['Bond asset', sent.assetId]] : [])]}
-        >
-          <div style={{ marginTop: 8 }}>
-            <button type="button" className={`${s.cardButton} ${s.secondaryBtn}`} onClick={onDone}>
-              Close
-            </button>
-          </div>
-        </TxResult>
-      </div>
-    );
-  }
 
   const minted = quote?.receivesTokens.some((t) => t.tokenId === quote.boxId);
   const received = quote?.receivesTokens.filter((t) => t.tokenId !== quote.boxId) ?? [];
@@ -190,10 +185,15 @@ export function ActionDrawer({ action, id, tip, onDone, terms }) {
   return (
     <div className={s.actionDrawer}>
       <div className={`${s.drawerGrid} ${!loanTerms ? s.previewSingle : ''}`}>
-        {loanTerms && <TermRows t={loanTerms} tip={tip} />}
+        {loanTerms && <TermRows t={loanTerms} tip={tip} unfilled={action === 'cancelOrder' || (fill && !quote)} />}
         <section className={s.previewWallet} aria-label="Wallet impact">
           <h3 className={s.previewTitle}>Wallet impact</h3>
-          {!quote && !error && <div className={s.previewLoading}><Spinner /> Checking with your client</div>}
+          {fill && <div className={s.fillReserve}>
+            <label><span className={s.fieldLabel}>Batching reserve (ERG)</span><input className={s.search} aria-label="Batching reserve (ERG)" inputMode="decimal" value={fee} disabled={sending} onChange={(e) => { setFee(e.target.value); setError(null); }} /></label>
+            <p className={s.hint}>You fund this above the borrower’s collateral. It returns to the bond holder with repayment, or pays the liquidator if the loan matures unpaid. The standard reserve is 0.05 ERG.</p>
+            {request.why && <p className={s.refusal}>{request.why}</p>}
+          </div>}
+          {!quote && !error && (!fill || request.body) && <div className={s.previewLoading}><Spinner /> Checking with your client</div>}
           {error && <Alert kind="error" title="Not possible now">{error}</Alert>}
           {quote && (
             <>
@@ -222,7 +222,7 @@ export function ActionDrawer({ action, id, tip, onDone, terms }) {
               ))}
               {keyed ? (
                 <div className={s.previewActions}>
-                  <button className={s.primaryBtn} style={{ width: 'auto', padding: '10px 22px' }} type="button" onClick={send} disabled={sending}>
+                  <button className={s.primaryBtn} style={{ width: 'auto', padding: '10px 22px' }} type="button" onClick={send} disabled={sending || !quote}>
                     {sending ? <Spinner /> : a.label}
                   </button>
                   <button className={`${s.cardButton} ${s.secondaryBtn}`} type="button" onClick={onDone} disabled={sending}>

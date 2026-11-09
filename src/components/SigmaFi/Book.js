@@ -41,7 +41,7 @@ export function RequestCards({ rows, tip, open, setOpen }) {
         <div className={s.loanTop}><span className={s.loanType}>{r.mine ? 'Your request' : 'Loan request'}</span><span className={s.liveBadge}>{r.refusal && !r.mine ? 'Unavailable' : 'Open'}</span></div>
         {!expanded && <>
         <div className={s.loanHeading}><Principal t={r.terms} /><InterestCell t={r.terms} tip={tip} /></div>
-        <div className={s.collateralWell}><span className={s.fieldLabel}>Collateral</span><Collateral t={r.terms} breakdown /></div>
+        <div className={s.collateralWell}><span className={s.fieldLabel}>Collateral</span><Collateral t={r.terms} breakdown unfilled /></div>
         <div className={s.loanDetails}>
           <div><span className={s.fieldLabel}>Term</span><TermCell t={r.terms} tip={tip} /></div>
           <div><span className={s.fieldLabel}>Repayment</span><Repayment t={r.terms} /></div>
@@ -129,7 +129,7 @@ export default function Book() {
     {book?.truncated && <Alert kind="warn">The scan reached its limit. Totals cover the loaded requests and bonds.</Alert>}
     {!book && !error ? <div className={s.empty}><Spinner /> Loading market</div> : error && !book ? null : rows.length === 0 ? <div className={s.empty}><span className={s.emptyIcon} aria-hidden="true">◇</span><h3>{source.length ? 'No matching loans' : view === 'bonds' ? 'No active bonds' : 'No loan requests'}</h3><p>{source.length ? 'Try another asset or clear your filters.' : 'New requests and funded loans appear here.'}</p>{view === 'orders' && <Link to="/extensions/sigmafi/create">Create a loan request ↗</Link>}</div> : view === 'bonds' ? <BondTable rows={paged.rows} tip={tip} open={open} setOpen={setOpen} /> : <RequestCards rows={paged.rows} tip={tip} open={open} setOpen={setOpen} />}
     {rows.length > 0 && <div className={x.tableFoot}><span className={s.hint}>{paged.first + 1}–{paged.first + paged.rows.length} of {rows.length}</span><div className={s.toolGroup}><select className={s.select} value={paged.size} onChange={(e) => paged.setSize(Number(e.target.value))} aria-label="Loans per page">{[12,24,48].map((n) => <option key={n} value={n}>{n} per page</option>)}</select>{paged.pages > 1 && <Pager page={paged.page} pages={paged.pages} onPage={paged.setPage} />}</div></div>}
-    <p className={s.marketNote}>APR is annualized using the remaining term and estimated block time. Review the collateral and batching / liquidation fee before lending.</p>
+    <p className={s.marketNote}>APR is annualized using the remaining term and estimated block time. Review the collateral and choose your batching reserve before lending.</p>
   </>;
 }
 

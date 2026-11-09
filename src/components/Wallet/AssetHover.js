@@ -46,7 +46,9 @@ export default function AssetHover({ children, details, className = '', enabled 
     onBlur={(e) => { if (!(e.relatedTarget instanceof Node) || (!e.currentTarget.contains(e.relatedTarget) && !panel.current?.contains(e.relatedTarget))) hide(); }}
     onKeyDown={(e) => { if (e.key === 'Escape' && open) { setOpen(false); e.stopPropagation(); } }}>
     {children}
-    {open && createPortal(<span ref={panel} className={s.floatingAsset} style={position} onMouseEnter={show} onMouseLeave={hide}>
+    {/* Tooltip links must not select or dismiss the control that owns this portal. */}
+    {open && createPortal(<span ref={panel} className={s.floatingAsset} style={position} onMouseEnter={show} onMouseLeave={hide}
+      onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
       {React.cloneElement(details, { tooltipId: id })}
     </span>, document.body)}
   </span>;

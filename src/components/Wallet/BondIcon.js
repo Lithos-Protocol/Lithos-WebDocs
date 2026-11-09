@@ -3,11 +3,10 @@ import useBaseUrl from '@docusaurus/useBaseUrl';
 import s from './styles.module.css';
 import { bondState } from '../SigmaFi/bond';
 
-/** SigmaFi artwork with an optional zero-coupon badge; settled bonds use the lighter mark. */
+/** Every SigmaFi bond uses the dark mark; the badge keeps its lifecycle color. */
 export default function BondIcon({ bond, size = 34, state, badge = true, badgePlacement = 'corner' }) {
   const lifecycle = state ?? bondState({ bond, verified: bond?.verified });
-  const settled = lifecycle === 'repaid' || lifecycle === 'liquidated' || lifecycle === 'settled';
-  const src = useBaseUrl(`/img/sigmafi/bond-${settled ? 'light' : 'dark'}.svg`);
+  const src = useBaseUrl('/img/sigmafi/bond-dark.svg');
   const beside = badge && badgePlacement === 'right';
   const markSize = badge && !beside ? size + 2 : size;
   return (

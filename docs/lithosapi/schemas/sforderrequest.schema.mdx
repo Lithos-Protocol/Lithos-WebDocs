@@ -6,7 +6,7 @@ sidebar_label: "SFOrderRequest"
 hide_title: true
 hide_table_of_contents: true
 schema: true
-sample: {"collateralNanoErgs":"string","collateralTokens":[{"tokenId":"string","amount":"string"}],"principalNanoErgs":"string","principalToken":{"tokenId":"string","amount":"string"},"repayment":"string","maturityHeight":0,"durationBlocks":0,"batchingFee":"string","liquidation":"MaturityLiquidation"}
+sample: {"collateralNanoErgs":"string","collateralTokens":[{"tokenId":"string","amount":"string"}],"principalNanoErgs":"string","principalToken":{"tokenId":"string","amount":"string"},"repayment":"string","maturityHeight":0,"durationBlocks":0,"liquidation":"MaturityLiquidation"}
 custom_edit_url: null
 ---
 
@@ -25,9 +25,8 @@ import Heading from "@theme/Heading";
 Exactly one of `principalNanoErgs` and `principalToken`, and exactly one of `maturityHeight` and `durationBlocks`.
 
 <Schema
-  schema={{"type":"object","x-tags":"sigmafi","description":"Exactly one of `principalNanoErgs` and `principalToken`, and exactly one of `maturityHeight` and `durationBlocks`.","required":["collateralNanoErgs","repayment"],"properties":{"collateralNanoErgs":{"type":"string"},"collateralTokens":{"type":"array","items":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"}},"principalNanoErgs":{"type":"string"},"principalToken":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"},"repayment":{"type":"string"},"maturityHeight":{"type":"integer","description":"At least 3 blocks above the current height."},"durationBlocks":{"type":"integer","minimum":30},"batchingFee":{"type":"string","description":"At least 50000000. Defaults to `sigmafi.bonds.batchingFeeNanoErg`."},"liquidation":{"type":"string","default":"MaturityLiquidation"}},"title":"SFOrderRequest"}}
+  schema={{"type":"object","x-tags":"sigmafi","description":"Exactly one of `principalNanoErgs` and `principalToken`, and exactly one of `maturityHeight` and `durationBlocks`.","required":["collateralNanoErgs","repayment"],"properties":{"collateralNanoErgs":{"type":"string"},"collateralTokens":{"type":"array","items":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"}},"principalNanoErgs":{"type":"string"},"principalToken":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"},"repayment":{"type":"string"},"maturityHeight":{"type":"integer","format":"int64","description":"At least 3 blocks above the current height."},"durationBlocks":{"type":"integer","format":"int64","minimum":30},"batchingFee":{"type":"string","deprecated":true,"description":"Rejected on order creation. The lender selects this reserve in SFFillRequest instead."},"liquidation":{"type":"string","default":"MaturityLiquidation"}},"title":"SFOrderRequest"}}
   schemaType={"response"}
 >
-  
+
 </Schema>
-            

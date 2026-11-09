@@ -28,12 +28,11 @@ export function decimalText(raw, decimals) {
 }
 
 /** V2 creates borrower orders only. Exactly one principal and one maturity field cross the wire. */
-export function buildOrder({ asset, loanAmount, repayAmount, days, term = days, termUnit = 'days', schedule, collateralErg, collateralTokens, fee, height, metadata = {}, wallet, nftIds = new Set() }) {
+export function buildOrder({ asset, loanAmount, repayAmount, days, term = days, termUnit = 'days', schedule, collateralErg, collateralTokens, height, metadata = {}, wallet, nftIds = new Set() }) {
   const decimals = (id) => id === 'ERG' ? 9 : metadata[id]?.decimals ?? 0;
   const principal = units(loanAmount, decimals(asset));
   const repayment = units(repayAmount, decimals(asset));
   const collateral = units(String(collateralErg).trim() || '0', 9, true);
-  const batchingFee = units(fee, 9);
   const duration = termToBlocks(term, termUnit);
   if (asset !== 'ERG' && !/^[a-f0-9]{64}$/.test(asset)) return { why: 'Select a loan asset.' };
   if (nftIds.has(asset)) return { why: 'Choose a fungible loan asset. NFTs can be used as collateral.' };
@@ -44,9 +43,8 @@ export function buildOrder({ asset, loanAmount, repayAmount, days, term = days, 
   if (duration < (schedule === 'onClose' ? 30 : 3)) return { why: 'Choose a longer loan term.' };
   if (!Number.isInteger(height) || height <= 0) return { why: 'Connect to the client to read the current block.' };
   if (height + duration > 2_147_483_647) return { why: 'The term exceeds the maximum maturity height.' };
-  if (!batchingFee || batchingFee < 50_000_000n) return { why: 'The batching / liquidation fee must be at least 0.05 ERG.' };
   if (collateral == null) return { why: 'Enter a valid non-negative ERG collateral amount.' };
-  const locked = collateral + batchingFee + BOX_MINIMUM;
+  const locked = collateral + BOX_MINIMUM;
   if (locked > LONG_MAX - NETWORK_FEE) return { why: 'The collateral total exceeds the supported ERG amount.' };
   const seen = new Set();
   const tokens = [];
@@ -61,14 +59,21 @@ export function buildOrder({ asset, loanAmount, repayAmount, days, term = days, 
     seen.add(t.tokenId);
     tokens.push({ tokenId: t.tokenId, amount: amount.toString() });
   }
-  if (wallet && locked + NETWORK_FEE > BigInt(wallet.nanoErgs)) return { why: 'Your ERG balance must cover collateral, the batching fee, box minimum and network fee.' };
+  if (wallet && locked + NETWORK_FEE > BigInt(wallet.nanoErgs)) return { why: 'Your ERG balance must cover collateral, the box minimum and network fee.' };
   return { body: {
     ...(asset === 'ERG' ? { principalNanoErgs: principal.toString() } : { principalToken: { tokenId: asset, amount: principal.toString() } }),
     repayment: repayment.toString(),
     collateralNanoErgs: locked.toString(),
     collateralTokens: tokens,
-    batchingFee: batchingFee.toString(),
     liquidation: 'MaturityLiquidation',
     ...(schedule === 'onClose' ? { durationBlocks: duration } : { maturityHeight: height + duration }),
   } };
+}
+
+/** A lender may choose any nonnegative reserve, including zero, at nanoERG precision. */
+export function buildFill(fee) {
+  const amount = units(fee, 9, true);
+  return amount == null
+    ? { why: 'Enter a non-negative batching reserve with at most 9 decimal places.' }
+    : { body: { batchingFee: amount.toString() } };
 }

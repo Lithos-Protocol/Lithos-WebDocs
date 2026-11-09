@@ -35,7 +35,7 @@ function HelpDetails({estimate,pricing,metadata,checks,tooltipId}) {
     <span>Collateral USD value ÷ loan principal. An informational health rating with no price-based liquidation threshold. Liquidation follows the agreed maturity and contract.</span>
     <span>Pricing uses the ERG/USD oracle, assumed $1 pegs for SigUSD/USE, and the deepest checked LithosDex liquidity route. Spectrum pools are excluded.</span>
     <span>Fees, the box minimum, and unpriced assets are excluded. “≥” is a lower bound. Spot prices do not include slippage.</span>
-    <span>Colors: red at 80% or below, orange at 90%, yellow at 100%, then greener at 125%, 150%, 175%, and 200%+. These are display bands, not liquidation thresholds.</span>
+    <span>SigmaFi Bonds and LD-NFTs are unpriced and excluded from the ratio. Their backing collateral, repayments, liquidity and fees are not counted; inspect their asset details to assess them.</span>
     {pricing?.oracle && <span>Oracle: block {pricing.oracle.current.creationHeight.toLocaleString()} · {pricing.age} blocks old{pricing.fresh?'':' · stale, excluded from ERG pricing'}.</span>}
     {!pricing?.oracle && <span>ERG/USD oracle unavailable. ERG-based values are not shown.</span>}
     {pricing?.poolState?.truncated && <span>The pool index is truncated; routes cover only the pools returned by the client.</span>}

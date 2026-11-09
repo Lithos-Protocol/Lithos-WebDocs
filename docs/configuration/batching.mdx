@@ -18,7 +18,7 @@ fee the order's own script pays. This page covers four blocks:
   liquidation batcher and arbitrage in your own blocks.
 - `lithosdex.orders`, which sets the fees on orders **you** place.
 - `forwards.offers`, which limits the difficulty forwards you offer or fill.
-- `sigmafi.bonds`, which sets the batching fee on SigmaFi bonds you create.
+- `sigmafi.bonds`, which sets the default lender reserve for SigmaFi orders you fill.
 
 ## How a batcher earns
 
@@ -350,17 +350,19 @@ client shows them in the order book but will not fill them.
 These are validated per request rather than at startup, so a bad value refuses forwards requests
 rather than refusing to start the client.
 
-## SigmaFi bonds you create
+## SigmaFi orders you fill
 
-The `sigmafi.bonds` block sets the batching fee on SigmaFi orders and offers **you** create through the API
-or web panel, when the request does not set a higher one:
+The `sigmafi.bonds` block sets the lender-funded batching reserve when **you fill** a SigmaFi order
+through the API and omit the fill request’s `batchingFee`. Order creation rejects that field. The
+web panel’s lending preview starts at 0.05 ERG and sends the amount you select explicitly.
 
 | Setting | Default | Range | What it does |
 |---|---|---|---|
-| `sigmafi.bonds.batchingFeeNanoErg` | 50000000 | 50000000 to 100000000000 | The most of the collateral's ERG a liquidator keeps if the bond is not repaid |
+| `sigmafi.bonds.batchingFeeNanoErg` | 50000000 | Nonnegative nanoERG, checked per fill | Reserve added above the borrower’s collateral; refunded to the bond holder on repayment or available to the liquidator |
 
-The client refuses a fee under 0.05 ERG, since clients on their shipped settings would not liquidate such
-a bond and its lender would have to do it alone.
+The lender may override it with any nonnegative amount, including zero. Below 0.05 ERG, the fill quote
+warns that clients on shipped settings will not liquidate the bond automatically. The borrower funds
+the collateral and its box minimum; this reserve is additional ERG supplied by the lender.
 
 ## Next steps
 

@@ -1,0 +1,33 @@
+---
+id: walletarbreclaimresult
+title: "WalletArbReclaimResult"
+description: "The transaction a reclaim of the arb stake sent"
+sidebar_label: "WalletArbReclaimResult"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"txId":"string","boxes":1,"nanoErgs":"10000000000","outcome":"accepted","remainingBoxes":0}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"WalletArbReclaimResult"}
+>
+</Heading>
+
+
+
+The transaction a reclaim of the arb stake sent
+
+<Schema
+  schema={{"description":"The transaction a reclaim of the arb stake sent","type":"object","x-tags":"wallet","required":["txId","boxes","nanoErgs","outcome","remainingBoxes"],"properties":{"txId":{"type":"string"},"boxes":{"type":"integer","format":"int32","description":"Boxes this transaction spends","example":1},"nanoErgs":{"type":"string","description":"ERG in those boxes, before the 0.001 ERG fee. Decimal string.","example":"10000000000"},"outcome":{"type":"string","enum":["accepted","uncertain"],"description":"`accepted` when the node took the transaction. `uncertain` when its answer was lost: check `GET /wallet/arb` before calling again.\n"},"remainingBoxes":{"type":"integer","format":"int32","description":"Boxes left at the address for another call","example":0}},"title":"WalletArbReclaimResult"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

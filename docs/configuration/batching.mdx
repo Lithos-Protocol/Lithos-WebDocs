@@ -257,17 +257,17 @@ token/token kinds. Each swap is one transaction, and every swap of a cycle goes 
 Nothing arbitrage builds is broadcast. The client builds cycles after both DEX batchers have built their
 runs, so a cycle trades against each pool as those runs leave it and never spends a box a run spends.
 
-**Unlike order execution, arbitrage needs capital.** The client holds one wallet box as the stake, under
-the following rules:
+**Unlike order execution, arbitrage needs capital.** The client keeps that capital, the stake, at your
+arb address, under the following rules:
 
-- The stake is the smallest plain wallet box with no tokens that holds at least `stakeNanoErg`.
-- The stake is never one of the boxes pinned for fraud proofs, and never the last plain box the mempool
-  path needs.
-- The stake stays out of the client's other transactions and out of your reported spendable balance.
-- The stake leaves your wallet only inside one of your own blocks. Each cycle returns it whole to your
-  wallet in that block, and the returned box becomes the next stake.
-- If no box qualifies, the client makes one, as [Making the stake box](#making-the-stake-box) explains.
-  A box that arrives later is taken without a restart.
+- The arb address is your wallet's first key under a script of its own. Only your key spends it, but
+  your node wallet does not list boxes there, so no other program using the wallet can select them.
+- The stake is the largest box at the arb address that holds at least 0.1 ERG and no tokens.
+- ERG at the arb address is not part of your wallet balance or your reported spendable balance.
+- Each cycle spends the stake and returns it whole to the arb address in the same block. The returned
+  box becomes the next stake. No wallet box is spent.
+- If the address holds no stake, the client sends one, as [Funding the arb address](#funding-the-arb-address)
+  explains. ERG you send to the address yourself is used as well, without a restart.
 
 The stake limits how large one cycle can be, not how many cycles a block holds, because each cycle
 hands the stake on to the next. The following settings control arbitrage:
@@ -275,9 +275,12 @@ hands the stake on to the next. The following settings control arbitrage:
 | Setting | Default | Range | What it does |
 |---|---|---|---|
 | `batching.arb.enabled` | `true` | `true` or `false` | Run arbitrage at all |
-| `batching.arb.stakeNanoErg` | 10000000000 | 100000000 to 10000000000000 | Least ERG in the stake box, and the most one cycle puts in |
+| `batching.arb.stakeNanoErg` | 10000000000 | 100000000 to 10000000000000 | ERG `autoReserve` sends to the arb address, and the most one cycle puts in |
 | `batching.arb.minProfitNanoErg` | 1000000 | 0 to 1000000000000 | Least profit, in nanoERG, a cycle must leave to be built. Below 1000000 it acts as 1000000, since the profit needs a box of its own |
-| `batching.arb.autoReserve` | `true` | `true` or `false` | Merge plain wallet boxes into a stake box when none can be held |
+| `batching.arb.autoReserve` | `true` | `true` or `false` | Send a stake from your wallet to the arb address when it holds none of full size |
+
+The client finds the stake by reading the arb address, so arbitrage needs the node's extra index,
+`ergo.node.extraIndex = true`.
 
 Arbitrage runs only while all four of the following are on. All four ship on:
 
@@ -294,25 +297,37 @@ the same contract check the LithosDex batcher applies.
 genesis transaction creates, with your executor fees, so every miner who submits to that rollup is paid
 a share of it by score. On **Mining > Payments** it appears as Arb, under Into the pool.
 
-### Making the stake box
+### Funding the arb address
 
-With `autoReserve` on, the client makes a stake box whenever your wallet has none it can hold, for
-any reason. Every plain box may be smaller than `stakeNanoErg`, or the only large box may be needed for
-a fraud-proof pin or by the mempool path. The client acts only while your confirmed plain boxes hold
+With `autoReserve` on, the client sends a stake to the arb address when no box of at least
+`stakeNanoErg` with no tokens is there or on its way. It acts only while your wallet's spendable ERG is
 at least twice `stakeNanoErg`, which is 20 ERG at the default, so as much again stays free for
 everything else.
 
 It sends one transaction that pays the 0.001 ERG minimum fee, built as follows:
 
-- It spends your largest plain boxes first, as few as cover the stake, the fee and any extra box below.
-- It creates one box of exactly `stakeNanoErg`, your change, and a 0.05 ERG box when the fraud-proof pins
-  would otherwise leave the stake without a second free box.
-- Every box stays at your first address, so only the fee leaves your wallet.
+- It is funded like any other transaction the client sends, from any of your wallet's boxes.
+- It creates one box of exactly `stakeNanoErg` at the arb address.
+- Your change, with any tokens the spent boxes held, returns to your first address.
 
-The client takes the new box as the stake once it confirms. It checks at most every 10 minutes, about
-5 blocks, so one merge confirms before the next check. If your confirmed plain boxes hold less than
-twice the stake, the client logs one warning with what they hold. Send ERG to your first address, or
-lower `stakeNanoErg`. With `autoReserve` off, no arbitrage runs until a box qualifies.
+Cycles start from the new box once it confirms. The client first checks about a minute after it
+starts, then every 10 minutes, about 5 blocks, until a stake is at the address. If your wallet holds
+less than twice the stake, the client logs one warning with what it holds. Send ERG to your wallet, or
+lower `stakeNanoErg`.
+
+You can also fund the address yourself. Any box there with at least 0.1 ERG and no tokens is used, and
+a box smaller than `stakeNanoErg` limits each cycle to its own size. With `autoReserve` off, this is
+the only way arbitrage gets a stake.
+
+### Reclaiming the stake
+
+The web panel's **Wallet** page shows the arb address and what it holds, and so does
+`GET /wallet/arb`. Select **Reclaim** there, or call `POST /wallet/arb/reclaim`, to send everything at
+the address back to your first address, less the 0.001 ERG fee.
+
+A reclaim stops arbitrage first, and `autoReserve` sends no new stake, until the client restarts. To
+keep arbitrage off after a restart, set `batching.arb.enabled = false`. With arbitrage off, the client
+never reads or funds the arb address, and anything left there can still be reclaimed.
 
 ## Fees on orders you place
 

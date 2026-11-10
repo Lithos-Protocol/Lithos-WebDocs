@@ -314,6 +314,28 @@
   color: var(--cur-text);
 }
 
+/* ---- Arb stake: the address on the left, what it holds on the right ---- */
+.arbCard {
+  margin-bottom: 16px;
+}
+
+.arbHeadSide {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.arbBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.arbBody .address {
+  margin-top: 6px;
+}
+
 .confirm {
   display: flex;
   align-items: center;
@@ -594,7 +616,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .row2 {
+  .row2,
+  .arbBody {
     grid-template-columns: minmax(0, 1fr);
   }
 

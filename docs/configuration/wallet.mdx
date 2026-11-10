@@ -169,9 +169,10 @@ Startup refuses a `target-utxos` at or above `wallet.consolidation.target-utxos`
 is on, because consolidation would merge the new boxes back together. With `on-initial-commitment` off,
 the client never splits your wallet.
 
-Arbitrage can also merge your boxes. With `batching.arb.autoReserve` on, the client merges plain boxes
-into one when no box can hold the arbitrage stake. [Making the stake box](./batching.mdx#making-the-stake-box)
-explains when and how.
+Arbitrage keeps its stake outside the wallet. With `batching.arb.autoReserve` on, the client sends the
+stake from your wallet to your arb address when none is there, and that ERG leaves your wallet balance
+until you reclaim it. [Funding the arb address](./batching.mdx#funding-the-arb-address) explains when
+and how.
 
 ## Consolidation
 

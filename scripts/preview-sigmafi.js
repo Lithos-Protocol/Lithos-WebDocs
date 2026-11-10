@@ -18,6 +18,15 @@ let orders = Array.from({length:9},(_,n)=>({boxId:id(100+n),terms:{...terms(n),b
 const bond = (n) => ({boxId:id(200+n),assetId:n===0?ASSET:id(901+n),terms:{...terms(n+1),durationBlocks:null,maturityHeight:height+(n===1?-30:7200)},verified:n!==2,verification:n===2?'The live bond does not match the asset’s genesis order.':null,status:n===1?'matured':'open',blocksLeft:n===1?0:7200,borrowerIsMe:n===0,creationHeight:height-3000});
 let bonds = [bond(0),bond(1),bond(2)];
 bonds[0].terms.collateralTokens.push({tokenId:NFT,amount:'1'},{tokenId:id(902),amount:'1'});
+/** The arb stake the wallet page reads. `/__fixtures?arb=active|empty|paused|off` switches it. */
+const ARB_ADDRESS='kFBAH8xZJYhrrwaUVyJRscKT8tKL9daAMFgDayFvbWct4HwPzJtLj5V7EC2La3UwH4pkHd';
+const arbStates={
+ active:{address:ARB_ADDRESS,enabled:true,paused:false,targetNanoErgs:'10000000000',stakeNanoErgs:'10000000000',boxes:1,nanoErgs:'10000000000'},
+ empty:{address:ARB_ADDRESS,enabled:true,paused:false,targetNanoErgs:'10000000000',stakeNanoErgs:'0',boxes:0,nanoErgs:'0'},
+ paused:{address:ARB_ADDRESS,enabled:true,paused:true,targetNanoErgs:'10000000000',stakeNanoErgs:'0',boxes:0,nanoErgs:'0'},
+ off:{address:ARB_ADDRESS,enabled:false,paused:false,targetNanoErgs:'0',stakeNanoErgs:'0',boxes:2,nanoErgs:'10250000000'},
+};
+let arbStake=arbStates.active;
 let mode='populated';
 const claimedAssets = new Set();
 const calls=[];
@@ -37,7 +46,7 @@ const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg'
 http.createServer(async(req,res)=>{
  try{
   const u=new URL(req.url,'http://localhost:'+PORT),p=u.pathname;
-  if(p==='/__fixtures'){if(u.searchParams.has('mode'))mode=u.searchParams.get('mode');return json(res,{mode,calls});}
+  if(p==='/__fixtures'){if(u.searchParams.has('mode'))mode=u.searchParams.get('mode');if(arbStates[u.searchParams.get('arb')])arbStake=arbStates[u.searchParams.get('arb')];return json(res,{mode,calls});}
   if(p.startsWith('/assets')){
    let rel=decodeURIComponent(p.slice(7)).replace(/^\/+/,''),file=path.resolve(build,rel);
    if(file!==build&&!file.startsWith(build+path.sep))return json(res,{detail:'Invalid path'},400);
@@ -56,6 +65,14 @@ http.createServer(async(req,res)=>{
   if(p==='/wallet/tokens/verified')return json(res,{tokens:verified});
   if(p==='/wallet/balances')return req.headers.api_key?json(res,{primaryAddress:'9hPreviewWallet',nanoErgs:'250000000000',reservedNanoErgs:'0',reservedBoxes:0,tokens:[...verified.map(t=>({...t,amount:t.tokenId===LIT?'123456789000000':t.tokenId===USD?'50000':'25000'})),{tokenId:NFT,name:`LD-NFT-${NFT.slice(0,6)}`,amount:'1',decimals:0,verified:false},...[ASSET,id(902),id(950),id(951)].map(tokenId=>({tokenId,name:`SigmaFi-ZC-Bond-${tokenId.slice(0,6)}`,amount:'1',decimals:0,verified:false}))]}):json(res,{detail:'Fixture API key required'},403);
   if(p==='/wallet/rewards')return json(res,{boxes:0,unlockedBoxes:0,unlockedNanoErgs:'0',lockedNanoErgs:'0',nanoErgs:'0'});
+  if(p==='/wallet/arb')return req.headers.api_key?json(res,arbStake):json(res,{detail:'Fixture API key required'},403);
+  if(p==='/wallet/arb/reclaim'&&req.method==='POST'){
+   if(!req.headers.api_key)return json(res,{detail:'Fixture API key required'},403);
+   if(arbStake.boxes===0)return json(res,{detail:'no confirmed box at the arb address to reclaim'},400);
+   const sent={txId:id(4242),boxes:arbStake.boxes,nanoErgs:arbStake.nanoErgs,outcome:'accepted',remainingBoxes:0};
+   arbStake={...arbStake,paused:true,stakeNanoErgs:'0',boxes:0,nanoErgs:'0'};
+   return json(res,sent);
+  }
   if(p==='/dex/provisions/nft')return json(res,{nfts:body.tokenIds.map(tokenId=>tokenId===NFT?provision:tokenId===id(952)?{tokenId,provisionNft:false,redeemed:true,pool}:{tokenId,provisionNft:false,redeemed:false})});
   if(p==='/sigmafi/assets')return json(res,body.tokenIds.map(lookupAsset));
   if(p==='/sigmafi/bonds')return json(res,page(mode==='empty'?[]:bonds.filter(b=>u.searchParams.get('all')==='true'||b.verified),'bonds',u));

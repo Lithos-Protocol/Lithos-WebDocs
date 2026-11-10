@@ -51,6 +51,12 @@ export const getRewards = () => request('/wallet/rewards', { auth: true });
 /** POST /wallet/rewards/claim — sweeps every unlocked coinbase to the primary address. */
 export const claimRewards = () => request('/wallet/rewards/claim', { method: 'POST', auth: true });
 
+/** GET /wallet/arb — the arb address and the confirmed boxes at it, which the balances leave out. */
+export const getArbStake = () => request('/wallet/arb', { auth: true });
+
+/** POST /wallet/arb/reclaim — sends everything at the arb address to the primary address and stops arb. */
+export const reclaimArbStake = () => request('/wallet/arb/reclaim', { method: 'POST', auth: true });
+
 /** GET /wallet/tokens/verified — open, so it doubles as the connection test. */
 export const getVerifiedTokens = () => request('/wallet/tokens/verified');
 

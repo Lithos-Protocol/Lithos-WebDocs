@@ -449,6 +449,18 @@ const sidebar: SidebarsConfig = {
         },
         {
           type: "doc",
+          id: "lithosapi/schemas/walletarbstake",
+          label: "WalletArbStake",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/schemas/walletarbreclaimresult",
+          label: "WalletArbReclaimResult",
+          className: "schema",
+        },
+        {
+          type: "doc",
           id: "lithosapi/schemas/wallettoken",
           label: "WalletToken",
           className: "schema",
@@ -494,6 +506,18 @@ const sidebar: SidebarsConfig = {
           id: "lithosapi/get-verified-tokens",
           label: "Verified tokens",
           className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/get-wallet-arb-stake",
+          label: "Arb stake",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "lithosapi/reclaim-wallet-arb-stake",
+          label: "Reclaim the arb stake",
+          className: "api-method post",
         },
       ],
     },

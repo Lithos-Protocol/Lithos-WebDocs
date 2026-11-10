@@ -1,0 +1,34 @@
+---
+id: walletarbstake
+title: "WalletArbStake"
+description: "The arb address and the confirmed boxes at it. None of this ERG is counted in the wallet's balances."
+sidebar_label: "WalletArbStake"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"address":"string","enabled":true,"paused":true,"targetNanoErgs":"10000000000","stakeNanoErgs":"10000000000","boxes":1,"nanoErgs":"10000000000"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"WalletArbStake"}
+>
+</Heading>
+
+
+
+The arb address and the confirmed boxes at it. None of this ERG is counted in the wallet's balances.
+
+
+<Schema
+  schema={{"description":"The arb address and the confirmed boxes at it. None of this ERG is counted in the wallet's balances.\n","type":"object","x-tags":"wallet","required":["address","enabled","paused","targetNanoErgs","stakeNanoErgs","boxes","nanoErgs"],"properties":{"address":{"type":"string","description":"The arb address. ERG sent here is used as the arb stake."},"enabled":{"type":"boolean","description":"Arbitrage is on and can reach this miner's blocks: `batching.arb.enabled`, block transactions and the `arb` candidate source are all on.\n"},"paused":{"type":"boolean","description":"A reclaim stopped arbitrage. It resumes when the client restarts."},"targetNanoErgs":{"type":"string","description":"`batching.arb.stakeNanoErg`, the size `batching.arb.autoReserve` sends and the most one cycle puts in. `0` while `enabled` is false. Decimal string.\n","example":"10000000000"},"stakeNanoErgs":{"type":"string","description":"ERG of the box cycles start from. `0` until a candidate build has taken one up, and after a reclaim. Decimal string.\n","example":"10000000000"},"boxes":{"type":"integer","format":"int32","description":"Confirmed boxes at the address, at most 1000 counted","example":1},"nanoErgs":{"type":"string","description":"ERG in those boxes, which a reclaim returns less its fee. Decimal string.","example":"10000000000"}},"title":"WalletArbStake"}}
+  schemaType={"response"}
+>
+  
+</Schema>
+            

@@ -3,7 +3,7 @@ sidebar_position: 4
 tags:
   - operations
   - wallet
-description: Reading your node wallet in the web panel's Wallet page, checking tokens and provision NFTs, and claiming lending rewards.
+description: Reading your node wallet in the web panel's Wallet page, checking tokens and provision NFTs, claiming lending rewards, and reclaiming the arb stake.
 ---
 
 # Checking your wallet
@@ -13,8 +13,9 @@ description: Reading your node wallet in the web panel's Wallet page, checking t
 *For anyone running the Lithos client with its web panel. No Ergo experience needed.*
 
 The web panel's **Wallet** page shows what the node wallet your client signs with holds: its ERG, its
-tokens, the boxes the client is holding for transactions, and your lending rewards. This page covers
-reading it, checking tokens, and claiming rewards. The settings that control how the client uses the
+tokens, the boxes the client is holding for transactions, your lending rewards, and the arb stake kept
+beside it. This page covers reading it, checking tokens, claiming rewards, and reclaiming the arb
+stake. The settings that control how the client uses the
 wallet are in [Wallet and consolidation](../configuration/wallet.mdx).
 
 ## Opening the Wallet page
@@ -82,6 +83,27 @@ spendable ERG. The client also does this on a timer, as
 [Sweeping lending rewards](../configuration/wallet.mdx#sweeping-lending-rewards) describes.
 
 **Primary address** shows the address that receives change and swept rewards.
+
+## Reading and reclaiming the arb stake
+
+Arbitrage in your own blocks runs on ERG kept at your arb address, not in your wallet. The address is
+your wallet's own key under a different script, so only you can spend it, but the ERG there is not
+counted in **Spendable**. **Arb stake** shows the address and the following:
+
+| Field | What it shows |
+|---|---|
+| **Held here** | ERG and boxes at the arb address |
+| **In use** | The box cycles start from now, and the most one cycle puts in |
+| Status | **Active**, **Not funded**, **Paused until restart** after a reclaim, or **Arb off** |
+
+The client sends the stake there by itself, as
+[Funding the arb address](../configuration/batching.mdx#funding-the-arb-address) describes. You can also
+send ERG to the address from any wallet.
+
+Select **Reclaim** to send everything at the address back to your primary address, less the 0.001 ERG
+fee. Arbitrage then stops until the client restarts. If one of your blocks spends the stake before the
+reclaim confirms, the reclaim is refused and the stake is still at the address: select **Reclaim**
+again.
 
 ## Next steps
 

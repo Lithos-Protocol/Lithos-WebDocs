@@ -493,6 +493,135 @@ function RewardsCard({ rewards, error, onClaimed }) {
   );
 }
 
+/** Where the arb stake stands, in the order that decides what the card says. */
+function arbState(arb) {
+  if (arb.paused) return { id: 'paused', label: 'Paused until restart', tone: s.trustUnverified };
+  if (!arb.enabled) return { id: 'off', label: 'Arb off', tone: s.trustUnverified };
+  if (big(arb.nanoErgs) === 0n) return { id: 'empty', label: 'Not funded', tone: s.trustUnsafe };
+  return { id: 'active', label: 'Active', tone: s.trustVerified };
+}
+
+const ARB_NOTES = {
+  active: 'Cycles in your own blocks start from the largest box here and return it in the same block.',
+  empty: 'Auto-reserve sends the stake here once the wallet holds twice its size. ERG you send here is used too.',
+  paused: 'Reclaimed. Arbitrage and auto-reserve resume when the client restarts.',
+  off: 'Arbitrage is off. Anything still here can be reclaimed.',
+};
+
+/** The arb address, the ERG kept there for arbitrage, and the reclaim that sends it back to the wallet. */
+function ArbStakeCard({ arb, error, onReclaimed }) {
+  const [confirming, setConfirming] = useState(false);
+  const [reclaiming, setReclaiming] = useState(false);
+  const [result, setResult] = useState(null);
+  const [reclaimError, setReclaimError] = useState(null);
+
+  const reclaim = async () => {
+    setReclaiming(true);
+    setReclaimError(null);
+    setResult(null);
+    try {
+      setResult(await api.reclaimArbStake());
+      onReclaimed();
+    } catch (e) {
+      setReclaimError(e.message);
+    } finally {
+      setReclaiming(false);
+      setConfirming(false);
+    }
+  };
+
+  const state = arb ? arbState(arb) : null;
+  const held = arb ? big(arb.nanoErgs) : 0n;
+
+  return (
+    <div className={`${m.card} ${s.arbCard}`}>
+      <div className={s.cardHead}>
+        <h3 className={m.cardTitle}>Arb stake</h3>
+        <span className={s.arbHeadSide}>
+          {state && <span className={`${s.trust} ${state.tone}`}>{state.label}</span>}
+          {arb && held > 0n && !confirming && (
+            <button className={s.ghostBtn} type="button" onClick={() => setConfirming(true)} disabled={reclaiming}>
+              Reclaim
+            </button>
+          )}
+        </span>
+      </div>
+      {error ? (
+        <Alert kind="error" title="Could not read the arb address">
+          {error}
+        </Alert>
+      ) : !arb ? (
+        <div className={s.empty}>
+          <Spinner /> Reading…
+        </div>
+      ) : (
+        <div className={s.arbBody}>
+          <div>
+            <div className={m.label}>
+              Arb address <CopyButton text={arb.address} title="Copy arb address" />
+            </div>
+            <div className={s.address}>{arb.address}</div>
+            <p className={m.cardNote}>{ARB_NOTES[state.id]} Not counted in Spendable.</p>
+          </div>
+          <div className={s.pairs}>
+            <div>
+              <div className={m.label}>Held here</div>
+              <div className={s.pairValue}>
+                {fmtErg(arb.nanoErgs)} <span className={s.unit}>ERG</span>
+              </div>
+              <div className={s.kpiSub}>
+                {fmtInt(arb.boxes)} box{arb.boxes === 1 ? '' : 'es'}
+              </div>
+            </div>
+            <div>
+              <div className={m.label}>In use</div>
+              <div className={s.pairValue}>
+                {fmtErg(arb.stakeNanoErgs)} <span className={s.unit}>ERG</span>
+              </div>
+              <div className={s.kpiSub}>
+                {arb.enabled && !arb.paused ? `up to ${fmtErg(arb.targetNanoErgs)} ERG a cycle` : 'none'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirming && (
+        <div className={s.confirm}>
+          <span>
+            Send {fmtErg(arb.nanoErgs)} ERG in {fmtInt(arb.boxes)} box{arb.boxes === 1 ? '' : 'es'} back to your
+            primary address. Arbitrage stops until the client restarts.
+          </span>
+          <span className={s.confirmBtns}>
+            <button className={s.ghostBtn} type="button" onClick={() => setConfirming(false)}>
+              Keep
+            </button>
+            <button className={s.primaryBtn} type="button" onClick={reclaim} disabled={reclaiming}>
+              {reclaiming ? 'Reclaiming…' : 'Reclaim'}
+            </button>
+          </span>
+        </div>
+      )}
+      {reclaimError && (
+        <Alert kind="error" title="Reclaim failed">
+          {reclaimError}
+        </Alert>
+      )}
+      {result && (
+        <TxResult
+          title="Arb stake reclaimed"
+          outcome={result.outcome}
+          txId={result.txId}
+          rows={[
+            ['Returned', `${fmtErg(result.nanoErgs)} ERG, less the 0.001 ERG fee`],
+            ...(result.remainingBoxes > 0 ? [['Left at the address', `${fmtInt(result.remainingBoxes)} boxes: reclaim again`]] : []),
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
 /** The wallet page: what this client's wallet holds, with verified tokens marked and icons where they ship. */
 export default function WalletPage() {
   const [keyed, setKeyed] = useState(false);
@@ -500,6 +629,8 @@ export default function WalletPage() {
   const [rewards, setRewards] = useState(null);
   const [error, setError] = useState(null);
   const [rewardsError, setRewardsError] = useState(null);
+  const [arb, setArb] = useState(null);
+  const [arbError, setArbError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [autoSecs, setAutoSecs] = useState(0);
@@ -521,6 +652,13 @@ export default function WalletPage() {
           setRewardsError(null);
         },
         (e) => setRewardsError(e.message),
+      ),
+      api.getArbStake().then(
+        (a) => {
+          setArb(a);
+          setArbError(null);
+        },
+        (e) => setArbError(e.message),
       ),
     ]).finally(() => setLoading(false));
   }, []);
@@ -586,7 +724,7 @@ export default function WalletPage() {
           {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} onSaved={onSaved} />}
 
           {!keyed ? (
-            <KeyGate what="this wallet's balances and rewards" onUnlock={unlock} />
+            <KeyGate what="this wallet's balances, rewards and arb stake" onUnlock={unlock} />
           ) : (
             <>
               {error && (
@@ -629,6 +767,8 @@ export default function WalletPage() {
                     </div>
                     <RewardsCard rewards={rewards} error={rewardsError} onClaimed={refresh} />
                   </div>
+
+                  <ArbStakeCard arb={arb} error={arbError} onReclaimed={refresh} />
 
                   <TokensCard tokens={tokens} />
                 </>

@@ -189,7 +189,7 @@ The eight sources and what they ship as:
 | `ergodex` | on | 40 | ErgoDEX swaps, deposits and redemptions on ERG/token and token/token pools, and Machina Finance fills, including ancestors |
 | `forwards` | on | 10 | Difficulty forward recordings and settlements |
 | `sigmafi` | on | 2 | [SigmaFi bond liquidations](./batching.mdx#sigmafi-bond-liquidations), every due bond in one transaction |
-| `arb` | on, asked only while `batching.arb.enabled` is on, which ships on | 80 | [Arbitrage cycles](./batching.mdx#arbitrage-in-your-own-blocks), one transaction per swap, and [Machina fills through LithosDex](./batching.mdx#machina-orders-through-lithosdex), one transaction each |
+| `arb` | on, asked only while `batching.arb.enabled` is on, which ships on | 80 | [Arbitrage cycles](./batching.mdx#arbitrage-in-your-own-blocks), one transaction per swap, [Machina fills through LithosDex](./batching.mdx#machina-orders-through-lithosdex), one transaction each, and [Machina token/token grids](./batching.mdx#machina-tokentoken-grids), two each |
 | `rent` | on | 8 | Storage rent collection |
 
 `maxBytes` ships at 262144 for all eight. `maxCost` ships at 1000000 for all but `rent` and `arb`, which
@@ -197,8 +197,8 @@ ship at 2000000. The `arb` source has the most slots because each swap of a cycl
 blocks leave much of their space unused.
 
 The `arb` source is asked after the `lithosdex` and `ergodex` sources, and its cycles are admitted after
-every other source's work. Its Machina fills come first within its slots. A cycle is admitted whole or not
-at all, so a cycle that does not fit in the slots left takes none of them.
+every other source's work. Its Machina fills come first within its slots, then its token/token grids. A cycle
+is admitted whole or not at all, so a cycle that does not fit in the slots left takes none of them.
 
 :::warning Every slot is block space not earning a fee
 Transactions you insert pay no transaction fee, because they are yours. That is the point for rollups

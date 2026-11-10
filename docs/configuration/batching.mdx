@@ -141,7 +141,8 @@ ErgoDEX orders that pay their executor fee in SPF are not filled.
 
 **A Machina Finance fill needs no capital either.** One transaction buys from the order and sells into
 an ErgoDEX pool, or the reverse, and the price gap between the two is your revenue, in ERG. The client
-fills only the newest Machina contracts, and never token/token grid orders. A Machina fill joins the run
+fills only the newest Machina contracts. Token/token grid orders are left to arbitrage, as
+[Machina token/token grids](#machina-tokentoken-grids) describes. A Machina fill joins the run
 on its pool beside the ErgoDEX orders, so it uses the `batching.ergodex` settings and candidate source
 and has none of its own. Statistics count it under ErgoDEX.
 
@@ -320,6 +321,22 @@ pool, so it is filled this way or not at all. Each fill works as follows:
 
 The gap goes to the pool with your other takings. Statistics count the fill under ErgoDEX, like a Machina
 fill through an ErgoDEX pool.
+
+### Machina token/token grids
+
+A Machina token/token grid order trades its own token against another token, its base, both ways. A fill
+through a token/token pool of the pair needs no capital, but leaves the gap in the base token. Arbitrage turns
+that gap into ERG in your own block, on the stake, in the following two transactions:
+
+1. Fill the order through the token/token pool of its pair that leaves the biggest gap, ErgoDEX or LithosDex.
+   The stake passes through and takes the gap.
+2. Sell the gap through the deepest ERG pool of the base token, on either DEX. The stake returns whole to the arb
+   address, and the ERG goes to the pool as profit.
+
+Both transactions go into the same block or neither does. The pair is built only when the ERG the sale returns
+is at least `batching.arb.minProfitNanoErg`. It takes two of the `arb` source's slots, ahead of the cycles, and
+needs a stake at the arb address. Statistics count it as an arbitrage cycle. Few such orders exist: an order
+whose ERG cannot cover the box its fill must create is never filled.
 
 ### Funding the arb address
 

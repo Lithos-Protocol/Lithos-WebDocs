@@ -228,9 +228,9 @@ without being repaid. A liquidation sends the bond's collateral to the vault its
 you keep the bond's batching fee. It spends none of your boxes. Only bonds under the maturity liquidation
 script are taken, and only those paying at least `minBatchingFeeNanoErg`.
 
-For `broadcastAfterBlocks` blocks after a bond matures, only Lithos blocks carry its liquidation. Your
-block carries it fee-less, every due bond in one transaction, and the fees go to the pool with your other
-batching takings. Your block also replaces any pending transaction that already liquidates one of those
+For `broadcastAfterBlocks` blocks after a bond matures, only Lithos blocks carry its liquidation. At the
+shipped value of 1, that is the block at the maturity height alone. Your block carries it fee-less, every
+due bond in one transaction, and the fees go to the pool with your other batching takings. Your block also replaces any pending transaction that already liquidates one of those
 bonds. From then on your client broadcasts the liquidation too, paying the 0.001 ERG network fee out of the
 fees and sending the rest to your wallet:
 
@@ -241,7 +241,7 @@ fees and sending the rest to your wallet:
 | `batching.sigmafi.maxTrackedOrders` | 512 | 1 to 4096 | Due bonds held between scans, oldest maturity first |
 | `batching.sigmafi.maxOrdersPerBlock` | 20 | 1 to 100 | Bonds one block or broadcast pass liquidates. They share one transaction |
 | `batching.sigmafi.broadcast` | `true` | `true` or `false` | Broadcast liquidations from `broadcastAfterBlocks` onward |
-| `batching.sigmafi.broadcastAfterBlocks` | 2 | 0 to 720 | Blocks after a bond matures that only Lithos blocks carry its liquidation |
+| `batching.sigmafi.broadcastAfterBlocks` | 1 | 0 to 720 | Blocks after a bond matures that only Lithos blocks carry its liquidation |
 | `batching.sigmafi.minBatchingFeeNanoErg` | 50000000 | 2000000 to 100000000000 | The least batching fee a bond must pay to be liquidated |
 | `batching.sigmafi.skippedOrderTtlMs` | 3600000 | 60000 to 86400000 ms | How long a bond that could not be built is left out |
 | `batching.sigmafi.maxSkippedOrders` | 4096 | 0 to 100000 | Such bonds remembered at once, oldest forgotten first |
@@ -293,7 +293,7 @@ Arbitrage runs only while all four of the following are on. All four ship on:
 
 - The stratum task, `lithos-tasks.stratum-server`
 - `stratum.candidate.blockTransactions`
-- The `arb` source, `stratum.candidate.sources.arb`, with 80 slots
+- The `arb` source, `stratum.candidate.sources.arb`, with 100 slots
 - `batching.arb.enabled`
 
 Both batchers' `deniedPools` lists apply to arbitrage as well, and so does

@@ -4890,7 +4890,10 @@ paths:
   /sigmafi/bonds/{boxId}/repay/check:
     post:
       summary: Quote repaying a bond
-      description: What repaying costs and where the collateral goes. Signs nothing.
+      description: >
+        What repaying costs and where the collateral goes. Signs nothing. A repayment counts only in a block
+        below maturity, so `warnings` says when two blocks or fewer can still carry it: one not mined by then
+        fails, and the bond can be liquidated.
       operationId: checkRepaySFBond
       tags:
         - sigmafi
@@ -4911,7 +4914,8 @@ paths:
       description: >
         Pay the repayment plus the unused lender-funded reserve into the vault for the bond asset's holder, and return the collateral to the
         borrower, burning the bond singleton. Open strictly below maturity. Anyone may repay; the collateral
-        always goes to the borrower and the circulating claim stays with its holder.
+        always goes to the borrower and the circulating claim stays with its holder. With two blocks or fewer
+        left to carry it, the repayment is still sent and `warnings` says so.
       operationId: repaySFBond
       security:
         - ApiKeyAuth: []
@@ -4980,7 +4984,7 @@ paths:
   /sigmafi/claims/{tokenId}/check:
     post:
       summary: Quote a claim
-      description: What the vault holds for this bond asset. Signs nothing.
+      description: What a claim of this bond asset takes, and what it leaves locked. Signs nothing.
       operationId: checkSFClaim
       tags:
         - sigmafi
@@ -4999,9 +5003,11 @@ paths:
     post:
       summary: Claim a settled bond
       description: >
-        Take everything the vault holds for a bond asset this wallet holds, burning the asset. Every vault box
-        for it is claimed at once: once the asset is burned, nothing left behind can be claimed. Refused while
-        a pending transaction still pays into the vault for it.
+        Take the vault output the bond's settlement paid, found from the bond's own confirmed spend, burning the
+        bond asset. Up to 8 other vault boxes naming the asset, largest first, come with it, each box into an output
+        of its own. Burning the asset locks every vault box naming it that the claim leaves, for good; the quote's
+        `warnings` and the result's `warnings` say what is left. Refused while a bond still holds the asset's other
+        unit, for an asset that is not verified, and while the settlement cannot be established from the node's index.
       operationId: claimSFBond
       security:
         - ApiKeyAuth: []
@@ -7367,6 +7373,12 @@ components:
           type: string
         kind:
           type: string
+          description: >-
+            What built the transaction, such as `genesis`, `holding-topup` or `ergodex-batch`. The arbitrage
+            stage's are `arb`, a cycle through ErgoDEX pools only; `arb-lithosdex`, a cycle through at least one
+            LithosDex pool; `arb-machina`, a Machina order filled through a LithosDex ERG pool; and `arb-grid`, a
+            Machina token/token grid's fill and the sale of its gap. Every transaction of one cycle, fill or grid
+            carries the same kind.
         sizeBytes:
           type: integer
           nullable: true
@@ -7581,7 +7593,7 @@ components:
       properties:
         name:
           type: string
-          enum: [rollups, emissions, rent, forwards, lithosdex, ergodex, arb]
+          enum: [rollups, emissions, rent, forwards, sigmafi, lithosdex, ergodex, arb]
         enabled:
           type: boolean
           description: The source's own `enabled` setting.
@@ -7589,8 +7601,8 @@ components:
           type: boolean
           description: >-
             Whether candidates ask this source for transactions: `blockTransactions` is on, the
-            source is enabled with `maxTxs` above 0 and, for `forwards`, `lithosdex`, `ergodex` and `arb`,
-            the matching `batching` block is enabled.
+            source is enabled with `maxTxs` above 0 and, for `forwards`, `sigmafi`, `lithosdex`, `ergodex`
+            and `arb`, the matching `batching` block is enabled.
         maxTxs:
           type: integer
           description: Transactions this source may place in one block, carried ancestors included.
@@ -12528,6 +12540,7 @@ components:
             $ref: '#/components/schemas/SFVaultView'
         claimable:
           type: boolean
+          description: Whether a claim goes through now. The bond's own settlement output is known and unspent.
     SFPortfolio:
       type: object
       x-tags: sigmafi
@@ -12788,10 +12801,19 @@ components:
           enum: [accepted, rejected, uncertain]
         boxId:
           type: string
-          description: The output that matters, the new order or bond.
+          description: >-
+            The output that matters: the new order or bond, the vault box a repayment or liquidation pays, or the
+            first box a cancel or claim returns to this wallet.
         assetId:
           type: string
-          description: The bond asset a fill or a close minted.
+          description: The bond asset a fill minted.
+        warnings:
+          type: array
+          description: >-
+            What to know about the sent transaction: vault boxes a claim left locked for good, or a repayment
+            sent with two blocks or fewer left to be mined in.
+          items:
+            type: string
   securitySchemes:
     ApiKeyAuth:
       description: >

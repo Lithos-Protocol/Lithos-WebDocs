@@ -84,11 +84,13 @@ pins the vault, settlement tags and locked-unit burn; inspect any different liqu
 relying on its collateral payout. Principal amounts are carried in the live bond’s registers, so the client
 can read the agreed loan directly while separately checking the bond’s origin against its minting order.
 
-The holder of the bond asset then **claims** everything the vault holds for it. The claim burns the bond
-asset, so every vault box for it is claimed in one transaction.
+The holder of the bond asset then **claims** what the vault holds for it. One claim takes the bond's own
+settlement output and at most 8 other vault boxes naming the asset, largest first, and burns the bond
+asset. A vault box the claim leaves out can never be claimed after, so the claim's check lists any such
+box before you send.
 
 You do not need to liquidate bonds yourself. Lithos miners liquidate every matured bond that pays a
-batching fee of at least 0.05 ERG, in their own blocks first and by broadcast two blocks later.
+batching fee of at least 0.05 ERG, in their own blocks first and by broadcast one block later.
 
 ## Borrow or lend from the web panel
 
@@ -160,6 +162,7 @@ minimum reward output; a very small reserve may require a separately constructed
 | Situation | What happens | What to do |
 |---|---|---|
 | The borrower misses maturity | The bond can be liquidated. The collateral goes to the vault | Claim it from **Portfolio** once it is liquidated |
+| You repay with two blocks or fewer left | The repayment counts only if it is mined before the maturity block. If it is not, it fails and the bond can be liquidated. The check and the send both warn | Repay earlier than the last few blocks |
 | The collateral is worth less than the loan at maturity | The borrower may let the bond be liquidated | Choose collateral and terms that cover your loan |
 | You chose a reserve under 0.05 ERG | Clients on shipped settings skip automatic liquidation | Use **Portfolio** if the reserve covers a manual liquidation, or construct a transaction separately |
 | You send the bond asset away | Whoever holds it is paid instead of you | Keep the bond asset until you claim |

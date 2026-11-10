@@ -188,13 +188,15 @@ The eight sources and what they ship as:
 | `lithosdex` | on | 40 | LithosDex order executions on pools of either kind, their placements and the closing flush |
 | `ergodex` | on | 40 | ErgoDEX swaps, deposits and redemptions on ERG/token and token/token pools, and Machina Finance fills, including ancestors |
 | `forwards` | on | 10 | Difficulty forward recordings and settlements |
-| `sigmafi` | on | 2 | [SigmaFi bond liquidations](./batching.mdx#sigmafi-bond-liquidations), every due bond in one transaction |
-| `arb` | on, asked only while `batching.arb.enabled` is on, which ships on | 80 | [Arbitrage cycles](./batching.mdx#arbitrage-in-your-own-blocks), one transaction per swap, [Machina fills through LithosDex](./batching.mdx#machina-orders-through-lithosdex), one transaction each, and [Machina token/token grids](./batching.mdx#machina-tokentoken-grids), two each |
+| `sigmafi` | on | 20 | [SigmaFi bond liquidations](./batching.mdx#sigmafi-bond-liquidations), every due bond in one transaction, split into smaller ones only when it does not fit |
+| `arb` | on, asked only while `batching.arb.enabled` is on, which ships on | 100 | [Arbitrage cycles](./batching.mdx#arbitrage-in-your-own-blocks), one transaction per swap, [Machina fills through LithosDex](./batching.mdx#machina-orders-through-lithosdex), one transaction each, and [Machina token/token grids](./batching.mdx#machina-tokentoken-grids), two each |
 | `rent` | on | 8 | Storage rent collection |
 
 `maxBytes` ships at 262144 for all eight. `maxCost` ships at 1000000 for all but `rent` and `arb`, which
 ship at 2000000. The `arb` source has the most slots because each swap of a cycle takes one, and most
-blocks leave much of their space unused.
+blocks leave much of their space unused. The `sigmafi` source has as many slots as
+`batching.sigmafi.maxOrdersPerBlock`, so a liquidation that has to be split keeps every bond, even one
+bond per transaction.
 
 The `arb` source is asked after the `lithosdex` and `ergodex` sources, and its cycles are admitted after
 every other source's work. Its Machina fills come first within its slots, then its token/token grids. A cycle

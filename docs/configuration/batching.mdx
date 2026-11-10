@@ -145,6 +145,12 @@ fills only the newest Machina contracts, and never token/token grid orders. A Ma
 on its pool beside the ErgoDEX orders, so it uses the `batching.ergodex` settings and candidate source
 and has none of its own. Statistics count it under ErgoDEX.
 
+**While arbitrage runs, a Machina order can go through LithosDex instead.** The batcher also prices each
+order against the LithosDex ERG pools of its token. An order a LithosDex pool fills for more is left out of
+the ErgoDEX run, and arbitrage fills it in your own block through that pool, as
+[Machina orders through LithosDex](#machina-orders-through-lithosdex) describes. Broadcasts still go through
+ErgoDEX pools.
+
 ErgoDEX executes against many pools, so it bounds how many it tracks and skips idle ones:
 
 | Setting | Default | Range | What it does |
@@ -296,6 +302,24 @@ the same contract check the LithosDex batcher applies.
 **A cycle's profit goes to the pool, not to you alone.** It is added to the holding box your block's
 genesis transaction creates, with your executor fees, so every miner who submits to that rollup is paid
 a share of it by score. On **Mining > Payments** it appears as Arb, under Into the pool.
+
+### Machina orders through LithosDex
+
+Arbitrage also fills the Machina Finance orders the ErgoDEX batcher hands it: those a LithosDex ERG pool of
+the order's token fills for more than any ErgoDEX pool does. A Machina order for LIT has only the ERG:LIT
+pool, so it is filled this way or not at all. Each fill works as follows:
+
+- It needs no stake and spends none of your boxes. It runs even while the arb address holds no stake.
+- It is one transaction, laid out as a fill through an ErgoDEX pool: the pool, the order's next box, and
+  the gap in ERG.
+- It builds on the pool as the LithosDex batcher's run in the same block leaves it, after every LithosDex
+  order, and before any cycle, so a cycle through the same pool trades against what the fill left.
+- It must leave at least `batching.ergodex.minRevenueNanoErg`, and at least 1000000, since the gap needs a
+  box of its own.
+- It is never broadcast.
+
+The gap goes to the pool with your other takings. Statistics count the fill under ErgoDEX, like a Machina
+fill through an ErgoDEX pool.
 
 ### Funding the arb address
 

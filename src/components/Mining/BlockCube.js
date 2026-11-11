@@ -218,7 +218,7 @@ function mempoolMotes(W, D, y0, y1, project, budget = 520) {
 }
 
 
-export default function BlockCube({
+function BlockCube({
   slabs,
   capacity,
   limitLabel,
@@ -260,7 +260,8 @@ export default function BlockCube({
       // which reads as "not included" rather than "very small", so it keeps a visible floor.
       // Those floors can then add up past the container, so the stack is clamped to it: better a
       // full cube than slabs floating above their own limit.
-      const thickness = slab.value > 0 ? Math.max(raw, 1.1) : 0;
+      // A group of transactions keeps three times that floor, so it never passes for a single one.
+      const thickness = slab.value > 0 ? Math.max(raw, slab.count > 1 ? 3.3 : 1.1) : 0;
       const y0 = Math.min(cursor, H);
       cursor = Math.min(cursor + thickness, H);
       return {
@@ -640,3 +641,6 @@ export default function BlockCube({
     </>
   )
 }
+
+// Memoised: a refresh that changes nothing in the package must not redraw every slab.
+export default React.memo(BlockCube);

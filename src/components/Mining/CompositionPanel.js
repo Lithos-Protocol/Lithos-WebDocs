@@ -16,15 +16,18 @@ import { big, fmtErgMin, fmtInt, fmtNum, fmtPct } from './format';
  *
  * Transactions reporting no cost — carried mempool ancestors the node never measured — contribute
  * nothing to the cost bar, so its segments are floors. That is called out rather than hidden.
+ *
+ * It reads the cube's drawing units, a group carrying its members' summed figures, so a hovered
+ * index means the same slab here as on the cube.
  */
-export default function CompositionPanel({ txs, paintOf, labelOf, hovered, onHover }) {
+function CompositionPanel({ units, paintOf, labelOf, hovered, onHover }) {
   const model = useMemo(() => {
     const byKind = new Map();
-    txs.forEach((tx, i) => {
-      const bytes = Number(big(tx.sizeBytes));
-      const cost = Number(big(tx.cost));
-      const row = byKind.get(tx.kind) ?? {
-        kind: tx.kind,
+    units.forEach((unit, i) => {
+      const bytes = Number(big(unit.sizeBytes));
+      const cost = Number(big(unit.cost));
+      const row = byKind.get(unit.kind) ?? {
+        kind: unit.kind,
         count: 0,
         bytes: 0,
         cost: 0,
@@ -32,15 +35,16 @@ export default function CompositionPanel({ txs, paintOf, labelOf, hovered, onHov
         uncosted: 0,
         indices: [],
       };
-      row.count += 1;
+      row.count += unit.group ? unit.count : 1;
       row.bytes += bytes;
       row.cost += cost;
       // Revenue stays BigInt: nanoERG across a package can pass the exact range of a double, and
       // this figure is summed and compared rather than only drawn.
-      row.revenue += big(tx.revenueNanoErg);
+      row.revenue += big(unit.revenueNanoErg);
+      // A group only ever holds measured members, so only a single can be uncosted.
       if (!(cost > 0)) row.uncosted += 1;
       row.indices.push(i);
-      byKind.set(tx.kind, row);
+      byKind.set(unit.kind, row);
     });
     const rows = [...byKind.values()].sort((a, b) => b.bytes - a.bytes);
     const totalBytes = rows.reduce((n, r) => n + r.bytes, 0);
@@ -53,7 +57,7 @@ export default function CompositionPanel({ txs, paintOf, labelOf, hovered, onHov
       totalRevenue,
       uncosted: rows.reduce((n, r) => n + r.uncosted, 0),
     };
-  }, [txs]);
+  }, [units]);
 
   if (model.rows.length === 0) return null;
 
@@ -170,3 +174,5 @@ export default function CompositionPanel({ txs, paintOf, labelOf, hovered, onHov
     </div>
   );
 }
+
+export default React.memo(CompositionPanel);

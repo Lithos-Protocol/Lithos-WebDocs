@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import s from './styles.module.css';
 import * as api from './api';
 import { useMining } from './MiningLayout';
@@ -7,9 +7,10 @@ import TxStackList from './TxStackList';
 import CompositionPanel from './CompositionPanel';
 import PackageSettings from './PackageSettings';
 import { NETWORKS } from './trade';
-import { ARB, stripes } from './paint';
+import { stripes } from './paint';
+import { groupUnits } from './packageGroups';
 import { Alert, Spinner } from '../Dex/ui';
-import { big, fmtAge, fmtErgAmount, fmtInt, fmtNum, fmtPct, fullTime, shortId } from './format';
+import { big, fmtAge, fmtErgAmount, fmtErgMin, fmtInt, fmtNum, fmtPct, fullTime, shortId } from './format';
 
 /*
  * One colour per transaction kind.
@@ -44,8 +45,11 @@ const KIND_COLORS = {
   'lithosdex-flush': '#0d9488',
   'ergodex-batch': '#f472b6',
   'storage-rent': '#fb923c',
-  // Striped, below: rent's orange, since both are this client's takings for the pot.
-  arb: ARB,
+  // Arb: four shades of one green, darkest to lightest, so the arb stage reads as one family.
+  arb: '#c43e00', // a pool cycle through ErgoDEX pools; an older client sends every arb leg as this
+  'arb-lithosdex': '#ec816e', // a pool cycle with a LithosDex leg
+  'arb-machina': '#a0c268', // a Machina order filled through a LithosDex ERG pool
+  'arb-grid': '#f4783f', // a Machina token/token grid: its fill and the sale of its gap
   // The Extensions section's indigo, the one hue free between NISP blue and activate violet.
   'difficulty-forward': '#818cf8',
   // Lime, free in this palette: SigmaFi bond liquidations, whose fees go to the pot.
@@ -56,7 +60,7 @@ const FALLBACK = '#475569';
 const colorOf = (kind) => KIND_COLORS[kind] ?? FALLBACK;
 
 /** Kinds drawn striped, told apart from a kind of the same hue by pattern. */
-const STRIPED = new Set(['arb', 'lithosdex-t2t-batch']);
+const STRIPED = new Set(['lithosdex-t2t-batch','difficulty-forward','storage-rent','fraud-proof', 'holding-topup']);
 /** A kind's CSS background: its colour, striped for the kinds above. The cube draws its own stripes. */
 const paintOf = (kind) => (STRIPED.has(kind) ? stripes(colorOf(kind)) : colorOf(kind));
 
@@ -76,13 +80,68 @@ const KIND_LABELS = {
   'lithosdex-flush': 'LithosDex flush',
   'ergodex-batch': 'ErgoDEX batch',
   'storage-rent': 'storage rent',
-  arb: 'arb leg',
+  arb: 'arb',
+  'arb-lithosdex': 'arb · LithosDex',
+  'arb-machina': 'arb · Machina',
+  'arb-grid': 'arb · grid',
   'difficulty-forward': 'difficulty forward',
   'sigmafi-liquidation': 'SigmaFi liquidation',
   'mempool-ancestor': 'mempool ancestor',
 };
 const labelOf = (kind) => KIND_LABELS[kind] ?? kind;
 
+/** A group's positions in the stack: a range when its members sit together, first and last when spread. */
+const positionsOf = (unit) =>
+  `${unit.position + 1}${unit.lastPosition - unit.position === unit.count - 1 ? '–' : '…'}${unit.lastPosition + 1}`;
+
+/**
+ * `value`, or the one from the last render while it serialises the same. Each refresh hands over a new object, so
+ * holding the old one while nothing in it changed lets every memo below it, and the cube, skip the redraw.
+ */
+function useStable(value) {
+  const held = useRef({ key: null, value: null });
+  const key = value == null ? null : JSON.stringify(value);
+  if (held.current.key !== key) held.current = { key, value };
+  return held.current.value;
+}
+
+/** The transactions a group stands for, listed only when asked for. */
+function GroupMembers({ unit, total, onClose }) {
+  return (
+    <div className={s.members}>
+      <div className={s.membersHead}>
+        <span className={s.stackSwatch} style={{ background: paintOf(unit.kind) }} />
+        <span className={s.membersTitle}>{labelOf(unit.kind)}</span>
+        <span className={s.stackListMeta}>
+          {unit.count} tx · positions {positionsOf(unit)} of {total}
+        </span>
+        <button type="button" className={`${s.pageBtn} ${s.membersClose}`} onClick={onClose} aria-label="Close">
+          ×
+        </button>
+      </div>
+      <div className={s.membersGrid}>
+        {unit.members.map((tx) => (
+          <div key={tx.id} className={s.memberCell}>
+            <span className={s.memberId} title={tx.id}>
+              {tx.id}
+            </span>
+            <span className={s.memberSub}>
+              #{tx.position + 1} · {fmtInt(tx.sizeBytes)} B · {fmtInt(tx.cost)}
+              {big(tx.revenueNanoErg) > 0n && (
+                <>
+                  {' · '}
+                  <span className={s.txErg}>{fmtErgMin(tx.revenueNanoErg, 4)} ERG</span>
+                </>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const EMPTY = [];
 const ANCESTOR = 'mempool-ancestor';
 const GENESIS = 'genesis';
 const TOPUP = 'holding-topup';
@@ -171,6 +230,7 @@ export default function BlockPackagePanel() {
   const [scale, setScale] = useState('package');
   const [hovered, setHovered] = useState(null);
   const [focused, setFocused] = useState(null);
+  const [openGroup, setOpenGroup] = useState(null);
   const [settings, setSettings] = useState(null);
   const [settingsError, setSettingsError] = useState(null);
   const [network, setNetwork] = useState(null);
@@ -209,11 +269,17 @@ export default function BlockPackagePanel() {
 
   const stratum = stats?.local?.stratum;
   const job = stratum?.activeJob;
-  const pkg = job?.blockPackage;
+  const pkg = useStable(job?.blockPackage);
+
+  // The stack and its grouping depend on the package alone, so switching the measure reuses them.
+  const stack = useMemo(() => {
+    const txs = stackOrder(pkg?.transactions ?? []);
+    return { txs, units: groupUnits(txs) };
+  }, [pkg]);
 
   const model = useMemo(() => {
     if (!pkg) return null;
-    const txs = stackOrder(pkg.transactions ?? []);
+    const { txs, units } = stack;
     const valueOf = (tx) => Number(big(axis === 'bytes' ? tx.sizeBytes : tx.cost));
 
     const usedBytes = Number(big(pkg.knownSizeBytes));
@@ -234,12 +300,14 @@ export default function BlockPackagePanel() {
 
     return {
       txs,
-      slabs: txs.map((tx, i) => ({
-        id: tx.id ?? `tx-${i}`,
-        value: valueOf(tx),
-        color: colorOf(tx.kind),
-        striped: STRIPED.has(tx.kind),
-        ghost: tx.proofLeafMatched === false,
+      units,
+      slabs: units.map((unit, i) => ({
+        id: unit.id ?? `tx-${i}`,
+        value: valueOf(unit),
+        color: colorOf(unit.kind),
+        striped: STRIPED.has(unit.kind),
+        ghost: unit.proofLeafMatched === false,
+        count: unit.group ? unit.count : 1,
       })),
       // Falls back to the package's own total so the cube still draws something when the node's
       // limits are missing — with the caption saying the container is the package, not a limit.
@@ -265,7 +333,7 @@ export default function BlockPackagePanel() {
       // needs, so they are called out rather than folded into the totals silently.
       uncostedAncestors: txs.filter((t) => t.kind === ANCESTOR && !(Number(big(t.cost)) > 0)).length,
     };
-  }, [pkg, axis, scale]);
+  }, [pkg, stack, axis, scale]);
 
   if (loading && !stats) return <div className={s.card}>Loading…</div>;
 
@@ -297,8 +365,12 @@ export default function BlockPackagePanel() {
     );
   }
 
-  const hoveredTx = hovered != null ? model?.txs?.[hovered] : null;
-  const unit = axis === 'bytes' ? 'B' : '';
+  // The detail box follows the pointer, and falls back to the selection so its button can be reached.
+  const shownIndex = hovered ?? focused;
+  const hoveredTx = shownIndex != null ? model?.units?.[shownIndex] : null;
+  const shownGroup = hoveredTx?.group ? hoveredTx : null;
+  const openUnit = openGroup ? model?.units?.find((u) => u.id === openGroup) : null;
+  const totalTxs = model?.txs?.length ?? 0;
 
   return (
     <>
@@ -454,7 +526,8 @@ export default function BlockPackagePanel() {
 
         <div className={s.cubeLayout}>
           <TxStackList
-            txs={model?.txs ?? []}
+            units={model?.units ?? EMPTY}
+            total={totalTxs}
             paintOf={paintOf}
             labelOf={labelOf}
             hovered={hovered}
@@ -466,9 +539,9 @@ export default function BlockPackagePanel() {
 
           <div className={s.cubeStage}>
             <BlockCube
-              slabs={model?.slabs ?? []}
+              slabs={model?.slabs ?? EMPTY}
               capacity={model?.capacity ?? 0}
-              markers={model?.markers ?? []}
+              markers={model?.markers ?? EMPTY}
               hovered={hovered}
               onHover={setHovered}
               focused={focused}
@@ -502,54 +575,95 @@ export default function BlockPackagePanel() {
                 <span className={`${s.detailKind} ${hoveredTx ? '' : s.detailKindIdle}`}>
                   {hoveredTx ? labelOf(hoveredTx.kind) : 'no slab selected'}
                 </span>
+                {shownGroup && <span className={s.countChip}>×{shownGroup.count}</span>}
               </div>
-              <div className={s.kv}>
-                <span className={s.kvKey}>Size</span>
-                <span className={s.kvVal}>
-                  {!hoveredTx
-                    ? '—'
-                    : hoveredTx.sizeBytes == null
-                      ? 'unknown'
-                      : `${fmtInt(hoveredTx.sizeBytes)} B`}
-                </span>
-              </div>
-              <div className={s.kv}>
-                <span className={s.kvKey}>Cost</span>
-                <span className={s.kvVal}>
-                  {!hoveredTx
-                    ? '—'
-                    : hoveredTx.cost == null
-                      ? 'unknown'
-                      : Number(big(hoveredTx.cost)) === 0 && hoveredTx.kind === ANCESTOR
-                        ? 'not reported'
-                        : fmtInt(hoveredTx.cost)}
-                </span>
-              </div>
-              <div className={s.kv}>
-                <span className={s.kvKey}>Cost / byte</span>
-                <span className={`${s.kvVal} ${s.kvValDim}`}>
-                  {hoveredTx && Number(big(hoveredTx.cost)) > 0 && hoveredTx.sizeBytes
-                    ? fmtNum(Number(big(hoveredTx.cost)) / Number(hoveredTx.sizeBytes), 1)
-                    : '—'}
-                </span>
-              </div>
-              <div className={s.kv}>
-                <span className={s.kvKey}>Position</span>
-                <span className={`${s.kvVal} ${s.kvValDim}`}>
-                  {hoveredTx ? `${hoveredTx.position + 1} of ${model?.txs?.length ?? 0}` : '—'}
-                </span>
-              </div>
-              <div className={s.kv}>
-                <span className={s.kvKey}>Proof leaf</span>
-                <span
-                  className={`${s.kvVal} ${hoveredTx && !hoveredTx.proofLeafMatched ? s.kvValWarn : s.kvValDim}`}
-                >
-                  {!hoveredTx ? '—' : hoveredTx.proofLeafMatched ? 'matched' : 'unproven'}
-                </span>
-              </div>
-              <div className={s.detailId} title={hoveredTx?.id}>
-                {hoveredTx ? shortId(hoveredTx.id, 10, 10) : 'hover a slab or a row'}
-              </div>
+              {shownGroup ? (
+                <>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Size</span>
+                    <span className={s.kvVal}>{fmtInt(shownGroup.sizeBytes)} B</span>
+                  </div>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Cost</span>
+                    <span className={s.kvVal}>{fmtInt(shownGroup.cost)}</span>
+                  </div>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Earns</span>
+                    <span className={`${s.kvVal} ${big(shownGroup.revenueNanoErg) > 0n ? s.txErg : s.kvValDim}`}>
+                      {big(shownGroup.revenueNanoErg) > 0n ? `${fmtErgMin(shownGroup.revenueNanoErg, 4)} ERG` : '—'}
+                    </span>
+                  </div>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Positions</span>
+                    <span className={`${s.kvVal} ${s.kvValDim}`}>
+                      {positionsOf(shownGroup)} of {totalTxs}
+                    </span>
+                  </div>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Group</span>
+                    <span className={`${s.kvVal} ${s.kvValDim}`}>
+                      {shownGroup.ordinal} of {shownGroup.of} · {shownGroup.kindCount} tx
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={s.detailIds}
+                    onClick={() => setOpenGroup(openGroup === shownGroup.id ? null : shownGroup.id)}
+                  >
+                    {openGroup === shownGroup.id ? 'hide ids' : `show ${shownGroup.count} ids`}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Size</span>
+                    <span className={s.kvVal}>
+                      {!hoveredTx
+                        ? '—'
+                        : hoveredTx.sizeBytes == null
+                          ? 'unknown'
+                          : `${fmtInt(hoveredTx.sizeBytes)} B`}
+                    </span>
+                  </div>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Cost</span>
+                    <span className={s.kvVal}>
+                      {!hoveredTx
+                        ? '—'
+                        : hoveredTx.cost == null
+                          ? 'unknown'
+                          : Number(big(hoveredTx.cost)) === 0 && hoveredTx.kind === ANCESTOR
+                            ? 'not reported'
+                            : fmtInt(hoveredTx.cost)}
+                    </span>
+                  </div>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Cost / byte</span>
+                    <span className={`${s.kvVal} ${s.kvValDim}`}>
+                      {hoveredTx && Number(big(hoveredTx.cost)) > 0 && hoveredTx.sizeBytes
+                        ? fmtNum(Number(big(hoveredTx.cost)) / Number(hoveredTx.sizeBytes), 1)
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Position</span>
+                    <span className={`${s.kvVal} ${s.kvValDim}`}>
+                      {hoveredTx ? `${hoveredTx.position + 1} of ${totalTxs}` : '—'}
+                    </span>
+                  </div>
+                  <div className={s.kv}>
+                    <span className={s.kvKey}>Proof leaf</span>
+                    <span
+                      className={`${s.kvVal} ${hoveredTx && !hoveredTx.proofLeafMatched ? s.kvValWarn : s.kvValDim}`}
+                    >
+                      {!hoveredTx ? '—' : hoveredTx.proofLeafMatched ? 'matched' : 'unproven'}
+                    </span>
+                  </div>
+                  <div className={s.detailId} title={hoveredTx?.id}>
+                    {hoveredTx ? shortId(hoveredTx.id, 10, 10) : 'hover a slab or a row'}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* The list doubles as the legend for the slabs; this is the one thing it cannot show. */}
@@ -559,6 +673,8 @@ export default function BlockPackagePanel() {
             </span>
           </div>
         </div>
+
+        {openUnit && <GroupMembers unit={openUnit} total={totalTxs} onClose={() => setOpenGroup(null)} />}
 
         <p className={s.cardNote} style={{ marginTop: 14 }}>
           Every slice is one transaction this client supplied, stacked in the order the node applies
@@ -585,6 +701,13 @@ export default function BlockPackagePanel() {
               A dashed outline means the node's proof did not confirm existence of that transaction.
             </>
           )}
+          {model?.slabs?.some((sl) => sl.count > 1) && (
+            <>
+              {' '}
+              Past 20 of a kind, every 20 draw as one block where the first of them sits; pick one from the
+              list for its ids. Unproven or unmeasured transactions always draw alone.
+            </>
+          )}
         </p>
       </div>
 
@@ -600,7 +723,7 @@ export default function BlockPackagePanel() {
       )}
 
       <CompositionPanel
-        txs={model?.txs ?? []}
+        units={model?.units ?? EMPTY}
         paintOf={paintOf}
         labelOf={labelOf}
         hovered={hovered}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import s from './styles.module.css';
 import { big, fmtInt } from './format';
 
@@ -9,11 +9,15 @@ import { big, fmtInt } from './format';
  * kind's swatch, so the list *is* the legend, and one that also says which slab is which. Hovering
  * a row lights the matching slab, which is easier to aim at than a slab a pixel thick.
  *
+ * A row is one drawing unit: a single transaction, or a group of them shown with its count and
+ * their summed size or cost.
+ *
  * Paged rather than scrolled, because the list sits alongside a fixed-height drawing and a
  * scrolling column next to it would leave the two disagreeing about how tall the card is.
  */
-export default function TxStackList({
-  txs,
+function TxStackList({
+  units,
+  total,
   paintOf,
   labelOf,
   hovered,
@@ -24,7 +28,7 @@ export default function TxStackList({
   perPage = 8,
 }) {
   const [page, setPage] = useState(0);
-  const pages = Math.max(1, Math.ceil(txs.length / perPage));
+  const pages = Math.max(1, Math.ceil(units.length / perPage));
 
   /*
    * Rows read in the order the node applies them: genesis first, the top-up last.
@@ -33,47 +37,58 @@ export default function TxStackList({
    * two run opposite ways on the screen. The list is a running order rather than a picture of the
    * stack, and hovering links them whichever way round they are drawn.
    */
-  const ordered = useMemo(() => txs.map((tx, i) => ({ tx, i })), [txs]);
 
   // Follow a selection made on the cube itself, so the two never disagree about what is showing.
   useEffect(() => {
     if (focused == null) return;
-    const row = ordered.findIndex((r) => r.i === focused);
-    if (row >= 0) setPage(Math.floor(row / perPage));
-  }, [focused, ordered, perPage]);
+    setPage(Math.floor(focused / perPage));
+  }, [focused, perPage]);
 
   useEffect(() => {
     if (page > pages - 1) setPage(pages - 1);
   }, [page, pages]);
 
   const start = page * perPage;
-  const slice = ordered.slice(start, start + perPage);
-  const measure = (tx) => (axis === 'bytes' ? tx.sizeBytes : tx.cost);
+  const slice = units.slice(start, start + perPage);
+  const measure = (unit) => (axis === 'bytes' ? unit.sizeBytes : unit.cost);
 
   return (
     <div className={s.stackList}>
       <div className={s.stackListHead}>
         <span className={s.label}>stack</span>
-        <span className={s.stackListMeta}>{fmtInt(txs.length)} tx · applied order</span>
+        <span className={s.stackListMeta}>{fmtInt(total)} tx · applied order</span>
       </div>
 
       <div className={s.stackRows}>
-        {slice.map(({ tx, i }) => {
-          const value = measure(tx);
+        {slice.map((unit, k) => {
+          const i = start + k;
+          const value = measure(unit);
           const unreported = value == null || !(Number(big(value)) > 0);
           return (
             <button
-              key={tx.id ?? i}
+              key={unit.id ?? i}
               type="button"
-              className={`${s.stackRow} ${hovered === i ? s.stackRowOn : ''} ${
-                focused === i ? s.stackRowFocus : ''
-              }`}
+              className={`${s.stackRow} ${hovered === i ? s.stackRowOn : ''} ${focused === i ? s.stackRowFocus : ''}`}
               onMouseEnter={() => onHover(i)}
               onMouseLeave={() => onHover(null)}
               onClick={() => onFocus(focused === i ? null : i)}
             >
-              <span className={s.stackSwatch} style={{ background: paintOf(tx.kind) }} />
-              <span className={s.stackKind}>{labelOf(tx.kind)}</span>
+              <span
+                className={s.stackSwatch}
+                style={{ background: paintOf(unit.kind) }}
+              />
+              {unit.group ? (
+                <span className={s.stackKindGroup}>
+                  <span className={s.stackKind} title={labelOf(unit.kind)}>
+                    {labelOf(unit.kind)}
+                  </span>
+                  <span className={s.countChip}>×{unit.count}</span>
+                </span>
+              ) : (
+                <span className={s.stackKind} title={labelOf(unit.kind)}>
+                  {labelOf(unit.kind)}
+                </span>
+              )}
               <span className={`${s.stackVal} ${unreported ? s.stackValDim : ''}`}>
                 {unreported
                   ? 'n/r'
@@ -116,3 +131,5 @@ export default function TxStackList({
     </div>
   );
 }
+
+export default React.memo(TxStackList);

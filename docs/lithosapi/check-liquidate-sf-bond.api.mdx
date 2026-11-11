@@ -31,7 +31,7 @@ import Heading from "@theme/Heading";
   path={"/sigmafi/bonds/{boxId}/liquidate/check"}
   context={"endpoint"}
 >
-
+  
 </MethodEndpoint>
 
 
@@ -49,14 +49,14 @@ What liquidating a matured bond pays this wallet. Signs nothing.
 <ParamsDetails
   parameters={[{"in":"path","name":"boxId","required":true,"schema":{"type":"string","pattern":"^[0-9a-fA-F]{64}$"}}]}
 >
-
+  
 </ParamsDetails>
 
 <RequestSchema
   title={"Body"}
   body={undefined}
 >
-
+  
 </RequestSchema>
 
 <StatusCodes
@@ -64,5 +64,8 @@ What liquidating a matured bond pays this wallet. Signs nothing.
   label={undefined}
   responses={{"200":{"description":"What the action would do. Nothing was signed or sent.","content":{"application/json":{"schema":{"type":"object","x-tags":"sigmafi","required":["action","paysNanoErgs","paysTokens","receivesNanoErgs","receivesTokens","feeNanoErgs","notes","warnings"],"properties":{"action":{"type":"string"},"boxId":{"type":"string"},"terms":{"type":"object","x-tags":"sigmafi","description":"A bond's terms, as its order states them and the bond carries them.","required":["kind","repayment","collateralNanoErgs","collateralTokens","batchingFee","liquidationHash"],"properties":{"kind":{"type":"string","description":"The bond's kind. Every SigmaFi V2 bond is `zero-coupon`."},"principalNanoErgs":{"type":"string","description":"Agreed nanoERG lent; for a token loan, the principal box's floor. Read directly from a bond's R6."},"principalToken":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"},"repayment":{"type":"string","description":"What the borrower repays, in nanoERG or in base units of `repayToken`."},"repayToken":{"type":"string","description":"The token a token loan is repaid in. Absent when repaid in ERG."},"collateralNanoErgs":{"type":"string","description":"Borrower collateral nanoERG, excluding the lender-funded reserve."},"collateralTokens":{"type":"array","items":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"}},"maturityHeight":{"type":"integer","format":"int64","description":"Repayment is open strictly below it. Absent for an on-close order until it is filled."},"durationBlocks":{"type":"integer","format":"int64","description":"An on-close order's term, counted from its fill."},"batchingFee":{"type":"string","description":"Lender-funded reserve selected on fill; zero on unfilled orders. Refunded on repayment."},"liquidation":{"type":"string","description":"The liquidation script's name. Absent when this client does not know it."},"liquidationHash":{"type":"string"}},"title":"SFTerms"},"paysNanoErgs":{"type":"string","description":"What leaves this wallet, the network fee included."},"paysTokens":{"type":"array","items":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"}},"receivesNanoErgs":{"type":"string"},"receivesTokens":{"type":"array","items":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"}},"feeNanoErgs":{"type":"string"},"notes":{"type":"array","items":{"type":"string"}},"warnings":{"type":"array","items":{"type":"string"}}},"title":"SFQuote"}}}},"404":{"description":"No unspent box has that id, it is not the kind named, or it is not this wallet's.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"422":{"description":"Valid, but not possible now: the box's terms are refused, maturity has passed or not come, the wallet cannot cover it, or no wallet box can authorize a cancel.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"503":{"description":"Node or index unavailable. Never returns a partial answer.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}}}}
 >
-
+  
 </StatusCodes>
+
+
+      

@@ -192,7 +192,7 @@ The eight sources and what they ship as:
 | `arb` | on, asked only while `batching.arb.enabled` is on, which ships on | 100 | [Arbitrage cycles](./batching.mdx#arbitrage-in-your-own-blocks), one transaction per swap, [Machina fills through LithosDex](./batching.mdx#machina-orders-through-lithosdex), one transaction each, and [Machina token/token grids](./batching.mdx#machina-tokentoken-grids), two each |
 | `rent` | on | 8 | Storage rent collection |
 
-`maxBytes` ships at 262144 for all eight. `maxCost` ships at 1000000 for all but `rent` and `arb`, which
+`maxBytes` ships at 262144 for all but `arb`, which ships at 327680. `maxCost` ships at 1000000 for all but `rent` and `arb`, which
 ship at 2000000. The `arb` source has the most slots because each swap of a cycle takes one, and most
 blocks leave much of their space unused. The `sigmafi` source has as many slots as
 `batching.sigmafi.maxOrdersPerBlock`, so a liquidation that has to be split keeps every bond, even one

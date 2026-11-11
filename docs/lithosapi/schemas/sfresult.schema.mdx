@@ -6,7 +6,7 @@ sidebar_label: "SFResult"
 hide_title: true
 hide_table_of_contents: true
 schema: true
-sample: {"txId":"string","outcome":"accepted","boxId":"string","assetId":"string"}
+sample: {"txId":"string","outcome":"accepted","boxId":"string","assetId":"string","warnings":["string"]}
 custom_edit_url: null
 ---
 
@@ -25,7 +25,7 @@ import Heading from "@theme/Heading";
 
 
 <Schema
-  schema={{"type":"object","x-tags":"sigmafi","required":["txId","outcome"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"boxId":{"type":"string","description":"The output that matters, the new order or bond."},"assetId":{"type":"string","description":"The bond asset a fill or a close minted."}},"title":"SFResult"}}
+  schema={{"type":"object","x-tags":"sigmafi","required":["txId","outcome"],"properties":{"txId":{"type":"string"},"outcome":{"type":"string","enum":["accepted","rejected","uncertain"]},"boxId":{"type":"string","description":"The output that matters: the new order or bond, the vault box a repayment or liquidation pays, or the first box a cancel or claim returns to this wallet."},"assetId":{"type":"string","description":"The bond asset a fill minted."},"warnings":{"type":"array","description":"What to know about the sent transaction: vault boxes a claim left locked for good, or a repayment sent with two blocks or fewer left to be mined in.","items":{"type":"string"}}},"title":"SFResult"}}
   schemaType={"response"}
 >
   

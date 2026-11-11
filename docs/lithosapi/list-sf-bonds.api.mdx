@@ -31,7 +31,7 @@ import Heading from "@theme/Heading";
   path={"/sigmafi/bonds"}
   context={"endpoint"}
 >
-
+  
 </MethodEndpoint>
 
 
@@ -50,14 +50,14 @@ Bonds not yet repaid or liquidated, soonest maturity first. Only verified bonds 
 <ParamsDetails
   parameters={[{"in":"query","name":"offset","required":false,"schema":{"type":"integer","minimum":0,"default":0}},{"in":"query","name":"limit","required":false,"schema":{"type":"integer","minimum":1,"maximum":100,"default":10}},{"in":"query","name":"all","required":false,"description":"Include unverified bonds.","schema":{"type":"boolean","default":false}}]}
 >
-
+  
 </ParamsDetails>
 
 <RequestSchema
   title={"Body"}
   body={undefined}
 >
-
+  
 </RequestSchema>
 
 <StatusCodes
@@ -65,5 +65,8 @@ Bonds not yet repaid or liquidated, soonest maturity first. Only verified bonds 
   label={undefined}
   responses={{"200":{"description":"One page of bonds","content":{"application/json":{"schema":{"type":"object","x-tags":"sigmafi","required":["height","bonds","total","unverified","truncated"],"properties":{"height":{"type":"integer"},"bonds":{"type":"array","items":{"type":"object","x-tags":"sigmafi","required":["boxId","assetId","terms","verified","status","blocksLeft","borrowerIsMe","creationHeight"],"properties":{"boxId":{"type":"string"},"assetId":{"type":"string","description":"The bond asset whose holder is paid."},"terms":{"type":"object","x-tags":"sigmafi","description":"A bond's terms, as its order states them and the bond carries them.","required":["kind","repayment","collateralNanoErgs","collateralTokens","batchingFee","liquidationHash"],"properties":{"kind":{"type":"string","description":"The bond's kind. Every SigmaFi V2 bond is `zero-coupon`."},"principalNanoErgs":{"type":"string","description":"Agreed nanoERG lent; for a token loan, the principal box's floor. Read directly from a bond's R6."},"principalToken":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"},"repayment":{"type":"string","description":"What the borrower repays, in nanoERG or in base units of `repayToken`."},"repayToken":{"type":"string","description":"The token a token loan is repaid in. Absent when repaid in ERG."},"collateralNanoErgs":{"type":"string","description":"Borrower collateral nanoERG, excluding the lender-funded reserve."},"collateralTokens":{"type":"array","items":{"type":"object","x-tags":"sigmafi","required":["tokenId","amount"],"properties":{"tokenId":{"type":"string"},"amount":{"type":"string","description":"Base units."}},"title":"SFTokenAmount"}},"maturityHeight":{"type":"integer","format":"int64","description":"Repayment is open strictly below it. Absent for an on-close order until it is filled."},"durationBlocks":{"type":"integer","format":"int64","description":"An on-close order's term, counted from its fill."},"batchingFee":{"type":"string","description":"Lender-funded reserve selected on fill; zero on unfilled orders. Refunded on repayment."},"liquidation":{"type":"string","description":"The liquidation script's name. Absent when this client does not know it."},"liquidationHash":{"type":"string"}},"title":"SFTerms"},"verified":{"type":"boolean","description":"Whether this is the bond its asset's genesis order created."},"verification":{"type":"string","description":"Why it is not verified."},"status":{"type":"string","enum":["open","matured"]},"blocksLeft":{"type":"integer","format":"int64","description":"Blocks before repayment closes. 0 once matured."},"borrowerIsMe":{"type":"boolean"},"creationHeight":{"type":"integer"}},"title":"SFBondView"}},"total":{"type":"integer"},"unverified":{"type":"integer","description":"Live bonds that failed verification, listed only with `all`."},"truncated":{"type":"boolean"}},"title":"SFBondList"}}}},"400":{"description":"A malformed field, or terms no contract or shipped client accepts.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}},"503":{"description":"Node or index unavailable. Never returns a partial answer.","content":{"application/json":{"schema":{"description":"Error response from API","type":"object","required":["error","reason","detail"],"properties":{"error":{"type":"integer","description":"Error code","example":500},"reason":{"type":"string","description":"Error message explaining the reason of the error","example":"Internal server error"},"detail":{"type":"string","nullable":true,"description":"Detailed error description"}},"title":"ApiError"}}}}}}
 >
-
+  
 </StatusCodes>
+
+
+      
